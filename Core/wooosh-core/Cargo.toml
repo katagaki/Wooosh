@@ -1,0 +1,39 @@
+[package]
+name = "wooosh-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "wooosh_core"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "net"] }
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "logging"] }
+rustls-pki-types = "1"
+rcgen = { version = "0.13", default-features = false, features = ["pem", "ring"] }
+ed25519-dalek = { version = "2", features = ["pkcs8", "rand_core"] }
+rand = "0.8"
+blake3 = "1"
+ciborium = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base32 = "0.5"
+base64 = "0.22"
+subtle = "2"
+thiserror = "2"
+x509-parser = "0.16"
+uniffi = "0.29"
+log = "0.4"
+hex = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+rand = "0.8"
+blake3 = "1"
+hex = "0.4"
+
+[[test]]
+name = "integration"

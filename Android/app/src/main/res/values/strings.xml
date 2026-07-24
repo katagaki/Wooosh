@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated for Wooosh. Base language is English; see Assets/Documentation/COPY_STYLE.md. -->
+<resources>
+    <!-- The product name. Never translated. -->
+    <string name="app_name" translatable="false">Wooosh</string>
+    <!-- Device kinds that are brand names and stay untranslated. -->
+    <string name="device_kind_iphone" translatable="false">iPhone</string>
+    <string name="device_kind_ipad" translatable="false">iPad</string>
+    <string name="device_kind_mac" translatable="false">Mac</string>
+    <!-- Toolbar button: re-run device discovery. -->
+    <string name="action_refresh">Refresh</string>
+    <!-- Toolbar button and screen title for the settings screen. -->
+    <string name="action_settings">Settings</string>
+    <!-- Button that opens the pairing screen. -->
+    <string name="action_pair_device">Pair a Device</string>
+    <!-- Generic cancel button. -->
+    <string name="action_cancel">Cancel</string>
+    <!-- Generic confirmation button that closes a finished screen. -->
+    <string name="action_done">Done</string>
+    <!-- Generic button that dismisses a sheet without acting. -->
+    <string name="action_close">Close</string>
+    <!-- Button that acknowledges an alert. -->
+    <string name="action_ok">OK</string>
+    <!-- Button that refuses an incoming file offer. -->
+    <string name="action_decline">Decline</string>
+    <!-- Button that accepts an incoming file offer from a paired device. -->
+    <string name="action_accept">Accept</string>
+    <!-- Button that accepts one offer from a device that is not paired. -->
+    <string name="action_accept_once">Accept Once</string>
+    <!-- Context-menu item that starts a transfer to the selected device. -->
+    <string name="action_send_files">Send Files…</string>
+    <!-- Button that opens the system file picker. -->
+    <string name="action_choose_files">Choose Files</string>
+    <!-- Button that opens the system photo picker. -->
+    <string name="action_choose_photos">Choose Photos or Videos</string>
+    <!-- Menu item: send photos and videos rather than documents. -->
+    <string name="action_photos_and_videos">Photos &amp; Videos</string>
+    <!-- Menu item: send documents rather than photos. -->
+    <string name="action_files">Files</string>
+    <!-- Button that stops a transfer that is running. -->
+    <string name="action_cancel_transfer">Cancel Transfer</string>
+    <!-- Button that removes a finished transfer card from the list. -->
+    <string name="action_dismiss">Dismiss</string>
+    <!-- Button that removes a paired device and the key stored for it. -->
+    <string name="action_unpair">Unpair</string>
+    <!-- Button that restarts a failed attempt. -->
+    <string name="action_try_again">Try Again</string>
+    <!-- Button that postpones a security warning without acting on it. -->
+    <string name="action_not_now">Not Now</string>
+    <!-- Button that starts pairing again after a security key changed. -->
+    <string name="action_pair_again">Pair Again</string>
+    <!-- Button that opens the camera to scan a pairing code. -->
+    <string name="action_scan_qr">Scan QR Code</string>
+    <!-- Button that copies this device's pairing code to the clipboard. -->
+    <string name="action_copy_code">Copy Code</string>
+    <!-- Accessibility label for the copy button next to the pairing code. -->
+    <string name="action_copy_pairing_code">Copy Pairing Code</string>
+    <!-- Confirmation shown on the copy button right after a copy. -->
+    <string name="action_copied">Copied</string>
+    <!-- Button that generates a fresh pairing code. -->
+    <string name="action_new_code">New Code</string>
+    <!-- Button that pairs using a pairing code the user pasted. -->
+    <string name="action_pair_with_pasted">Pair with Pasted Code</string>
+    <!-- Button confirming that both devices show the same six-digit code. -->
+    <string name="action_codes_match">Codes Match</string>
+    <!-- Context-menu item that shows this device's own pairing code. -->
+    <string name="action_show_my_code">Show My Pairing Code…</string>
+    <!-- Context-menu item that starts pairing with the selected device. -->
+    <string name="action_pair_this_device">Pair Device…</string>
+    <!-- Accessibility label for the back button in the toolbar. -->
+    <string name="action_back">Back</string>
+    <!-- Accessibility label for the button that drops files waiting to be sent. -->
+    <string name="action_discard_shared">Discard Shared Files</string>
+    <!-- Device row subtitle: the device is reachable. -->
+    <string name="peer_state_ready">Ready</string>
+    <!-- Device row subtitle: reachable and already paired. -->
+    <string name="peer_state_ready_paired">Ready · Paired</string>
+    <!-- Device row subtitle: the device stopped answering and cannot be used. -->
+    <string name="peer_state_away">Away</string>
+    <!-- Device row subtitle while files are waiting to be sent. -->
+    <string name="peer_state_tap_to_send">Tap to send</string>
+    <!-- Accessibility label for the checkmark on a paired device row. -->
+    <string name="peer_badge_paired">Paired</string>
+    <!-- Title of the empty device list. -->
+    <string name="empty_title">Looking for Devices</string>
+    <!-- Body of the empty device list. -->
+    <string name="empty_body">Devices running Wooosh on the same Wi-Fi network appear here automatically.</string>
+    <!-- Extra line on the empty device list when everyone can see this device. -->
+    <string name="empty_visibility_everyone">Everyone nearby can see this device.</string>
+    <!-- Extra line on the empty device list when only paired devices can see this device. -->
+    <string name="empty_visibility_paired">Only paired devices can see this device.</string>
+    <!-- Extra line on the empty device list when this device is hidden. -->
+    <string name="empty_visibility_off">This device is hidden and cannot receive files. You can still see other devices and send to them.</string>
+    <!-- Subtitle of the banner shown when files are waiting to be sent. -->
+    <string name="share_batch_tap_hint">Tap a device to send.</string>
+    <!-- Subtitle while waiting for a specific device to come back. %1$s is a device name. -->
+    <string name="share_batch_waiting">Waiting for “%1$s” to appear nearby.</string>
+    <!-- Status shown while shared files are being copied. -->
+    <string name="share_preparing">Preparing to share…</string>
+    <!-- Message shown when the share sheet handed Wooosh nothing it can send. -->
+    <string name="share_nothing">There is nothing to send.</string>
+    <!-- Status inside the system share sheet while Wooosh copies the shared files. -->
+    <string name="share_ext_preparing">Preparing to send with Wooosh…</string>
+    <!-- Share-shortcut label for a paired device with no name of its own. -->
+    <string name="shortcut_fallback_name">Wooosh device</string>
+    <!-- Where a received photo or video was stored: the system Photos library. -->
+    <string name="storage_location_photos">Photos</string>
+    <!-- Where a received document was stored: the system Files app. -->
+    <string name="storage_location_files">Files</string>
+    <!-- Where a received file was stored: the Downloads folder. -->
+    <string name="storage_location_downloads">Downloads</string>
+    <!-- Stand-in shown for a device that advertises no name of its own. -->
+    <string name="peer_unnamed">Unnamed Device</string>
+    <!-- Navigation title of the sheet asking whether to accept files. -->
+    <string name="offer_nav_incoming">Incoming Files</string>
+    <!-- Navigation title while files are being received. -->
+    <string name="offer_nav_receiving">Receiving</string>
+    <!-- Label confirming the sender is already paired. -->
+    <string name="offer_paired_device">Paired device</string>
+    <!-- Warning above the sender's verification phrase on the accept sheet. -->
+    <string name="offer_unpaired_warning">Not paired. Check that the words below match the ones on the sender\'s screen.</string>
+    <!-- Heading above this device's own verification phrase. -->
+    <string name="verify_your_phrase_title">Your Verification Phrase</string>
+    <!-- Explanation under this device's own verification phrase. -->
+    <string name="verify_your_phrase_body">The other device will ask you to confirm that these words match before it accepts.</string>
+    <!-- Accessibility description of the verification phrase block. %1$s is the phrase. -->
+    <string name="verify_your_phrase_a11y">Your verification phrase: %1$s. The other device will ask you to confirm that these words match.</string>
+    <!-- Settings label for this device's verification phrase. -->
+    <string name="verify_phrase_title">Verification Phrase</string>
+    <!-- Settings explanation of the verification phrase. -->
+    <string name="verify_phrase_body">Read these words aloud to confirm that you are talking to the right device. They come from this device\'s identity key, which never leaves it.</string>
+    <!-- Prompt on the sending device while an unpaired device decides. %1$s is a device name. -->
+    <string name="verify_prompt_peer">%1$s will ask you to confirm that these words match.</string>
+    <!-- Card title while the other device decides. %1$s is a device name. -->
+    <string name="outgoing_waiting_title">Waiting for %1$s</string>
+    <!-- Header while sending. %1$s is a device name. -->
+    <string name="transfer_sending_to">Sending to %1$s</string>
+    <!-- Header while receiving. %1$s is a device name. -->
+    <string name="transfer_receiving_from">Receiving from %1$s</string>
+    <!-- Navigation title while a send is in progress. -->
+    <string name="transfer_nav_sending">Sending</string>
+    <!-- Navigation title of the screen that picks what to send. -->
+    <string name="transfer_nav_send_files">Send Files</string>
+    <!-- Title of the dialog choosing what to send. %1$s is a device name. -->
+    <string name="transfer_send_to_title">Send to %1$s</string>
+    <!-- Status line while this device waits for the user's own answer. -->
+    <string name="transfer_state_awaiting_consent">Waiting for your response</string>
+    <!-- Status line while waiting for the other device to answer. -->
+    <string name="transfer_state_connecting">Waiting for the other device…</string>
+    <!-- Status line for a transfer the user stopped. -->
+    <string name="transfer_state_cancelled">Cancelled</string>
+    <!-- Status line for a transfer that finished, when no detail is available. -->
+    <string name="transfer_state_done">Done</string>
+    <!-- Appended to a failure that can continue later. %1$s is the failure message. -->
+    <string name="transfer_resumable">%1$s Wooosh can pick up where it left off.</string>
+    <!-- Progress line. %1$s is bytes done, %2$s the total. -->
+    <string name="transfer_progress_bytes">%1$s of %2$s</string>
+    <!-- Transfer speed. %1$s is a formatted byte size such as 12 MB. -->
+    <string name="transfer_progress_rate">%1$s/s</string>
+    <!-- Estimated time left. %1$s is a formatted duration. -->
+    <string name="transfer_progress_eta">About %1$s left</string>
+    <!-- Per-file line after a file is stored. %1$s is its size, %2$s the location. -->
+    <string name="transfer_saved_to">%1$s · Saved to %2$s</string>
+    <!-- Status while connecting. %1$s is a device name. -->
+    <string name="transfer_connecting_to">Connecting to %1$s…</string>
+    <!-- Status while connecting to a device whose name is not known yet. -->
+    <string name="transfer_connecting_generic">Connecting to the other device…</string>
+    <!-- Status while files are being prepared for sending. -->
+    <string name="transfer_preparing">Preparing…</string>
+    <!-- Short duration. %1$d is a whole number of seconds. -->
+    <string name="duration_seconds">%1$d s</string>
+    <!-- Duration in whole minutes. %1$d is the number of minutes. -->
+    <string name="duration_minutes">%1$d min</string>
+    <!-- Duration. %1$d is minutes, %2$d is seconds. -->
+    <string name="duration_minutes_seconds">%1$d min %2$d s</string>
+    <!-- Duration. %1$d is hours, %2$d is minutes. -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <!-- Name of the Android notification channel for transfers. -->
+    <string name="notification_channel_name">Transfers</string>
+    <!-- Description of the Android notification channel for transfers. -->
+    <string name="notification_channel_desc">Progress of transfers that are running.</string>
+    <!-- Notification body with only a percentage. %1$d is 0 to 100. -->
+    <string name="notification_progress_percent">%1$d%%</string>
+    <!-- Notification body. %1$d is a percentage, %2$s a speed. -->
+    <string name="notification_progress_percent_rate">%1$d%% · %2$s</string>
+    <!-- Accessibility name for a Windows computer. -->
+    <string name="device_kind_windows">Windows PC</string>
+    <!-- Accessibility name for an Android phone. -->
+    <string name="device_kind_android_phone">Android phone</string>
+    <!-- Accessibility name for an Android tablet. -->
+    <string name="device_kind_android_tablet">Android tablet</string>
+    <!-- Accessibility name for a device whose type is unknown. -->
+    <string name="device_kind_unknown">Device</string>
+    <!-- Title of the pairing screen. -->
+    <string name="pairing_title">Pair a Device</string>
+    <!-- Tab showing this device's own pairing code. -->
+    <string name="pairing_tab_my_code">My Code</string>
+    <!-- Tab for scanning the other device's pairing code. -->
+    <string name="pairing_tab_scan">Scan</string>
+    <!-- Instructions above this device's own pairing code. -->
+    <string name="pairing_show_body">Scan this code with the other device, or copy the pairing code and send it over a channel you trust.</string>
+    <!-- Note under the pairing code explaining that it is short-lived. -->
+    <string name="pairing_show_expiry">This code works once and expires after 2 minutes.</string>
+    <!-- Accessibility label for the QR image. -->
+    <string name="pairing_qr_a11y">Pairing QR code</string>
+    <!-- Instructions on the scan tab. -->
+    <string name="pairing_scan_body">Point the camera at the pairing code shown in Wooosh on the other device.</string>
+    <!-- Instructions under the live camera view. -->
+    <string name="pairing_scan_focus_hint">Point the camera at the pairing code on the other device. Tap to focus.</string>
+    <!-- Prompt shown over the camera while scanning. -->
+    <string name="pairing_scan_prompt">Scan the code shown on the other device</string>
+    <!-- Instructions on a computer, which pairs by pasting rather than scanning. -->
+    <string name="pairing_scan_body_desktop">Copy the pairing code from the other device and paste it below.</string>
+    <!-- Label of the text field for a pasted pairing code. -->
+    <string name="pairing_paste_label">Pairing Code</string>
+    <!-- Hint offering the paste route when there is no camera. -->
+    <string name="pairing_paste_hint">No camera? Paste the pairing code instead.</string>
+    <!-- Title of the dialog shown while pairing runs. -->
+    <string name="pairing_in_progress_title">Pairing</string>
+    <!-- Explanation while a pairing attempt runs. -->
+    <string name="pairing_progress_body">Keep the other device unlocked with its pairing code on screen. Both devices need to be on the same Wi-Fi network. This can take a few seconds.</string>
+    <!-- Title after a successful pairing. %1$s is a device name. -->
+    <string name="pairing_success_title">Paired with %1$s</string>
+    <!-- Explanation after a successful pairing. -->
+    <string name="pairing_success_body">Wooosh trusts this device from now on. You will not need to compare verification phrases with it again.</string>
+    <!-- Title shown when pairing did not succeed. -->
+    <string name="pairing_failed_title">Pairing Failed</string>
+    <!-- Title when pairing with a named device failed. %1$s is a device name. -->
+    <string name="pairing_failed_title_named">Wooosh Couldn\'t Pair with %1$s</string>
+    <!-- Question asking whether to pair. %1$s is a device name. -->
+    <string name="sas_title">Pair with %1$s?</string>
+    <!-- Instructions for comparing the six-digit verification code. -->
+    <string name="sas_body">Both devices show a six-digit code. Continue only if the two codes are the same.</string>
+    <!-- Countdown until the verification code expires. %1$d is seconds left. -->
+    <string name="sas_expires_in">Expires in %1$d s</string>
+    <!-- Status while the other device confirms the verification code. -->
+    <string name="sas_confirming">Confirming…</string>
+    <!-- Title of the warning that a paired device's key changed. -->
+    <string name="keychanged_title">Security Key Changed</string>
+    <!-- Body of the security-key warning. %1$s is a device name. -->
+    <string name="keychanged_body">“%1$s” is presenting a different security key than when you paired. This usually happens after Wooosh is reinstalled or the device is reset, but it can also mean another device is impersonating it. Transfers with this device are blocked until you pair again.</string>
+    <!-- Label above the verification phrase recorded at pairing time. -->
+    <string name="keychanged_expected_label">You Paired With</string>
+    <!-- Label above the verification phrase the device shows now. -->
+    <string name="keychanged_presented_label">It Is Now Showing</string>
+    <!-- Shown when the other device's key could not be read at all. -->
+    <string name="keychanged_presented_unknown">Not available: the connection failed before its key could be read.</string>
+    <!-- Advice under the two verification phrases in the security warning. -->
+    <string name="keychanged_advice">Ask the owner to read their device\'s verification phrase aloud. Pair again only if it matches the second phrase.</string>
+    <!-- Warning on a paired-device row whose key changed. -->
+    <string name="keychanged_row_warning">Key changed. Pair again to continue.</string>
+    <!-- Settings section header for this device's own name. -->
+    <string name="settings_section_device">Device</string>
+    <!-- Label of the field holding the name other devices see. -->
+    <string name="settings_display_name">Display Name</string>
+    <!-- Helper text under the display-name field. -->
+    <string name="settings_display_name_footer">Shown to nearby devices.</string>
+    <!-- Settings section header for the discovery setting. -->
+    <string name="settings_section_who_can_see">Who Can See This Device</string>
+    <!-- Option: any nearby device can see this one. -->
+    <string name="settings_visibility_everyone">Everyone</string>
+    <!-- Description of the Everyone option. -->
+    <string name="settings_visibility_everyone_desc">Any nearby device can see this device and offer files to it.</string>
+    <!-- Option: only paired devices may send. -->
+    <string name="settings_visibility_paired">Paired Devices Only</string>
+    <!-- Description of the Paired Devices Only option. -->
+    <string name="settings_visibility_paired_desc">Nearby devices can see this device, but only paired devices can send to it.</string>
+    <!-- Option: this device is hidden and cannot receive. -->
+    <string name="settings_visibility_off">Off</string>
+    <!-- Settings section header for pairing. -->
+    <string name="settings_section_pairing">Pairing</string>
+    <!-- Explanation of what pairing buys the user. -->
+    <string name="settings_pairing_footer">Paired devices confirm each other\'s identity automatically, so transfers between them never ask you to compare verification phrases.</string>
+    <!-- Settings section header listing paired devices. -->
+    <string name="settings_section_paired_devices">Paired Devices</string>
+    <!-- Shown when nothing is paired yet. -->
+    <string name="settings_paired_devices_empty">No paired devices yet. Use Pair a Device to add one.</string>
+    <!-- Explanation of what unpairing does. -->
+    <string name="settings_paired_devices_footer">Unpairing removes the stored key. The next transfer from that device is untrusted until you pair again.</string>
+    <!-- Date a device was paired. %1$s is a formatted date. -->
+    <string name="settings_paired_on">Paired on %1$s</string>
+    <!-- Settings section header for this device's identity. -->
+    <string name="settings_section_this_device">This Device</string>
+    <!-- Label of this device's permanent identifier. -->
+    <string name="settings_device_id">Device ID</string>
+    <!-- Helper text under the device identifier. -->
+    <string name="settings_device_id_footer">Identifies this device to others when pairing.</string>
+    <!-- Placeholder shown until Wooosh has finished starting up. -->
+    <string name="settings_starting">Starting…</string>
+    <!-- Settings section header shown only when something went wrong. -->
+    <string name="settings_section_problem">Problem</string>
+    <!-- Description of the Off option. -->
+    <string name="settings_visibility_off_desc">This device is hidden and cannot receive files. You can still see other devices and send to them.</string>
+    <!-- Alert title when a send could not start. -->
+    <string name="error_send_failed_title">Wooosh Couldn\'t Send</string>
+    <!-- Fallback body when a send could not start. -->
+    <string name="error_send_failed_body">Those files couldn\'t be sent. Try again.</string>
+    <!-- Shown when the chosen files could not be read. -->
+    <string name="error_files_unreadable">Those files couldn\'t be read. Try choosing them again.</string>
+    <!-- Shown when picked photos or videos could not be prepared. -->
+    <string name="error_files_unprepared">Those items couldn\'t be prepared for sending. Try again.</string>
+    <!-- Shown when a device has been seen but not reached yet. %1$s is a device name. -->
+    <string name="error_still_resolving">Wooosh is still finding %1$s. Try again in a moment.</string>
+    <!-- Shown when no address for a device could be worked out. %1$s is a device name. -->
+    <string name="error_unreachable">Wooosh couldn\'t work out how to reach “%1$s”. It may have just gone offline.</string>
+    <!-- Shown when a received file could not be stored. -->
+    <string name="error_save_failed">Wooosh couldn\'t save this file.</string>
+    <!-- Shown when the folder for received files cannot be used. -->
+    <string name="error_storage_unavailable">Wooosh couldn\'t reach the folder for received files. Check that there is free space and try again.</string>
+    <!-- Core error: the other device accepts paired devices only. -->
+    <string name="error_pairing_required">That device only accepts files from devices it has paired with.</string>
+    <!-- Core error: incompatible Wooosh versions. -->
+    <string name="error_version_mismatch">That device runs a version of Wooosh that is not compatible. Update Wooosh on both devices.</string>
+    <!-- Core error: a paired device presented a different key. -->
+    <string name="error_key_changed">That device is presenting a different security key than when you paired. Pair again to continue.</string>
+    <!-- Core error: the device that answered is not the one in the pairing code. -->
+    <string name="error_qr_key_mismatch">The device that answered is not the one in the pairing code. Wooosh stopped pairing.</string>
+    <!-- Core error: the scanned or pasted text is not a Wooosh pairing code. -->
+    <string name="error_invalid_qr">That is not a Wooosh pairing code.</string>
+    <!-- Shown when a scan produced something that is not a Wooosh pairing code. -->
+    <string name="error_pairing_not_a_code">That is not a Wooosh pairing code. Scan the code shown under Pair a Device on the other device.</string>
+    <!-- Core error: the pairing code is no longer valid. -->
+    <string name="error_pairing_expired">That pairing code has expired. Ask for a fresh one.</string>
+    <!-- Shown when a pasted or scanned pairing code was already too old. -->
+    <string name="error_pairing_code_expired_detail">That pairing code has expired. Pairing codes last two minutes. Show a fresh one on the other device and scan it again.</string>
+    <!-- Generic pairing failure with no more detail available. -->
+    <string name="error_pairing_failed">Pairing did not finish. Try again.</string>
+    <!-- Shown when a pairing attempt ran out of time. -->
+    <string name="error_pairing_timeout">Wooosh couldn\'t reach that device in time. Check that it is still showing its pairing code and that both devices are on the same Wi-Fi network.</string>
+    <!-- Shown when the other device did not confirm the verification code in time. -->
+    <string name="error_sas_timeout">The other device didn\'t confirm in time. Start pairing again when both devices are ready.</string>
+    <!-- Core error: the other device could not be reached at all. -->
+    <string name="error_connect">Wooosh couldn\'t reach that device. Check that both devices are on the same Wi-Fi network.</string>
+    <!-- Core error: the connection to that device is gone. -->
+    <string name="error_unknown_peer">That device is no longer connected.</string>
+    <!-- Core error: Wooosh has not finished starting yet. -->
+    <string name="error_not_started">Wooosh is still starting. Try again in a moment.</string>
+    <!-- Core error: Wooosh is already running. -->
+    <string name="error_already_started">Wooosh is already running.</string>
+    <!-- Core error: the secure connection could not be verified. -->
+    <string name="error_crypto">Wooosh could not verify the secure connection. Try again.</string>
+    <!-- Core error: a file could not be read or written. -->
+    <string name="error_io">Wooosh could not read or write a file. Check that there is free space and try again.</string>
+    <!-- Generic transfer failure with no more detail available. -->
+    <string name="error_transfer_failed">The transfer stopped before it finished. Try again.</string>
+    <!-- Core error: the transfer referenced is no longer active. -->
+    <string name="error_unknown_transfer">That transfer is no longer active.</string>
+    <!-- Shown when the other device refused the files. -->
+    <string name="error_declined_by_peer">The other device declined the files.</string>
+    <!-- Shown when the other device stopped the transfer. -->
+    <string name="error_cancelled_by_peer">The other device cancelled the transfer.</string>
+    <!-- Shown when the other device never answered a request. -->
+    <string name="error_no_answer">The other device didn\'t answer in time.</string>
+    <!-- Shown when Wooosh failed to start up at all. -->
+    <string name="error_core_start">Wooosh could not start. Close Wooosh and open it again.</string>
+    <!-- Shown when the other device refused a pairing code that had already been used. -->
+    <string name="error_pairing_code_rejected">The other device rejected that pairing code. Each code works only once. Show a fresh one and scan it again.</string>
+    <!-- Shown when the person on the other device refused to pair. -->
+    <string name="error_pairing_declined">The other device declined the pairing request.</string>
+    <!-- Shown when the connection died part-way through pairing. -->
+    <string name="error_pairing_dropped">The connection dropped before pairing finished. Try again.</string>
+    <!-- Core error: the other device sent something this build does not understand. -->
+    <string name="error_protocol">The other device sent something Wooosh did not understand. Update Wooosh on both devices.</string>
+    <!-- Banner title while files wait to be sent. -->
+    <plurals name="share_batch_ready">
+        <item quantity="one">%1$d file ready to send</item>
+        <item quantity="other">%1$d files ready to send</item>
+    </plurals>
+    <!-- Title of the incoming offer sheet. %1$s is the sending device's name. -->
+    <plurals name="offer_title">
+        <item quantity="one">%1$s wants to send you %2$d file</item>
+        <item quantity="other">%1$s wants to send you %2$d files</item>
+    </plurals>
+    <!-- File count with the total size. %2$s is a formatted byte size. -->
+    <plurals name="files_count_and_size">
+        <item quantity="one">%1$d file · %2$s</item>
+        <item quantity="other">%1$d files · %2$s</item>
+    </plurals>
+    <!-- Subtitle while the other device decides whether to accept. -->
+    <plurals name="outgoing_waiting_body">
+        <item quantity="one">%1$d file offered. Waiting for a decision.</item>
+        <item quantity="other">%1$d files offered. Waiting for a decision.</item>
+    </plurals>
+    <!-- Summary of a finished send. -->
+    <plurals name="transfer_done_sent">
+        <item quantity="one">Sent %1$d file</item>
+        <item quantity="other">Sent %1$d files</item>
+    </plurals>
+    <!-- Summary of a finished send. %2$s is how long it took. -->
+    <plurals name="transfer_done_sent_in">
+        <item quantity="one">Sent %1$d file in %2$s</item>
+        <item quantity="other">Sent %1$d files in %2$s</item>
+    </plurals>
+    <!-- Summary of a finished receive. -->
+    <plurals name="transfer_done_received">
+        <item quantity="one">Received %1$d file</item>
+        <item quantity="other">Received %1$d files</item>
+    </plurals>
+    <!-- Summary of a finished receive. %2$s is how long it took. -->
+    <plurals name="transfer_done_received_in">
+        <item quantity="one">Received %1$d file in %2$s</item>
+        <item quantity="other">Received %1$d files in %2$s</item>
+    </plurals>
+    <!-- Summary when every file in a transfer failed. -->
+    <plurals name="transfer_done_failed">
+        <item quantity="one">Couldn\'t transfer %1$d file</item>
+        <item quantity="other">Couldn\'t transfer %1$d files</item>
+    </plurals>
+    <!-- Summary when only some files got through. %1$d is how many did. -->
+    <plurals name="transfer_done_partial">
+        <item quantity="one">Transferred %1$d of %2$d file</item>
+        <item quantity="other">Transferred %1$d of %2$d files</item>
+    </plurals>
+    <!-- Notification title when several transfers run at once. -->
+    <plurals name="notification_title_multiple">
+        <item quantity="one">In progress: %1$d transfer</item>
+        <item quantity="other">In progress: %1$d transfers</item>
+    </plurals>
+</resources>

@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+._*
+
+# Xcode — user state, never shared
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode Cloud
+.xcodecloud/
+
+# Xcode build output
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Rust — target/ is ~5.5 GB
+target/
+Core/dist/
+
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# Editors
+.idea/
+*.swp

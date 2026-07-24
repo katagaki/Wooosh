@@ -1,0 +1,288 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wooosh"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Why Wooosh needs the camera. Shown in the iOS permission prompt.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh verwendet die Kamera, um den Kopplungscode zu scannen, der auf einem anderen Gerät angezeigt wird."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh uses the camera to scan the pairing code shown on another device."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh usa la cámara para escanear el código de vinculación que se muestra en otro dispositivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh utilise l'appareil photo pour scanner le code d'association affiché sur un autre appareil."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh usa la fotocamera per scansionare il codice di abbinamento mostrato su un altro dispositivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh は、他のデバイスに表示されたペアリングコードをスキャンするためにカメラを使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh는 다른 기기에 표시된 페어링 코드를 스캔하기 위해 카메라를 사용합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh gebruikt de camera om de koppelcode te scannen die op een ander apparaat wordt getoond."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh używa aparatu do skanowania kodu parowania wyświetlanego na innym urządzeniu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Wooosh usa a câmera para escanear o código de pareamento exibido em outro dispositivo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh использует камеру, чтобы отсканировать код связи, показанный на другом устройстве."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh använder kameran för att skanna parkopplingskoden som visas på en annan enhet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 使用摄像头扫描另一台设备上显示的配对码。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 使用相機掃描另一台裝置上顯示的配對碼。"
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Why Wooosh needs the local network. Shown in the iOS permission prompt.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh nutzt dein lokales Netzwerk, um Geräte in der Nähe zu finden, damit du Dateien senden und empfangen kannst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh uses your local network to find nearby devices so you can send and receive files."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh usa tu red local para encontrar dispositivos cercanos y que puedas enviar y recibir archivos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh utilise votre réseau local pour trouver les appareils à proximité afin que vous puissiez envoyer et recevoir des fichiers."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh usa la tua rete locale per trovare i dispositivi vicini, così puoi inviare e ricevere file."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh は、ファイルを送受信できるように、ローカルネットワークを使用して近くのデバイスを探します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh는 파일을 주고받을 수 있도록 로컬 네트워크를 사용해 근처 기기를 찾습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh gebruikt je lokale netwerk om apparaten in de buurt te vinden, zodat je bestanden kunt versturen en ontvangen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh używa sieci lokalnej, aby znajdować urządzenia w pobliżu i umożliwiać wysyłanie oraz odbieranie plików."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Wooosh usa sua rede local para encontrar dispositivos por perto e permitir que você envie e receba arquivos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh использует локальную сеть, чтобы находить устройства поблизости и позволять отправлять и получать файлы."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh använder ditt lokala nätverk för att hitta enheter i närheten så att du kan skicka och ta emot filer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 使用你的本地网络查找附近的设备，以便你收发文件。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 使用你的區域網路尋找附近的裝置，以便你收發檔案。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Why Wooosh needs to add to Photos. Shown in the iOS permission prompt.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh sichert empfangene Fotos und Videos in deiner Fotomediathek."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh saves photos and videos you receive to your Photos library."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh guarda en tu fototeca las fotos y los vídeos que recibes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh enregistre les photos et vidéos que vous recevez dans votre photothèque."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh salva nella tua libreria Foto le foto e i video che ricevi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh は、受信した写真とビデオを写真ライブラリに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh는 받은 사진과 동영상을 사진 보관함에 저장합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh bewaart ontvangen foto's en video's in je fotobibliotheek."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh zapisuje otrzymane zdjęcia i filmy w Twojej bibliotece Zdjęć."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Wooosh salva na sua fototeca as fotos e os vídeos que você recebe."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh сохраняет полученные фото и видео в вашу медиатеку «Фото»."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh sparar foton och videor du tar emot i ditt bildbibliotek."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 会将你收到的照片和视频保存到「照片」图库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wooosh 會將你收到的照片和影片儲存到「照片」圖庫。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

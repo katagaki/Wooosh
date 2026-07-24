@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Direct Share target declaration (DESIGN.md §8). Dynamic sharing shortcuts published
+     by ShortcutPublisher carry the matching category. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <share-target android:targetClass="com.tsubuzaki.WoooshGo.share.ShareTargetActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="com.tsubuzaki.WoooshGo.category.SHARE_TARGET" />
+    </share-target>
+</shortcuts>

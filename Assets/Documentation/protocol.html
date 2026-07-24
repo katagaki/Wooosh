@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wooosh Protocol · Visual Walkthrough</title>
+<style>
+  :root {
+    --bg:            #ffffff;
+    --layer:         #f4f4f4;
+    --layer-hover:   #e8e8e8;
+    --border:        #e0e0e0;
+    --border-strong: #c6c6c6;
+    --txt:           #161616;
+    --txt-2:         #525252;
+    --txt-3:         #6f6f6f;
+    --accent:        #0f62fe;
+    --green:         #24a148;
+    --red:           #da1e28;
+    --yellow:        #f1c21b;
+    --grey-state:    #8d8d8d;
+    --inv-bg:        #161616;
+    --inv-txt:       #ffffff;
+    --inv-txt-2:     #c6c6c6;
+    --code-bg:       #f4f4f4;
+    --tint-blue:     #edf5ff;
+    --tint-green:    #defbe6;
+    --tint-red:      #fff1f1;
+    --tint-yellow:   #fcf4d6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:            #161616;
+      --layer:         #262626;
+      --layer-hover:   #333333;
+      --border:        #393939;
+      --border-strong: #525252;
+      --txt:           #f4f4f4;
+      --txt-2:         #c6c6c6;
+      --txt-3:         #8d8d8d;
+      --accent:        #4589ff;
+      --green:         #42be65;
+      --red:           #fa4d56;
+      --yellow:        #f1c21b;
+      --grey-state:    #6f6f6f;
+      --inv-bg:        #393939;
+      --inv-txt:       #ffffff;
+      --inv-txt-2:     #c6c6c6;
+      --code-bg:       #262626;
+      --tint-blue:     #001d6c;
+      --tint-green:    #022d0d;
+      --tint-red:      #2d0709;
+      --tint-yellow:   #302400;
+    }
+  }
+
+  * { box-sizing: border-box; border-radius: 0 !important; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 128px; }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    padding: 64px 0 40px;
+    margin-bottom: 56px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--txt-3);
+    margin: 0 0 16px;
+  }
+  h1 {
+    font-size: 44px;
+    line-height: 1.18;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+  }
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--txt-2);
+    max-width: 46em;
+    margin: 0;
+    font-weight: 400;
+  }
+
+  /* ---------- Sections ---------- */
+
+  section { margin-bottom: 88px; }
+
+  h2 {
+    font-size: 30px;
+    line-height: 1.3;
+    font-weight: 400;
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-strong);
+    letter-spacing: -0.005em;
+  }
+  h2 .num {
+    display: inline-block;
+    min-width: 2.4em;
+    color: var(--txt-3);
+    font-weight: 600;
+    font-size: 20px;
+    vertical-align: 2px;
+  }
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 48px 0 12px;
+    line-height: 1.4;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 32px 0 8px;
+    letter-spacing: 0.01em;
+  }
+  p { margin: 0 0 16px; max-width: 46em; }
+  .lede { font-size: 18px; color: var(--txt-2); max-width: 46em; margin-top: 24px; }
+
+  ul, ol { max-width: 46em; padding-left: 20px; margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+  li::marker { color: var(--txt-3); }
+
+  strong { font-weight: 600; }
+
+  code, .c {
+    font-family: inherit;
+    font-size: 0.92em;
+    letter-spacing: 0.005em;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 1px 5px;
+    overflow-wrap: anywhere;
+    color: var(--txt);
+  }
+
+  .formula {
+    background: var(--code-bg);
+    border-left: 4px solid var(--accent);
+    padding: 16px 20px;
+    margin: 16px 0;
+    max-width: 46em;
+    overflow-x: auto;
+    font-size: 14px;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+  }
+
+  /* ---------- Callouts ---------- */
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--layer);
+    padding: 20px 24px;
+    margin: 24px 0;
+    max-width: 46em;
+  }
+  .callout.green { border-left-color: var(--green); }
+  .callout.red   { border-left-color: var(--red); }
+  .callout.amber { border-left-color: var(--yellow); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .k {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--txt-3);
+    margin-bottom: 8px;
+  }
+
+  /* ---------- Diagram frame ---------- */
+
+  .figure { margin: 40px 0 8px; }
+  .figure-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    align-items: baseline;
+    border-top: 2px solid var(--txt);
+    padding-top: 12px;
+    margin-bottom: 16px;
+  }
+  .figure-head .fnum {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .figure-head .ftitle { font-size: 15px; font-weight: 600; }
+  .figure-head .fhint { font-size: 13px; color: var(--txt-3); margin-left: auto; }
+
+  .scroller {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 8px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroller svg { display: block; width: 1200px; min-width: 1200px; height: auto; }
+
+  /* ---------- Shared SVG type ---------- */
+
+  svg text { font-family: inherit; }
+  .st  { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; fill: var(--txt-3); }
+  .ph  { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; fill: var(--txt); }
+  .ml  { font-size: 14px; font-weight: 600; fill: var(--txt); }
+  .ms  { font-size: 11.5px; fill: var(--txt-2); }
+  .bt  { font-size: 12px; font-weight: 600; fill: var(--txt); }
+  .bl  { font-size: 11.5px; fill: var(--txt-2); }
+  .cd  { font-size: 11.5px; fill: var(--txt); letter-spacing: 0.01em; }
+  .an  { font-size: 14px; font-weight: 600; fill: #ffffff; }
+  .as  { font-size: 11px; fill: var(--inv-txt-2); }
+  .tag { font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; }
+
+  .lifeline { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 5; fill: none; }
+  .rule     { stroke: var(--border-strong); stroke-width: 1; }
+  .box      { fill: var(--layer); stroke: var(--border); stroke-width: 1; }
+  .msg      { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .msg-d    { stroke: var(--accent); stroke-width: 2; fill: none; stroke-dasharray: 7 5; }
+  .oob      { stroke: var(--txt-3); stroke-width: 2; fill: none; stroke-dasharray: 7 5; }
+  .fail     { stroke: var(--grey-state); stroke-width: 2; fill: none; }
+  .xmark    { stroke: var(--red); stroke-width: 2.5; fill: none; }
+
+  /* ---------- Legend ---------- */
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 24px 0;
+  }
+  .legend-cell { background: var(--bg); padding: 20px 24px; }
+  .legend-cell .lk { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block; }
+  .legend-cell .lv { font-size: 13px; color: var(--txt-2); line-height: 1.5; }
+  .swatch-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .swatch { width: 24px; height: 12px; flex: 0 0 24px; }
+  .sw-grey   { background: var(--grey-state); }
+  .sw-yellow { background: var(--yellow); }
+  .sw-green  { background: var(--green); }
+  .sw-red    { background: var(--red); }
+
+  /* ---------- Tables ---------- */
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); margin: 24px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+  th {
+    text-align: left;
+    background: var(--layer);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--txt-2);
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-strong);
+    vertical-align: bottom;
+  }
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--txt-2);
+  }
+  td:first-child { color: var(--txt); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- Compare block ---------- */
+
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    margin: 24px 0;
+  }
+  .compare > div {
+    border-top: 4px solid var(--accent);
+    background: var(--layer);
+    padding: 24px;
+  }
+  .compare > div.alt { border-top-color: var(--green); }
+  .compare h4 { margin-top: 0; }
+  .compare p { font-size: 14px; color: var(--txt-2); }
+  .compare p:last-child { margin-bottom: 0; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    font-size: 13px;
+    color: var(--txt-3);
+  }
+  footer p { max-width: 60em; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 32px; }
+    h2 { font-size: 24px; }
+    .wrap { padding: 0 16px 80px; }
+    .masthead { padding-top: 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Protocol Version 1</p>
+  <h1>How Wooosh Moves A File</h1>
+  <p class="standfirst">Wooosh is local-network file sharing for Android, iOS, macOS, and Windows. There are no accounts, no cloud, and no server anyone has to run. Two devices find each other on the same Wi-Fi network, open an encrypted QUIC connection directly to one another, prove who they are with pinned public keys, and stream files that are hash-verified before they are ever placed where you can see them. This page walks through the two flows that matter: a transfer between strangers, and a transfer between devices that have been paired.</p>
+</header>
+
+<section id="what">
+  <h2><span class="num">01</span>What Wooosh Is</h2>
+  <p class="lede">Everything below is drawn from the normative specification. The wire details come from the Wooosh Protocol Specification, and the product behaviour comes from the Wooosh System Design document.</p>
+
+  <p>Three facts shape every diagram on this page.</p>
+  <ul>
+    <li><strong>Identity is a key, not an account.</strong> Each install generates one Ed25519 identity keypair on first launch and stores the private half in the platform keystore. The DeviceID a user sees is <span class="c">BLAKE3(pubkey)[0..16]</span>, rendered as four base32 groups and as a six-word fingerprint phrase.</li>
+    <li><strong>Trust is pinning, not certificate authorities.</strong> Every connection is QUIC with TLS 1.3 and mutual certificates, but the certificate is only an envelope around the Ed25519 identity key. CA chains are never evaluated. The verification callback is the pinning logic.</li>
+    <li><strong>Discovery carries no identity.</strong> The mDNS advertisement contains a rotating discovery ID that is not derived from the identity key. The long-term public key is deliberately absent from the broadcast, so a passive listener cannot follow a device from one network to the next.</li>
+  </ul>
+
+  <div class="callout">
+    <span class="k">Reading The Diagrams</span>
+    <p>Both diagrams are vertical sequence diagrams. Each device owns one dashed vertical lifeline, and time runs downward. The narrow coloured rail down the left edge shows the security state of the channel at that moment in time, and it changes only where the protocol changes it.</p>
+  </div>
+</section>
+
+<section id="legend">
+  <h2><span class="num">02</span>Legend</h2>
+
+  <div class="legend-grid">
+    <div class="legend-cell">
+      <span class="lk">Solid Blue Arrow</span>
+      <div class="lv">A protocol message sent inside the encrypted QUIC connection, on the bidirectional control stream or a file stream. The head points at the receiver.</div>
+    </div>
+    <div class="legend-cell">
+      <span class="lk">Dashed Blue Arrow</span>
+      <div class="lv">A discovery announcement on the local network: multicast mDNS, or the UDP 44777 fallback. Not part of any connection.</div>
+    </div>
+    <div class="legend-cell">
+      <span class="lk">Dashed Grey Arrow</span>
+      <div class="lv">Something that happens outside the network: a camera reading a QR code, or two people comparing what is on their screens.</div>
+    </div>
+    <div class="legend-cell">
+      <span class="lk">Boxed Note On A Lifeline</span>
+      <div class="lv">Work one device does on its own: a validation rule, a consent decision, hash verification, or a write to the trust store.</div>
+    </div>
+    <div class="legend-cell">
+      <div class="swatch-row"><span class="swatch sw-grey"></span><span class="lk" style="margin:0">No Channel</span></div>
+      <div class="lv">Nothing is connected yet, or the connection has closed. Only discovery traffic exists at this point.</div>
+    </div>
+    <div class="legend-cell">
+      <div class="swatch-row"><span class="swatch sw-yellow"></span><span class="lk" style="margin:0">Untrusted</span></div>
+      <div class="lv">TLS 1.3 is up and the traffic is encrypted, but the peer is not authenticated. Only HELLO, pairing messages, and (in Everyone mode) OFFER are honoured.</div>
+    </div>
+    <div class="legend-cell">
+      <div class="swatch-row"><span class="swatch sw-green"></span><span class="lk" style="margin:0">Trusted</span></div>
+      <div class="lv">The peer presented a public key that is pinned in this device's trust store. The channel is encrypted and authenticated.</div>
+    </div>
+    <div class="legend-cell">
+      <div class="swatch-row"><span class="swatch sw-red"></span><span class="lk" style="margin:0">Rejected</span></div>
+      <div class="lv">A hard failure with a typed close code, such as <span class="c">QR_KEY_MISMATCH</span>, <span class="c">TOKEN_INVALID</span>, or <span class="c">KEY_CHANGED</span>.</div>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <span class="k">Close Codes Are The Contract</span>
+    <p>A QUIC <span class="c">close()</span> discards buffered stream data, so a rejection frame written just before closing usually never arrives. The application close code is the only reliable rejection signal, and the connecting side must map it to a typed error. "This device only accepts paired senders" and "the network dropped" call for very different responses from the person holding the phone.</p>
+  </div>
+</section>
+
+<section id="scenario-1">
+  <h2><span class="num">03</span>Scenario One: Alice Sends To Bob, Unpaired</h2>
+  <p class="lede">Alice has never met Bob. Bob is running in Everyone mode, which means Wooosh announces him on the network and lets unpaired senders make an offer, subject to consent. The channel is encrypted from the first packet after the QUIC Initial, but it stays <strong>untrusted</strong> for the whole exchange unless Bob chooses to pair.</p>
+
+  <div class="figure">
+    <div class="figure-head">
+      <span class="fnum">Figure 1</span>
+      <span class="ftitle">Unpaired Transfer In Everyone Mode</span>
+      <span class="fhint">Scroll sideways if the diagram is wider than your window</span>
+    </div>
+    <div class="scroller" tabindex="0" role="img" aria-label="Sequence diagram of an unpaired transfer from Alice to Bob, from mDNS discovery through TLS handshake, HELLO, OFFER, consent, DECISION, file streams, BLAKE3 verification and storage routing.">
+<svg viewBox="0 0 1200 2234" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah-blue-1" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+    <marker id="ah-grey-1" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--txt-3)"/></marker>
+  </defs>
+  <!-- channel state rail -->
+  <rect x="16" y="68" width="6" height="353" fill="var(--grey-state)"/>
+  <rect x="16" y="421" width="6" height="1783" fill="var(--yellow)"/>
+  <line class="lifeline" x1="380" y1="68" x2="380" y2="2204"/>
+  <line class="lifeline" x1="880" y1="68" x2="880" y2="2204"/>
+  <rect x="260" y="16" width="240" height="52" fill="var(--inv-bg)"/>
+  <text class="an" x="276" y="38">Alice</text>
+  <text class="as" x="276" y="56">iPhone · Sender · QUIC client</text>
+  <rect x="760" y="16" width="240" height="52" fill="var(--inv-bg)"/>
+  <text class="an" x="776" y="38">Bob</text>
+  <text class="as" x="776" y="56">Mac · Receiver · QUIC server</text>
+  <text class="ph" x="32" y="112">DISCOVERY</text>
+  <line class="rule" x1="32" y1="120" x2="1168" y2="120"/>
+  <text class="ml" x="630" y="148" text-anchor="middle">mDNS / DNS-SD Announcement</text>
+  <text class="st" x="32" y="152">STEP 01</text>
+  <text class="ms" x="630" y="165" text-anchor="middle">Service type _wooosh._tcp.local. · the SRV port is the QUIC UDP port</text>
+  <line class="msg-d" x1="880" y1="183" x2="384" y2="183" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="197" width="460" height="109"/>
+  <rect x="400" y="197" width="4" height="109" fill="var(--accent)"/>
+  <text class="bt" x="420" y="218">TXT record · untrusted hint material only</text>
+  <text class="cd" x="420" y="236">v=1 · dn=Bob's Mac · dt=mac · p=49212 · vis=e</text>
+  <text class="cd" x="420" y="254">rid=8f2c1a04b7e93d55</text>
+  <text class="bl" x="420" y="272">rid is 8 random bytes, regenerated on every network join</text>
+  <text class="bl" x="420" y="290">and at least every 24 hours.</text>
+  <rect class="box" x="930" y="197" width="250" height="109"/>
+  <rect x="930" y="197" width="4" height="109" fill="var(--accent)"/>
+  <text class="bt" x="950" y="218">No key in the broadcast</text>
+  <text class="bl" x="950" y="236">rid is not derived from the</text>
+  <text class="bl" x="950" y="254">identity key, so a passive</text>
+  <text class="bl" x="950" y="272">listener cannot follow a device</text>
+  <text class="bl" x="950" y="290">from one network to the next.</text>
+  <text class="ph" x="32" y="350">CHANNEL ESTABLISHMENT</text>
+  <line class="rule" x1="32" y1="358" x2="1168" y2="358"/>
+  <text class="ml" x="630" y="386" text-anchor="middle">QUIC Connect · TLS 1.3 · Mutual Certificates</text>
+  <text class="st" x="32" y="390">STEP 02</text>
+  <text class="ms" x="630" y="403" text-anchor="middle">Self-signed X.509 whose SubjectPublicKeyInfo is the Ed25519 identity key</text>
+  <line class="msg" x1="384" y1="421" x2="876" y2="421" marker-start="url(#ah-blue-1)" marker-end="url(#ah-blue-1)"/>
+  <rect x="32" y="433" width="190" height="22" fill="var(--yellow)"/>
+  <text class="tag" x="42" y="448" fill="#161616">CHANNEL: UNTRUSTED</text>
+  <rect class="box" x="400" y="435" width="460" height="91"/>
+  <rect x="400" y="435" width="4" height="91" fill="var(--accent)"/>
+  <text class="bt" x="420" y="456">The verification callback is the pinning logic</text>
+  <text class="bl" x="420" y="474">The certificate is an envelope. CA chains are never evaluated.</text>
+  <text class="bl" x="420" y="492">Bob's trust store holds no entry for Alice's key, so he accepts</text>
+  <text class="bl" x="420" y="510">the connection cryptographically and marks it untrusted.</text>
+  <rect class="box" x="930" y="435" width="250" height="91"/>
+  <rect x="930" y="435" width="4" height="91" fill="var(--yellow)"/>
+  <text class="bt" x="950" y="456">Encrypted, not authenticated</text>
+  <text class="bl" x="950" y="474">Only HELLO, pairing messages,</text>
+  <text class="bl" x="950" y="492">and, in Everyone mode, OFFER</text>
+  <text class="bl" x="950" y="510">are honoured on this channel.</text>
+  <text class="ml" x="630" y="554" text-anchor="middle">HELLO · Role-Ordered, Client Writes First</text>
+  <text class="st" x="32" y="558">STEP 03</text>
+  <text class="ms" x="630" y="571" text-anchor="middle">Bidirectional control stream 0 · CBOR, length-prefixed with a big-endian u32</text>
+  <line class="msg" x1="380" y1="589" x2="876" y2="589" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="603" width="460" height="55"/>
+  <rect x="400" y="603" width="4" height="55" fill="var(--accent)"/>
+  <text class="cd" x="420" y="624">HELLO { v: 1, device_id, dn, dt, caps: [..] }</text>
+  <text class="bl" x="420" y="642">device_id renders for people as Q7KM-3PXA-9F2T-8BLD</text>
+  <text class="st" x="32" y="699">STEP 04</text>
+  <rect class="box" x="700" y="678" width="460" height="181"/>
+  <rect x="700" y="678" width="4" height="181" fill="var(--accent)"/>
+  <text class="bt" x="720" y="699">Bob validates before he replies</text>
+  <text class="bl" x="720" y="717">Version: the lowest common v. No common version closes the</text>
+  <text class="bl" x="720" y="735">connection with VERSION_MISMATCH.</text>
+  <text class="bl" x="720" y="753">Visibility: vis is Everyone here, so an untrusted peer may go on.</text>
+  <text class="bl" x="720" y="771">Paired Only would close PAIRING_REQUIRED after reading this</text>
+  <text class="bl" x="720" y="789">HELLO and without sending one back.</text>
+  <text class="bl" x="720" y="807">Identity binding: device_id must equal BLAKE3(cert key)[0..16].</text>
+  <text class="bl" x="720" y="825">The label in HELLO is self-asserted. The key in the certificate is</text>
+  <text class="bl" x="720" y="843">the authenticated identity, and a mismatch closes KEY_CHANGED.</text>
+  <text class="ml" x="630" y="887" text-anchor="middle">HELLO · Server Reply</text>
+  <text class="st" x="32" y="891">STEP 05</text>
+  <text class="ms" x="630" y="904" text-anchor="middle">Withheld entirely had Bob decided to reject, so his display name never leaks</text>
+  <line class="msg" x1="880" y1="922" x2="384" y2="922" marker-end="url(#ah-blue-1)"/>
+  <text class="ph" x="32" y="966">OFFER AND CONSENT</text>
+  <line class="rule" x1="32" y1="974" x2="1168" y2="974"/>
+  <text class="ml" x="630" y="1002" text-anchor="middle">OFFER · The File Manifest</text>
+  <text class="st" x="32" y="1006">STEP 06</text>
+  <text class="ms" x="630" y="1019" text-anchor="middle">Sent once, up front, for the whole batch</text>
+  <line class="msg" x1="380" y1="1037" x2="876" y2="1037" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="1051" width="460" height="91"/>
+  <rect x="400" y="1051" width="4" height="91" fill="var(--accent)"/>
+  <text class="cd" x="420" y="1072">OFFER { t:1, tid: bytes16, files: [FileMeta], total: u64, note? }</text>
+  <text class="cd" x="420" y="1090">FileMeta { fid, name, rel_path?, size, mime, b3: bytes32, mtime }</text>
+  <text class="bl" x="420" y="1108">b3 is the BLAKE3-256 hash Bob will verify the bytes against.</text>
+  <text class="bl" x="420" y="1126">tid stays stable across resumes; it keys Bob's resume ledger.</text>
+  <rect class="box" x="930" y="1051" width="250" height="109"/>
+  <rect x="930" y="1051" width="4" height="109" fill="var(--accent)"/>
+  <text class="bt" x="950" y="1072">Size before bytes</text>
+  <text class="bl" x="950" y="1090">The consent sheet shows the</text>
+  <text class="bl" x="950" y="1108">total size before a single byte</text>
+  <text class="bl" x="950" y="1126">arrives. That is the disk-fill</text>
+  <text class="bl" x="950" y="1144">defence, not an afterthought.</text>
+  <text class="st" x="32" y="1201">STEP 07</text>
+  <rect class="box" x="700" y="1180" width="460" height="171"/>
+  <rect x="700" y="1180" width="4" height="171" fill="var(--yellow)"/>
+  <text class="bt" x="720" y="1201">Consent sheet · the sender is unpaired</text>
+  <text class="bl" x="720" y="1219">Wooosh shows Alice's six-word fingerprint phrase and asks Bob</text>
+  <text class="bl" x="720" y="1237">to confirm it matches the phrase on Alice's screen.</text>
+  <text class="cd" x="720" y="1262">orbit · maple · candle · river · tiger · onyx</text>
+  <rect x="720" y="1267" width="150" height="30" fill="none" stroke="var(--txt)" stroke-width="1"/>
+  <text class="bt" x="795" y="1286" text-anchor="middle">Accept Once</text>
+  <rect x="886" y="1267" width="176" height="30" fill="var(--accent)"/>
+  <text class="bt" x="974" y="1286" text-anchor="middle" fill="#ffffff">Pair and Accept</text>
+  <text class="bl" x="720" y="1317">Accept Once never writes the trust store.</text>
+  <text class="bl" x="720" y="1335">Pair and Accept pins Alice's key and turns this row green next time.</text>
+  <text class="st" x="32" y="1373">HUMAN</text>
+  <line class="oob" x1="384" y1="1381" x2="686" y2="1381" marker-start="url(#ah-grey-1)" marker-end="url(#ah-grey-1)"/>
+  <text class="ms" x="535" y="1373" text-anchor="middle">Both people compare the same six words</text>
+  <text class="ml" x="630" y="1409" text-anchor="middle">DECISION</text>
+  <text class="st" x="32" y="1413">STEP 08</text>
+  <text class="ms" x="630" y="1426" text-anchor="middle">Alice must not open a file stream before this arrives; Bob resets any early stream</text>
+  <line class="msg" x1="880" y1="1444" x2="384" y2="1444" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="1458" width="460" height="55"/>
+  <rect x="400" y="1458" width="4" height="55" fill="var(--accent)"/>
+  <text class="cd" x="420" y="1479">DECISION { t:2, tid, accept: [fid...] }</text>
+  <text class="bl" x="420" y="1497">An empty accept list declines everything.</text>
+  <text class="ph" x="32" y="1557">TRANSFER AND VERIFICATION</text>
+  <line class="rule" x1="32" y1="1565" x2="1168" y2="1565"/>
+  <text class="ml" x="630" y="1593" text-anchor="middle">File Streams</text>
+  <text class="st" x="32" y="1597">STEP 09</text>
+  <text class="ms" x="630" y="1610" text-anchor="middle">One unidirectional QUIC stream per slot, with a pool of four slots at most</text>
+  <line class="msg" x1="380" y1="1628" x2="876" y2="1628" marker-end="url(#ah-blue-1)"/>
+  <line class="msg" x1="380" y1="1642" x2="876" y2="1642" marker-end="url(#ah-blue-1)"/>
+  <line class="msg" x1="380" y1="1656" x2="876" y2="1656" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="1670" width="460" height="91"/>
+  <rect x="400" y="1670" width="4" height="91" fill="var(--accent)"/>
+  <text class="cd" x="420" y="1691">[ u32 header_len ][ CBOR { tid, fid, off } ][ raw bytes ][ FIN ]</text>
+  <text class="bl" x="420" y="1709">A big file gets its own stream. Files under 1 MiB are pipelined</text>
+  <text class="bl" x="420" y="1727">back to back on a slot, so 1,000 files cost about one round trip</text>
+  <text class="bl" x="420" y="1745">of control overhead rather than 1,000.</text>
+  <rect class="box" x="930" y="1670" width="250" height="91"/>
+  <rect x="930" y="1670" width="4" height="91" fill="var(--accent)"/>
+  <text class="bt" x="950" y="1691">Backpressure is free</text>
+  <text class="bl" x="950" y="1709">Flow control is pure QUIC. The</text>
+  <text class="bl" x="950" y="1727">application layer never ACKs</text>
+  <text class="bl" x="950" y="1745">bytes of its own.</text>
+  <text class="st" x="32" y="1802">STEP 10</text>
+  <rect class="box" x="700" y="1781" width="460" height="109"/>
+  <rect x="700" y="1781" width="4" height="109" fill="var(--accent)"/>
+  <text class="bt" x="720" y="1802">Bob writes to staging and verifies</text>
+  <text class="cd" x="720" y="1820">staging/&lt;tid&gt;/&lt;fid&gt;.part, preallocated to size</text>
+  <text class="bl" x="720" y="1838">The byte count must equal size minus off, and the incremental</text>
+  <text class="bl" x="720" y="1856">BLAKE3 must equal b3 from the manifest.</text>
+  <text class="bl" x="720" y="1874">The resume ledger is an optimisation, never the source of truth.</text>
+  <text class="ml" x="630" y="1918" text-anchor="middle">DONE · Per File</text>
+  <text class="st" x="32" y="1922">STEP 11</text>
+  <line class="msg" x1="880" y1="1936" x2="384" y2="1936" marker-end="url(#ah-blue-1)"/>
+  <rect class="box" x="400" y="1950" width="460" height="55"/>
+  <rect x="400" y="1950" width="4" height="55" fill="var(--accent)"/>
+  <text class="cd" x="420" y="1971">DONE { t:5, tid, fid, ok: bool, err?: tstr }</text>
+  <text class="bl" x="420" y="1989">Flows back asynchronously on the control stream.</text>
+  <text class="st" x="32" y="2046">STEP 12</text>
+  <rect class="box" x="700" y="2025" width="460" height="163"/>
+  <rect x="700" y="2025" width="4" height="163" fill="var(--green)"/>
+  <text class="bt" x="720" y="2046">FileReady · the native shell routes the verified file</text>
+  <text class="bl" x="720" y="2064">iOS: photos and videos to the Photos library, everything else to</text>
+  <text class="bl" x="720" y="2082">Wooosh in the Files app.</text>
+  <text class="bl" x="720" y="2100">Android: everything to Downloads through MediaStore.</text>
+  <text class="bl" x="720" y="2118">macOS and Windows: everything to the Downloads folder.</text>
+  <text class="bl" x="720" y="2136">The move is atomic per file: verify, move or insert, and only then</text>
+  <text class="bl" x="720" y="2154">report success. Name collisions append (2) and never overwrite.</text>
+  <text class="bt" x="720" y="2172" fill="var(--green)">Every file is verified before it leaves staging.</text>
+</svg>
+    </div>
+  </div>
+
+  <h3>Why The Channel Never Turns Green Here</h3>
+  <p>Bob chose <strong>Accept Once</strong>, so nothing was written to his trust store. The connection was encrypted end to end for its whole life, and the two people verified each other by eye, but the next time Alice appears on the network Bob will see her as an unknown device again and will be asked again. That is the correct behaviour for a one-off transfer at a conference table.</p>
+  <p>Had Bob tapped <strong>Pair and Accept</strong>, Alice's public key would have been pinned, and the next connection would open in the trusted state shown in Scenario Two.</p>
+
+  <div class="callout amber">
+    <span class="k">Everyone Mode Is Rate Limited</span>
+    <p>Unpaired offers are limited to three per minute per rotating ID and source, with an auto-mute option, so a device in a crowded room cannot be used to spam offer sheets. Paired Only mode rejects unpaired senders at the handshake instead, before any offer is possible.</p>
+  </div>
+</section>
+
+<section id="scenario-2">
+  <h2><span class="num">04</span>Scenario Two: Carol And Dylon Pair By QR</h2>
+  <p class="lede">Carol wants Dylon's device to be a device she keeps. She displays a QR code; Dylon scans it. The scan delivers Carol's public key over a channel no network attacker can touch, which is exactly what makes the ceremony resistant to a man in the middle. After pairing, every later transfer between them authenticates silently.</p>
+
+  <div class="figure">
+    <div class="figure-head">
+      <span class="fnum">Figure 2</span>
+      <span class="ftitle">QR Pairing, Then A Paired Transfer</span>
+      <span class="fhint">Scroll sideways if the diagram is wider than your window</span>
+    </div>
+    <div class="scroller" tabindex="0" role="img" aria-label="Sequence diagram of QR pairing between Carol and Dylon, covering the QR payload, the concurrent race of address hints, certificate key comparison, PAIR_REQUEST and PAIR_ACCEPT, trust store pinning, and a later transfer on a trusted channel.">
+<svg viewBox="0 0 1200 2260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah-blue-2" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+    <marker id="ah-grey-2" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--txt-3)"/></marker>
+  </defs>
+  <!-- channel state rail -->
+  <rect x="16" y="68" width="6" height="778" fill="var(--grey-state)"/>
+  <rect x="16" y="846" width="6" height="466" fill="var(--yellow)"/>
+  <rect x="16" y="1312" width="6" height="115" fill="var(--green)"/>
+  <rect x="16" y="1427" width="6" height="95" fill="var(--grey-state)"/>
+  <rect x="16" y="1522" width="6" height="708" fill="var(--green)"/>
+  <line class="lifeline" x1="380" y1="68" x2="380" y2="2230"/>
+  <line class="lifeline" x1="880" y1="68" x2="880" y2="2230"/>
+  <rect x="260" y="16" width="240" height="52" fill="var(--inv-bg)"/>
+  <text class="an" x="276" y="38">Dylon</text>
+  <text class="as" x="276" y="56">Android phone · scans · QUIC client</text>
+  <rect x="760" y="16" width="240" height="52" fill="var(--inv-bg)"/>
+  <text class="an" x="776" y="38">Carol</text>
+  <text class="as" x="776" y="56">Windows PC · shows QR · QUIC server</text>
+  <text class="ph" x="32" y="112">OUT-OF-BAND KEY DELIVERY</text>
+  <line class="rule" x1="32" y1="120" x2="1168" y2="120"/>
+  <text class="st" x="32" y="155">STEP 01</text>
+  <rect class="box" x="700" y="134" width="460" height="188"/>
+  <rect x="700" y="134" width="4" height="188" fill="var(--accent)"/>
+  <text class="bt" x="720" y="155">Carol displays a pairing QR code</text>
+  <text class="cd" x="720" y="173">wooosh-pair:1?pk=&lt;Carol's public key, base64&gt;</text>
+  <text class="cd" x="720" y="191">&amp;tok=&lt;32-byte single-use token&gt;</text>
+  <text class="cd" x="720" y="209">&amp;dn=&lt;display name&gt;</text>
+  <text class="cd" x="720" y="227">&amp;hints=&lt;ip:port list, best routable first&gt;</text>
+  <text class="cd" x="720" y="245">&amp;exp=&lt;unix time plus 120 s&gt;</text>
+  <text class="bl" x="720" y="270">dn is an unauthenticated hint so the scanner can label the peer</text>
+  <text class="bl" x="720" y="288">before HELLO. Carol lists only addresses her listening socket can</text>
+  <text class="bl" x="720" y="306">really be reached on, routable first and loopback last.</text>
+  <text class="ml" x="630" y="350" text-anchor="middle">Dylon Scans The Code</text>
+  <text class="st" x="32" y="354">STEP 02</text>
+  <text class="ms" x="630" y="367" text-anchor="middle">A camera reading a screen. This exchange never touches the network.</text>
+  <line class="oob" x1="880" y1="385" x2="384" y2="385" marker-end="url(#ah-grey-2)"/>
+  <rect class="box" x="400" y="399" width="760" height="73"/>
+  <rect x="400" y="399" width="4" height="73" fill="var(--green)"/>
+  <text class="bt" x="420" y="420">The key travels out of band, and that is the whole point</text>
+  <text class="bl" x="420" y="438">An attacker between the two devices can forward, drop, or replay packets, but Dylon already holds</text>
+  <text class="bl" x="420" y="456">Carol's real public key from the camera. Any substituted key simply fails the comparison in Step 04.</text>
+  <text class="ph" x="32" y="516">PAIRING HANDSHAKE</text>
+  <line class="rule" x1="32" y1="524" x2="1168" y2="524"/>
+  <text class="ml" x="630" y="552" text-anchor="middle">Race Every Address Hint At Once</text>
+  <text class="st" x="32" y="556">STEP 03</text>
+  <text class="ms" x="630" y="569" text-anchor="middle">Hints are a race, not a queue. The first connection to complete wins and the losers are closed.</text>
+  <line class="fail" x1="380" y1="596" x2="596" y2="596"/>
+  <path class="xmark" d="M 601 591 L 611 601 M 611 591 L 601 601"/>
+  <text class="bl" x="622" y="600">10.0.0.14:49212 · no route</text>
+  <text class="bl" x="630" y="620" text-anchor="middle">192.168.4.12:49212 · first to complete, so this one wins</text>
+  <line class="msg" x1="380" y1="628" x2="876" y2="628" marker-end="url(#ah-blue-2)"/>
+  <line class="fail" x1="380" y1="660" x2="536" y2="660"/>
+  <path class="xmark" d="M 541 655 L 551 665 M 551 655 L 541 665"/>
+  <text class="bl" x="562" y="664">127.0.0.1:49212 · loopback, not routable</text>
+  <rect class="box" x="400" y="674" width="460" height="109"/>
+  <rect x="400" y="674" width="4" height="109" fill="var(--accent)"/>
+  <text class="bt" x="420" y="695">Sequential dialling is a frozen screen</text>
+  <text class="bl" x="420" y="713">A QR is normally scanned by a different device, so Carol cannot</text>
+  <text class="bl" x="420" y="731">know which of her addresses Dylon can route to. Dialling in order</text>
+  <text class="bl" x="420" y="749">charges a full connect timeout for every dead hint ahead of the</text>
+  <text class="bl" x="420" y="767">live one, and the user sees no event at all.</text>
+  <rect class="box" x="930" y="674" width="250" height="91"/>
+  <rect x="930" y="674" width="4" height="91" fill="var(--accent)"/>
+  <text class="bt" x="950" y="695">Only the connect is raced</text>
+  <text class="bl" x="950" y="713">HELLO and PAIR_REQUEST run on</text>
+  <text class="bl" x="950" y="731">the single winner, so the token</text>
+  <text class="bl" x="950" y="749">is never presented twice.</text>
+  <text class="ml" x="630" y="811" text-anchor="middle">QUIC Connect · TLS 1.3 · Mutual Certificates</text>
+  <text class="st" x="32" y="815">STEP 04</text>
+  <text class="ms" x="630" y="828" text-anchor="middle">Mutual self-signed certificates again, exactly as in Figure 1</text>
+  <line class="msg" x1="384" y1="846" x2="876" y2="846" marker-start="url(#ah-blue-2)" marker-end="url(#ah-blue-2)"/>
+  <rect x="32" y="858" width="190" height="22" fill="var(--yellow)"/>
+  <text class="tag" x="42" y="873" fill="#161616">CHANNEL: UNTRUSTED</text>
+  <rect class="box" x="400" y="860" width="460" height="91"/>
+  <rect x="400" y="860" width="4" height="91" fill="var(--accent)"/>
+  <text class="bt" x="420" y="881">Dylon checks the certificate against the QR</text>
+  <text class="bl" x="420" y="899">The presented key equals the pk from the QR, so the connection</text>
+  <text class="bl" x="420" y="917">continues. Any other key aborts before anything else happens.</text>
+  <text class="cd" x="420" y="935" fill="var(--red)">mismatch → close QR_KEY_MISMATCH</text>
+  <rect class="box" x="930" y="860" width="250" height="91"/>
+  <rect x="930" y="860" width="4" height="91" fill="var(--yellow)"/>
+  <text class="bt" x="950" y="881">Still untrusted, for now</text>
+  <text class="bl" x="950" y="899">Dylon has authenticated Carol.</text>
+  <text class="bl" x="950" y="917">Carol has not yet authenticated</text>
+  <text class="bl" x="950" y="935">Dylon. The token does that.</text>
+  <text class="ml" x="630" y="979" text-anchor="middle">HELLO · Client First, Then Server</text>
+  <text class="st" x="32" y="983">STEP 05</text>
+  <line class="msg" x1="380" y1="997" x2="876" y2="997" marker-end="url(#ah-blue-2)"/>
+  <line class="msg" x1="880" y1="1019" x2="384" y2="1019" marker-end="url(#ah-blue-2)"/>
+  <rect class="box" x="400" y="1033" width="760" height="73"/>
+  <rect x="400" y="1033" width="4" height="73" fill="var(--accent)"/>
+  <text class="bt" x="420" y="1054">The Paired Only carve-out</text>
+  <text class="bl" x="420" y="1072">While a QR token is pending, Carol accepts untrusted connections even in Paired Only mode and restricts</text>
+  <text class="bl" x="420" y="1090">them to HELLO and PAIR_REQUEST. Without this, Paired Only would refuse the very scanner she is showing a QR for.</text>
+  <text class="ml" x="630" y="1134" text-anchor="middle">PAIR_REQUEST { token }</text>
+  <text class="st" x="32" y="1138">STEP 06</text>
+  <text class="ms" x="630" y="1151" text-anchor="middle">The token proves Dylon really scanned the code, which is proximity and authorisation in one</text>
+  <line class="msg" x1="380" y1="1169" x2="876" y2="1169" marker-end="url(#ah-blue-2)"/>
+  <rect class="box" x="400" y="1183" width="460" height="73"/>
+  <rect x="400" y="1183" width="4" height="73" fill="var(--accent)"/>
+  <text class="bl" x="420" y="1204">32 random bytes, single use, a 120 second expiry, and a</text>
+  <text class="bl" x="420" y="1222">constant-time compare. The connection closes on the first failure.</text>
+  <text class="cd" x="420" y="1240" fill="var(--red)">wrong or expired → close TOKEN_INVALID</text>
+  <text class="ml" x="630" y="1284" text-anchor="middle">PAIR_ACCEPT</text>
+  <text class="st" x="32" y="1288">STEP 07</text>
+  <line class="msg" x1="880" y1="1302" x2="384" y2="1302" marker-end="url(#ah-blue-2)"/>
+  <rect x="32" y="1303" width="190" height="22" fill="var(--green)"/>
+  <text class="tag" x="42" y="1318" fill="#ffffff">CHANNEL: TRUSTED</text>
+  <text class="st" x="32" y="1337">STEP 08</text>
+  <rect class="box" x="400" y="1316" width="760" height="91"/>
+  <rect x="400" y="1316" width="4" height="91" fill="var(--green)"/>
+  <text class="bt" x="420" y="1337">Both sides pin each other</text>
+  <text class="cd" x="420" y="1355">trust store ← { peer pubkey, device_id, dn, dt?, paired_at }</text>
+  <text class="bl" x="420" y="1373">Dylon's key reached Carol inside the TLS handshake, and Dylon verified the integrity of that handshake</text>
+  <text class="bl" x="420" y="1391">against the QR. Both directions are authenticated now, from a single scan.</text>
+  <text class="ph" x="32" y="1451">A LATER TRANSFER, NOW PAIRED</text>
+  <text class="ms" x="1168" y="1451" text-anchor="end">minutes or days later · a brand new connection · possibly a new address and a new rotating ID</text>
+  <line class="rule" x1="32" y1="1459" x2="1168" y2="1459"/>
+  <text class="ml" x="630" y="1487" text-anchor="middle">QUIC Connect · The Pin Comes From The Trust Store</text>
+  <text class="st" x="32" y="1491">STEP 09</text>
+  <text class="ms" x="630" y="1504" text-anchor="middle">No QR, no codes, and nothing for a person to do</text>
+  <line class="msg" x1="384" y1="1522" x2="876" y2="1522" marker-start="url(#ah-blue-2)" marker-end="url(#ah-blue-2)"/>
+  <rect x="32" y="1534" width="190" height="22" fill="var(--green)"/>
+  <text class="tag" x="42" y="1549" fill="#ffffff">CHANNEL: TRUSTED</text>
+  <rect class="box" x="400" y="1536" width="460" height="109"/>
+  <rect x="400" y="1536" width="4" height="109" fill="var(--green)"/>
+  <text class="bt" x="420" y="1557">Two resolution points, both required</text>
+  <text class="bl" x="420" y="1575">Before the handshake: last_addr, the exact ip:port where a pinned</text>
+  <text class="bl" x="420" y="1593">peer was last authenticated, applies the pin up front.</text>
+  <text class="bl" x="420" y="1611">At the handshake: the certificate key itself, which covers a peer</text>
+  <text class="bl" x="420" y="1629">that moved to an address the store has never seen.</text>
+  <rect class="box" x="930" y="1536" width="250" height="109"/>
+  <rect x="930" y="1536" width="4" height="109" fill="var(--green)"/>
+  <text class="bt" x="950" y="1557">The store owns the pin</text>
+  <text class="bl" x="950" y="1575">Pinning is never conditional on a</text>
+  <text class="bl" x="950" y="1593">host passing in an expected key.</text>
+  <text class="bl" x="950" y="1611">The SAS and QR-displaying paths</text>
+  <text class="bl" x="950" y="1629">never hand the host a key at all.</text>
+  <text class="ml" x="630" y="1673" text-anchor="middle">HELLO · Both Directions</text>
+  <text class="st" x="32" y="1677">STEP 10</text>
+  <line class="msg" x1="380" y1="1691" x2="876" y2="1691" marker-end="url(#ah-blue-2)"/>
+  <line class="msg" x1="880" y1="1713" x2="384" y2="1713" marker-end="url(#ah-blue-2)"/>
+  <rect class="box" x="400" y="1727" width="760" height="55"/>
+  <rect x="400" y="1727" width="4" height="55" fill="var(--accent)"/>
+  <text class="bl" x="420" y="1748">The identity binding check still runs. A peer that claims a pinned DeviceID while presenting a different key is</text>
+  <text class="bl" x="420" y="1766">exactly the key-change signal, and the connection closes.</text>
+  <text class="ml" x="630" y="1810" text-anchor="middle">OFFER</text>
+  <text class="st" x="32" y="1814">STEP 11</text>
+  <line class="msg" x1="380" y1="1828" x2="876" y2="1828" marker-end="url(#ah-blue-2)"/>
+  <text class="st" x="32" y="1869">STEP 12</text>
+  <rect class="box" x="700" y="1848" width="460" height="140"/>
+  <rect x="700" y="1848" width="4" height="140" fill="var(--green)"/>
+  <text class="bt" x="720" y="1869">Consent sheet · the sender is paired</text>
+  <text class="bl" x="720" y="1887">No fingerprint phrase and no comparison step. The channel was</text>
+  <text class="bl" x="720" y="1905">authenticated by the pinned key before any file metadata arrived,</text>
+  <text class="bl" x="720" y="1923">so there is nothing left for a person to check. Wooosh can accept</text>
+  <text class="bl" x="720" y="1941">automatically when the device is paired and the setting is on.</text>
+  <rect x="720" y="1946" width="120" height="30" fill="var(--accent)"/>
+  <text class="bt" x="780" y="1965" text-anchor="middle" fill="#ffffff">Accept</text>
+  <rect x="856" y="1946" width="120" height="30" fill="none" stroke="var(--txt)" stroke-width="1"/>
+  <text class="bt" x="916" y="1965" text-anchor="middle">Decline</text>
+  <text class="ml" x="630" y="2016" text-anchor="middle">DECISION, File Streams, DONE</text>
+  <text class="st" x="32" y="2020">STEP 13</text>
+  <text class="ms" x="630" y="2033" text-anchor="middle">identical to Steps 08 through 12 of Figure 1</text>
+  <line class="msg" x1="880" y1="2051" x2="384" y2="2051" marker-end="url(#ah-blue-2)"/>
+  <text class="ms" x="630" y="2069" text-anchor="middle">file streams, four concurrent slots at most</text>
+  <line class="msg" x1="380" y1="2077" x2="876" y2="2077" marker-end="url(#ah-blue-2)"/>
+  <text class="ms" x="630" y="2095" text-anchor="middle">DONE, per file, after the BLAKE3 check in staging</text>
+  <line class="msg" x1="880" y1="2103" x2="384" y2="2103" marker-end="url(#ah-blue-2)"/>
+  <text class="st" x="32" y="2144">NOTE</text>
+  <rect class="box" x="400" y="2123" width="760" height="91"/>
+  <rect x="400" y="2123" width="4" height="91" fill="var(--red)"/>
+  <text class="bt" x="420" y="2144">If the key ever changes</text>
+  <text class="bl" x="420" y="2162">A pinned peer that presents a different key is a hard failure. Wooosh closes with KEY_CHANGED and surfaces</text>
+  <text class="bl" x="420" y="2180">it prominently, because it is the signal for both a man in the middle and an honest reinstall.</text>
+  <text class="bl" x="420" y="2198">Re-pairing is required. There is no silent re-pin and no trust-on-first-use downgrade.</text>
+</svg>
+    </div>
+  </div>
+
+  <h3>What Changed Between The Two Figures</h3>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Moment</th><th>Scenario One: Alice And Bob</th><th>Scenario Two: Carol And Dylon, After Pairing</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>TLS completes</td>
+          <td>Peer key is unknown, connection marked untrusted</td>
+          <td>Peer key is pinned, connection marked trusted straight away</td>
+        </tr>
+        <tr>
+          <td>What is allowed</td>
+          <td>HELLO, pairing messages, and OFFER only because visibility is Everyone</td>
+          <td>The full protocol, with no restriction</td>
+        </tr>
+        <tr>
+          <td>Consent sheet</td>
+          <td>Shows the six-word fingerprint phrase, Accept Once or Pair and Accept</td>
+          <td>Accept or Decline, and may auto-accept when the setting is enabled</td>
+        </tr>
+        <tr>
+          <td>Human effort</td>
+          <td>Two people read six words to each other</td>
+          <td>None, because the work was done once at pairing time</td>
+        </tr>
+        <tr>
+          <td>Persisted state</td>
+          <td>None, unless Bob chose Pair and Accept</td>
+          <td>Both keys were pinned during pairing and stay pinned until revoked</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="ceremonies">
+  <h2><span class="num">05</span>The Two Verification Ceremonies</h2>
+  <p class="lede">First contact is the only moment a man in the middle has a chance. Wooosh closes it in one of two ways, and both work by making the attacker's substituted key visible to a person rather than only to software.</p>
+
+  <div class="compare">
+    <div>
+      <h4>QR Code · Out-Of-Band Key Delivery</h4>
+      <p>The receiver shows <span class="c">wooosh-pair:1?pk=…&amp;tok=…&amp;dn=…&amp;hints=…&amp;exp=…</span> on screen. The sender's camera reads it, so the public key arrives over light, not over the network.</p>
+      <p>An attacker who controls the whole Wi-Fi network can still forward, drop, or replay packets. What the attacker cannot do is get their own key into the sender's hands, because the sender already holds the real one and compares the presented certificate key against it. A mismatch aborts with <span class="c">QR_KEY_MISMATCH</span> before anything else happens.</p>
+      <p>The 32-byte token in the same payload closes the other direction: it proves the connecting device really scanned the code, which is both proximity and authorisation. It is single use, expires after 120 seconds, and is compared in constant time.</p>
+    </div>
+    <div class="alt">
+      <h4>Six-Digit Code · Short Authentication String</h4>
+      <p>Where there is no camera, either side can send <span class="c">PAIR_REQUEST {}</span> with no token over the untrusted channel, and both devices compute the same number from the TLS session itself.</p>
+      <div class="formula">SAS = BE_u32(HKDF(exporter, "wooosh-sas-v1")[0..4]) mod 1_000_000</div>
+      <p>Here <span class="c">exporter</span> is the 32-byte TLS 1.3 exporter secret, taken under the label <span class="c">EXPORTER-wooosh-sas</span>.</p>
+      <p>The exporter secret binds both certificates and the entire handshake transcript. An active man in the middle has to terminate two separate TLS sessions, one with each side, and cannot force the two derived numbers to agree. Guessing a match is a one in a million proposition. Both users confirm, <span class="c">PAIR_CONFIRM</span> flows both ways, and the keys are stored. Any mismatch, or 60 seconds of silence, aborts without storing anything.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="k">A Third Artifact, Easy To Confuse</span>
+    <p>The six-<em>word</em> fingerprint phrase in Figure 1 is not the six-<em>digit</em> code. The phrase is a rendering of a peer's own long-term identity key and is shown on the consent sheet for an unpaired sender, so it reads the same on both devices no matter which connection is open. The six-digit code is derived from one specific TLS session and is meaningless outside it. Shells never reimplement either one: both come out of the core through <span class="c">fingerprint_phrase_for(pubkey)</span> and the SAS event.</p>
+  </div>
+
+  <h3>What Each Ceremony Actually Defeats</h3>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Threat</th><th>How Wooosh Answers It</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Passive sniffing on open Wi-Fi</td><td>Everything after the QUIC Initial is TLS 1.3 encrypted. Broadcasts carry no file data and no long-term identifier.</td></tr>
+        <tr><td>Active man in the middle at first contact</td><td>QR delivers the key out of band. SAS binds a code to the exporter secret, which an attacker cannot make match on both sides.</td></tr>
+        <tr><td>Man in the middle against paired devices</td><td>Key pinning resolved from the core's own trust store, and <span class="c">KEY_CHANGED</span> as a hard failure with no silent re-pin.</td></tr>
+        <tr><td>Imposter taking over a paired device's address</td><td>The <span class="c">last_addr</span> pin rejects it during TLS, before any HELLO or file metadata is exchanged.</td></tr>
+        <tr><td>Tracking a device across networks</td><td>The rotating discovery ID is regenerated per network join and every 24 hours, and the identity key is never broadcast.</td></tr>
+        <tr><td>Spoofed rows in the device list</td><td>TXT data is untrusted hint material. A spoofer cannot complete a handshake as a pinned peer, and unpaired contact is fingerprint-verifiable and consent-gated.</td></tr>
+        <tr><td>A malicious sender sending a path like <span class="c">../../</span></td><td>Names and relative paths are sanitised by the receiver, staging is a jail, and routing happens only after verification.</td></tr>
+        <tr><td>Pairing token brute force</td><td>32 bytes, single use, 120 second lifetime, constant-time compare, and the connection closes on the first failure.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="notes">
+  <h2><span class="num">06</span>Details Worth Keeping In View</h2>
+
+  <h3>Discovery Is A Hint, Never A Decision</h3>
+  <p>The TXT record and the UDP 44777 fallback datagram carry the same fields, and listeners de-duplicate by rotating ID. Everything in them is untrusted material for populating a list. The <span class="c">v</span> value is only a pre-filter; real version negotiation happens inside the encrypted HELLO, which is what stops a spoofed TXT record from forcing a downgrade. The device type value tells the receiving list which glyph to draw, and an unrecognised or missing value must render as a neutral glyph. A generic icon is always acceptable. A confidently wrong one is not.</p>
+
+  <h3>Verification Comes Before Placement, Always</h3>
+  <p>Received bytes land in <span class="c">staging/&lt;tid&gt;/&lt;fid&gt;.part</span>, preallocated to the offered size. A file is only moved to the Photos library, to Downloads, or into the Files app after its BLAKE3 hash matches the value in the manifest. A transfer is never reported complete for a file the recipient cannot find, name collisions append a counter rather than overwriting, and staging older than seven days is collected automatically.</p>
+
+  <h3>The Resume Ledger Is An Optimisation</h3>
+  <p>The receiver keeps a small record of verified offsets so an interrupted transfer can pick up where it stopped. Authority always rests with the bytes on disk plus the BLAKE3 result, so a ledger read or write failure is logged and swallowed. Failing a slot stream over a ledger error would strand every file queued behind it, and the transfer could never finish. The worst case for a lost ledger update is re-hashing part of a file on the next resume.</p>
+
+  <h3>Visibility Modes</h3>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Behaviour</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Everyone</td><td>Wooosh announces itself and accepts offers from unpaired senders, gated by the consent sheet in Figure 1.</td></tr>
+        <tr><td>Paired Only</td><td>Wooosh still announces itself, but closes an unpaired connection with <span class="c">PAIRING_REQUIRED</span> right after reading the peer's HELLO and without sending its own. The one carve-out is a pairing the user just started: while a QR token or a SAS exchange is pending, untrusted connections are accepted and restricted to HELLO plus the pairing message.</td></tr>
+        <tr><td>Off</td><td>No announcements and no listener.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <p>Wooosh protocol version 1. This page is a visual companion to the normative specification in <span class="c">Assets/Documentation/PROTOCOL.md</span> and the system design in <span class="c">Assets/Documentation/DESIGN.md</span>. Where the two disagree with this page, they win.</p>
+</footer>
+
+</div>
+</body>
+</html>

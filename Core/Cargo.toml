@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["wooosh-core", "wooosh-cli", "uniffi-bindgen"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Fast enough hashing/crypto in debug-mode tests
+[profile.dev.package.blake3]
+opt-level = 3
+[profile.dev.package.ed25519-dalek]
+opt-level = 3
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+[profile.dev.package.ring]
+opt-level = 3
