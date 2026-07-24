@@ -25,17 +25,11 @@ struct SASSheet: View {
                 ProgressView(L.t("sas_confirming"))
                     .padding(.vertical, 24)
             } else {
-                // `defaultAction: false` is the security fix, not a style
-                // choice. This sheet is presented by an event from the *other*
-                // device (`AppModel.handle(event: .pairingSAS)`), so it can
-                // appear under the user's hands at any moment, and
-                // `.interactiveDismissDisabled()` means keystrokes have nowhere
-                // else to go. With the primary wired to `.defaultAction`, a
-                // Return aimed at whatever was on screen a moment earlier lands
-                // on "Codes Match" and confirms the pairing — the exact failure
-                // SAS exists to prevent. Comparing two codes is a deliberate
-                // human act; it must cost a deliberate press, never an
-                // inherited one.
+                // `defaultAction: false` is security, not style. The sheet is
+                // presented by an event from the other device, so it can appear
+                // under the user's hands at any moment; binding Return to
+                // "Codes Match" would let a stray keystroke confirm the pairing,
+                // the exact failure SAS exists to prevent.
                 SheetActions(defaultAction: false) {
                     Button(L.t("action_codes_match")) {
                         model.confirmSAS(accepted: true)

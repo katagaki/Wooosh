@@ -1,18 +1,15 @@
 //! Public FFI surface (UniFFI proc-macro style), mirroring DESIGN.md §4.
-//!
-//! The shell never sees sockets or crypto: commands in, an event stream out.
-//! Events are delivered on a dedicated callback thread so host callbacks can
-//! never block the tokio runtime.
+//! Commands in, an event stream out: the shell never sees sockets or crypto.
 //!
 //! # Threading contract (DESIGN.md §4)
 //!
-//! Every exported method is a **synchronous, blocking** call — UniFFI exports
-//! no async here, and `start`, `pair_with_qr`, `connect_peer`, `send`,
-//! `resume_transfer` and `stop` all drive real work (Keychain access, QUIC
-//! handshakes, runtime shutdown) before they return. **None of them may be
-//! called on a UI thread**; dispatch them to a background executor and hop
-//! back with the result. `CoreEventListener.on_event` is called on the core's
-//! own event thread, never on the caller's — marshal to the UI thread there.
+//! Every exported method is **synchronous and blocking**: `start`,
+//! `pair_with_qr`, `connect_peer`, `send`, `resume_transfer` and `stop` drive
+//! Keychain access, QUIC handshakes and runtime shutdown before they return.
+//! **None of them may be called on a UI thread**; dispatch them to a
+//! background executor and hop back with the result.
+//! `CoreEventListener.on_event` runs on the core's own dedicated event thread,
+//! never on the caller's — marshal to the UI thread there.
 
 use crate::engine::{parse_tid, Engine, EngineConfig};
 use crate::error::WoooshError;
@@ -48,8 +45,8 @@ impl DeviceType {
     }
 
     /// Parse the `dt` field of HELLO / the mDNS TXT record (PROTOCOL.md §3.1).
-    /// Unknown or absent values yield `None` — the shell then falls back to a
-    /// generic icon instead of guessing.
+    /// Unknown or absent values yield `None`, so the shell shows a generic
+    /// icon instead of guessing.
     pub(crate) fn from_wire(s: &str) -> Option<DeviceType> {
         match s {
             "phone" => Some(DeviceType::Phone),
@@ -131,11 +128,9 @@ pub struct TrustedPeer {
     pub last_seen: u64,
 }
 
-/// 6-word fingerprint phrase for any peer public key (PROTOCOL.md §2) —
-/// the verification phrase shown on consent and trust-list screens.
-///
-/// Exported so shells never reimplement the wordlist: pass the `peer_pubkey`
-/// from any event, or a `TrustedPeer.pubkey`.
+/// 6-word verification phrase for a peer public key (PROTOCOL.md §2), shown on
+/// consent and trust-list screens. Pass any event's `peer_pubkey` or a
+/// `TrustedPeer.pubkey`; shells must never reimplement the wordlist.
 ///
 /// Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
 #[uniffi::export]
@@ -146,8 +141,8 @@ pub fn fingerprint_phrase_for(pubkey: Vec<u8>) -> Result<String, WoooshError> {
 }
 
 /// Rendered DeviceID (`Q7KM-3PXA-…`) for a peer public key — the same string
-/// used as `peer_id` in events. Lets a shell key its UI off a pubkey it
-/// obtained from `trusted_peers()` without connecting first.
+/// events carry as `peer_id`, so a shell can key its UI off a `trusted_peers()`
+/// pubkey without connecting first.
 ///
 /// Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
 #[uniffi::export]
@@ -177,10 +172,9 @@ pub fn parse_pairing_qr(payload: String) -> Result<QrInfo, WoooshError> {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum CoreEvent {
     /// A control channel is up. `peer_pubkey` is the peer's raw 32-byte
-    /// Ed25519 identity key, taken from the certificate it proved possession
-    /// of in the TLS handshake — pass it back to `connect_peer` /
-    /// `revoke_peer`. `device_type` is the peer's HELLO `dt` (None when it
-    /// sent an unknown value).
+    /// Ed25519 key, taken from the certificate it proved possession of in the
+    /// TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
+    /// `device_type` is the peer's HELLO `dt` (None if unrecognized).
     PeerConnected {
         peer_id: String,
         peer_pubkey: Vec<u8>,
@@ -191,9 +185,9 @@ pub enum CoreEvent {
     },
     PeerDisconnected { peer_id: String },
     PairingSas { peer_id: String, code: String },
-    /// Emitted when pairing concludes (QR or SAS; success or failure/timeout).
-    /// On success `message` carries the peer's device name; on failure the
-    /// reason. `peer_pubkey` is the key that was (or would have been) pinned.
+    /// Pairing concluded (QR or SAS; success, failure or timeout). `message`
+    /// is the peer's device name on success, the reason on failure.
+    /// `peer_pubkey` is the key that was (or would have been) pinned.
     PairingResult {
         peer_id: String,
         peer_pubkey: Vec<u8>,
@@ -212,8 +206,8 @@ pub enum CoreEvent {
         files: Vec<OfferedFile>,
         total_bytes: u64,
     },
-    /// A transfer actually began (outgoing: DECISION accepted; incoming:
-    /// offer accepted). Carries the resolved manifest for progress UI.
+    /// Bytes can now flow (outgoing: DECISION accepted; incoming: offer
+    /// accepted). Carries the resolved manifest for progress UI.
     TransferStarted {
         transfer_id: String,
         peer_id: String,
@@ -230,11 +224,10 @@ pub enum CoreEvent {
         eta_secs: u64,
     },
     FileReady { transfer_id: String, file_id: u32, staged_path: String, kind: FileKind },
-    /// `duration_ms` is the wall-clock time of *this attempt* (a resumed
-    /// transfer restarts the clock when `resume_transfer` is called), measured
-    /// from the moment bytes could start flowing — sender: DECISION received;
-    /// receiver: offer accepted — to the last DONE. Divide `bytes_transferred`
-    /// by it for the attempt's average rate.
+    /// `duration_ms` covers *this attempt only* — `resume_transfer` restarts
+    /// the clock — measured from when bytes could start flowing (sender:
+    /// DECISION received; receiver: offer accepted) to the last DONE.
+    /// `bytes_transferred / duration_ms` is the attempt's average rate.
     TransferDone {
         transfer_id: String,
         ok_files: u32,
@@ -243,8 +236,8 @@ pub enum CoreEvent {
         duration_ms: u64,
     },
     TransferError { transfer_id: String, error: String, resumable: bool },
-    /// A pinned peer presented a different key (PROTOCOL.md §4.5) — surfaced
-    /// prominently, never silently re-pinned. `peer_id` is the DeviceID of the
+    /// A pinned peer presented a different key (PROTOCOL.md §4.5). Surface it
+    /// prominently; never silently re-pin. `peer_id` is the DeviceID of the
     /// *pinned* identity we expected; `presented_pubkey` is the key actually
     /// offered, when the handshake got far enough to observe it.
     KeyChanged { peer_id: String, expected_pubkey: Vec<u8>, presented_pubkey: Option<Vec<u8>> },
@@ -253,12 +246,10 @@ pub enum CoreEvent {
 // ---------- host-implemented adapters ----------
 
 /// Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
-/// The CLI uses a file-based implementation.
 ///
 /// **Threading.** Both methods are invoked synchronously from inside
-/// `WoooshCore.start`, on whichever thread called it. An implementation MAY
-/// block (Keychain / Keystore access does), which is exactly why `start` must
-/// not be called on a UI thread — see the note on `start`.
+/// `WoooshCore.start`, on whichever thread called it, and may block — which is
+/// why `start` must never be called on a UI thread.
 #[uniffi::export(with_foreign)]
 pub trait KeyStore: Send + Sync {
     /// Return the stored 32-byte Ed25519 secret key, or None on first launch.
@@ -267,9 +258,9 @@ pub trait KeyStore: Send + Sync {
     fn store_identity(&self, secret: Vec<u8>);
 }
 
-/// Event sink implemented by the host. Called on a dedicated thread —
-/// implementations may block briefly, but must not call back into the core
-/// re-entrantly from the callback if they want strict event ordering.
+/// Event sink implemented by the host. Called on the core's dedicated event
+/// thread; implementations may block briefly, but calling back into the core
+/// re-entrantly from the callback forfeits strict event ordering.
 #[uniffi::export(with_foreign)]
 pub trait CoreEventListener: Send + Sync {
     fn on_event(&self, event: CoreEvent);
@@ -330,7 +321,7 @@ impl WoooshCore {
         let guard = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let started = guard.as_ref().ok_or(WoooshError::NotStarted)?;
         // Sync FFI calls arrive on host threads with no reactor; engine methods
-        // that spawn tasks or arm timers need the runtime context entered.
+        // that spawn tasks or arm timers panic without the runtime entered.
         let _entered = started.runtime.enter();
         Ok(f(&started.runtime, &started.engine))
     }
@@ -343,17 +334,13 @@ impl WoooshCore {
         std::sync::Arc::new(Self { state: Mutex::new(None) })
     }
 
-    /// Boot the engine: load/create the identity through the KeyStore
+    /// Boot the engine: load or create the identity through the KeyStore
     /// adapter, bind the QUIC endpoint, start the event pump.
     ///
-    /// **BLOCKING — never call this on a UI thread.** The call runs entirely
-    /// on the calling thread and only returns once the identity has been
-    /// loaded and the endpoint is bound. In particular it invokes
-    /// `KeyStore.load_identity` / `store_identity` *synchronously*, and those
-    /// host implementations block on Keychain / Keystore / DPAPI, which can
-    /// take arbitrarily long (first unlock, biometric prompt, user
-    /// interaction). Dispatch it to a background thread/executor and hop back
-    /// to the UI thread with the result.
+    /// **BLOCKING — never call this on a UI thread.** It runs entirely on the
+    /// calling thread and invokes `KeyStore.load_identity` / `store_identity`
+    /// synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
+    /// (first unlock, biometric prompt). Dispatch to a background executor.
     pub fn start(
         &self,
         config: Config,
@@ -365,7 +352,6 @@ impl WoooshCore {
             return Err(WoooshError::AlreadyStarted);
         }
 
-        // Identity via the host key store (Keychain / Keystore / file).
         let identity = match key_store.load_identity() {
             Some(bytes) => Identity::from_secret_bytes(&bytes)?,
             None => {
@@ -388,8 +374,8 @@ impl WoooshCore {
             .build()
             .map_err(|e| WoooshError::Io(format!("tokio runtime: {e}")))?;
 
-        // Event pump: dedicated thread so host callbacks never touch the
-        // runtime threads.
+        // Event pump on its own thread: a blocking host callback must never
+        // occupy a tokio worker.
         let (event_tx, event_rx) = std::sync::mpsc::channel::<CoreEvent>();
         let event_stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop_flag = event_stop.clone();
@@ -403,7 +389,7 @@ impl WoooshCore {
                         Err(RecvTimeoutError::Disconnected) => break,
                         // Poll the flag as well as the channel: a sender clone
                         // stranded in a task that outlived runtime shutdown
-                        // must not be able to wedge stop() forever.
+                        // would otherwise wedge stop() forever.
                         Err(RecvTimeoutError::Timeout) => {
                             if stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
                                 break;
@@ -438,9 +424,9 @@ impl WoooshCore {
 
     /// Shut down: closes the endpoint and stops the event pump.
     ///
-    /// **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime to
-    /// wind down and then joins the event-callback thread, so it can also
-    /// block behind an in-flight `CoreEventListener.on_event` call.
+    /// **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
+    /// then joins the event thread, so it can also block behind an in-flight
+    /// `CoreEventListener.on_event` call.
     pub fn stop(&self) {
         let started = self.state.lock().unwrap_or_else(|e| e.into_inner()).take();
         if let Some(started) = started {
@@ -449,8 +435,8 @@ impl WoooshCore {
             runtime.shutdown_timeout(std::time::Duration::from_secs(2));
             event_stop.store(true, std::sync::atomic::Ordering::Relaxed);
             // The engine owns the event sender, so it must be dropped BEFORE
-            // the join — otherwise the pump thread waits on a channel that
-            // this very scope is keeping open.
+            // the join: otherwise the pump thread waits on a channel this very
+            // scope is holding open.
             drop(engine);
             if let Some(t) = event_thread.take() {
                 let _ = t.join();
@@ -495,17 +481,15 @@ impl WoooshCore {
     /// Sender side of QR pairing: parse payload, connect (pinned to the QR
     /// key), redeem the token. Returns the paired peer_id.
     ///
-    /// All of the QR's address hints are dialled **concurrently** and the
-    /// first connection to come up wins, so a stale hint costs nothing beyond
-    /// its own timeout instead of delaying the ones behind it.
+    /// The QR's address hints are dialled concurrently; the first connection
+    /// to come up wins, so a stale hint never delays the ones behind it.
     ///
-    /// Every outcome — success, rejection, bad/expired QR, nothing reachable —
-    /// also arrives as a `PairingResult` event, so a shell can drive its
-    /// pairing UI entirely off events and never wedge on a silent failure.
+    /// Every outcome — success, rejection, bad or expired QR, nothing
+    /// reachable — also arrives as a `PairingResult` event, so a shell can
+    /// drive its pairing UI entirely off events and never wedge.
     ///
-    /// **BLOCKING — never call this on a UI thread.** It drives a full QUIC
-    /// handshake and waits for the peer's PAIR_ACCEPT: worst case ≈ 6 s
-    /// connect timeout (total, not per hint) plus a 20 s reply timeout.
+    /// **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
+    /// timeout (total, not per hint) plus a 20 s reply timeout.
     pub fn pair_with_qr(&self, payload: String) -> Result<String, WoooshError> {
         self.with_engine(|rt, e| rt.block_on(e.pair_with_qr(&payload)))?
     }
@@ -522,24 +506,22 @@ impl WoooshCore {
 
     // ----- connections -----
 
-    /// Connect to a peer address discovered by the native shell (replaces
-    /// core-side discovery). Returns the peer_id.
+    /// Connect to a peer address discovered by the native shell. Returns the
+    /// peer_id.
     ///
-    /// `expected_pubkey`, when given (32 raw bytes, e.g. from
-    /// `TrustedPeer.pubkey` or any event's `peer_pubkey`), pins the TLS
-    /// handshake — a different key fails hard with `KeyChanged` and the
-    /// connection is never established.
+    /// `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
+    /// event's `peer_pubkey`) pins the TLS handshake: a different key fails
+    /// hard with `KeyChanged` and no connection is established.
     ///
-    /// Passing `None` does **not** opt out of pinning: the core consults its
-    /// own trust store and re-applies the pin itself whenever it can resolve
-    /// the identity behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4) — a peer
-    /// paired via SAS or by displaying a QR is therefore protected even if the
-    /// shell forgets to pass its key. Passing the key explicitly is still
-    /// preferred: it pins the very first reconnect, before the core has ever
-    /// seen that address.
+    /// Passing `None` does **not** opt out of pinning — the core re-applies
+    /// the pin from its own trust store whenever it can resolve the identity
+    /// behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
+    /// protected even if the shell forgets the key. Passing it explicitly is
+    /// still preferred: it also pins the very first reconnect, before the core
+    /// has ever seen that address.
     ///
-    /// **BLOCKING — never call this on a UI thread.** Runs the QUIC handshake
-    /// and HELLO exchange inline; up to ~10 s on an unreachable address.
+    /// **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
+    /// unreachable address.
     pub fn connect_peer(
         &self,
         addr: String,
@@ -560,17 +542,16 @@ impl WoooshCore {
     /// Offer files to a peer; returns the transfer_id (hex). Streaming starts
     /// after the receiver's DECISION; completion arrives as TransferDone.
     ///
-    /// **BLOCKING — not for a UI thread.** The transfer itself runs in the
-    /// background, but the call blocks on the core's runtime to register it,
-    /// so it must not sit on the main thread; hashing and streaming are then
-    /// reported through events.
+    /// **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
+    /// background and report through events, but registering the transfer
+    /// blocks on the core's runtime.
     pub fn send(&self, peer_id: String, files: Vec<String>) -> Result<String, WoooshError> {
         let paths: Vec<PathBuf> = files.iter().map(PathBuf::from).collect();
         self.with_engine(|rt, e| rt.block_on(e.send(&peer_id, paths)))?
     }
 
     /// Resume a previously offered transfer after reconnecting to the peer
-    /// (RESUME_Q/RESUME_A §5) — verified bytes are never re-sent.
+    /// (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
     ///
     /// **BLOCKING — not for a UI thread** (same contract as `send`).
     pub fn resume_transfer(&self, peer_id: String, transfer_id: String) -> Result<(), WoooshError> {
@@ -597,8 +578,8 @@ impl WoooshCore {
     // ----- trust management -----
 
     /// The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-    /// straight from `trust.json` instead of from a local mirror that drifts.
-    /// Ordered by `paired_at`, then device id. Re-read it after every
+    /// straight from `trust.json` rather than a local mirror that drifts.
+    /// Ordered by `paired_at`, then device id. Re-read after every
     /// `PairingResult { success: true }` and after `revoke_peer`.
     pub fn trusted_peers(&self) -> Result<Vec<TrustedPeer>, WoooshError> {
         self.with_engine(|_, e| e.trusted_peers())

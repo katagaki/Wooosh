@@ -15,16 +15,12 @@ import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.peers.DeviceType
 
 /**
- * The one place `dt` (PROTOCOL.md §3.1) becomes a glyph.
+ * The one place `dt` (PROTOCOL.md §3.1) becomes a glyph. Keep it single-sourced: when the
+ * core's `DeviceType` is re-aligned with this vocabulary the only edit is in
+ * `RealCore.toApp()`, not `when` blocks scattered across the UI.
  *
- * Shared by the device list and the incoming-offer sheet. Keep it single-sourced: the
- * Rust core's own `DeviceType` is still on the old form-factor vocabulary and will be
- * re-aligned with this one later, at which point the only edit needed is in
- * `RealCore.toApp()` — not scattered `when` blocks across the UI.
- *
- * [DeviceType.UNKNOWN] is a neutral device glyph on purpose. A peer advertising a `dt`
- * this build does not know (an older Wooosh, a newer spec) gets "some device", never a
- * plausible-looking wrong platform.
+ * [DeviceType.UNKNOWN] is a neutral glyph on purpose. An unrecognised `dt` gets "some
+ * device", never a plausible-looking wrong platform.
  */
 fun DeviceType.icon(): ImageVector = when (this) {
     DeviceType.IPHONE -> Icons.Outlined.PhoneIphone

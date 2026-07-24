@@ -75,9 +75,9 @@ fun IncomingOfferSheet(
     ModalBottomSheet(onDismissRequest = onDecline) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Device type comes from the sender's HELLO. The core still speaks the
-                // old form-factor vocabulary there, so this is usually the neutral glyph
-                // — deliberately, rather than a guessed platform (PROTOCOL.md §3.1).
+                // From the sender's HELLO, which is form-factor only, so this is usually
+                // the neutral glyph — deliberately, never a guessed platform
+                // (PROTOCOL.md §3.1).
                 offer.from.deviceType?.let { type ->
                     Icon(
                         imageVector = type.icon(),
@@ -114,9 +114,8 @@ fun IncomingOfferSheet(
                     )
                 }
             } else {
-                // The sender shows the same six words on its own screen while it waits
-                // for this decision (OutgoingOfferCard) — so this instruction is one the
-                // user can actually carry out.
+                // The sender shows these same six words while it waits (OutgoingOfferCard).
+                // Do not ask for a comparison the other side is not displaying.
                 Text(
                     text = stringResource(R.string.offer_unpaired_warning),
                     style = MaterialTheme.typography.bodyMedium,
@@ -199,19 +198,13 @@ fun IncomingOfferSheet(
 /**
  * Send-side card for the window between OFFER and DECISION (PROTOCOL.md §5).
  *
- * The core only emits `TransferStarted` for a send once the receiver has accepted, so
- * before this card existed the sending device showed *nothing at all* while the other
- * user sat in front of the consent sheet. That sheet tells an unpaired receiver to
- * compare the sender's fingerprint against "the sender's screen" (PROTOCOL.md §4.4) —
- * a comparison that was impossible, because the only place the phrase appeared on the
- * sender was buried in Settings.
+ * While an **unpaired** peer is deciding, this shows our own 6-word phrase big enough to
+ * read aloud: the receiver's consent sheet tells them to compare it against the sender's
+ * screen (PROTOCOL.md §4.4), so it must be on screen here at the same moment. For a
+ * paired peer no comparison is asked for and the phrase is suppressed.
  *
- * So: while an **unpaired** peer is deciding, this card shows our own 6-word phrase,
- * big enough to read aloud across a table. For a paired peer no comparison is asked
- * for on the other end and the phrase is suppressed — it would be pure noise.
- *
- * [ownFingerprint] is `core.fingerprintPhrase()` verbatim. The wordlist is the core's;
- * the shell never derives it (DESIGN.md §4).
+ * [ownFingerprint] is `core.fingerprintPhrase()` verbatim; the shell never derives it
+ * (DESIGN.md §4).
  */
 @Composable
 fun OutgoingOfferCard(
@@ -278,9 +271,8 @@ fun OutgoingOfferCard(
 }
 
 /**
- * The 6-word verification phrase (PROTOCOL.md §2) styled for the ceremony: tonal block,
- * monospace, large and letter-spaced so two people can read it to each other. Same
- * treatment as the SAS code below, scaled for words instead of six digits.
+ * The 6-word verification phrase (PROTOCOL.md §2), sized so two people can read it to
+ * each other across a table.
  */
 @Composable
 fun VerificationPhrase(
@@ -391,10 +383,8 @@ private const val SAS_TIMEOUT_SECONDS = 60
 /**
  * Prominent KEY_CHANGED warning (PROTOCOL.md §4.5) — never a silent re-pin.
  *
- * Both phrases are shown now: the core hands over the expected and the presented key,
- * and `fingerprint_phrase_for` turns each into the same 6 words the other device shows
- * in its own settings. That turns "something changed" into something the user can
- * actually check by reading words aloud.
+ * Both phrases are shown so the warning is checkable rather than just alarming: each is
+ * the same 6 words the other device shows in its own settings.
  */
 @Composable
 fun KeyChangedDialog(
@@ -418,9 +408,8 @@ fun KeyChangedDialog(
                 Spacer(Modifier.height(16.dp))
                 FingerprintRow(
                     label = stringResource(R.string.keychanged_expected_label),
-                    // The phrase is a shared verification artifact: it has to
-                    // read identically on both devices, so it is never
-                    // translated and never reformatted.
+                    // A shared verification artifact: it must read identically on both
+                    // devices, so never translate or reformat it.
                     phrase = alert.expectedFingerprint,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -545,9 +534,8 @@ fun TransferCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(6.dp))
-                // Three self-contained measurements joined by a separator.
-                // Each is a whole format string of its own, so nothing here
-                // asks a translator to reorder half a sentence.
+                // Each part is a whole format string of its own: never hand a translator
+                // half a sentence to reorder.
                 val parts = buildList {
                     add(
                         stringResource(

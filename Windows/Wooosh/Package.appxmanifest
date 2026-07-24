@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <!--
+    Publisher must match the certificate the package is signed with. "CN=Tsubuzaki" is a
+    placeholder for a local self-signed test certificate; replace it (and the certificate)
+    before doing anything but F5 on a dev machine.
+  -->
+  <Identity
+    Name="com.tsubuzaki.Wooosh"
+    Publisher="CN=Tsubuzaki"
+    Version="1.0.0.0" />
+
+  <Properties>
+    <!-- The product name is never translated (COPY_STYLE.md §2), so it is literal here. -->
+    <DisplayName>Wooosh</DisplayName>
+    <PublisherDisplayName>Tsubuzaki</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-US" />
+    <Resource Language="ja" />
+    <Resource Language="ko" />
+    <Resource Language="zh-Hans" />
+    <Resource Language="zh-Hant" />
+    <Resource Language="de" />
+    <Resource Language="es" />
+    <Resource Language="fr" />
+    <Resource Language="it" />
+    <Resource Language="nl" />
+    <Resource Language="pt-BR" />
+    <Resource Language="pl" />
+    <Resource Language="ru" />
+    <Resource Language="sv" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="$targetnametoken$.exe"
+      EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="Wooosh"
+        Description="Local-network encrypted file sharing."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!--
+          Share Target (DESIGN.md §8). Wooosh accepts any file type: the share sheet is the
+          main send entry point on Windows, and refusing a type here removes Wooosh from the
+          sheet entirely rather than failing gracefully later.
+
+          Activation arrives through Microsoft.Windows.AppLifecycle.AppInstance with
+          ExtendedActivationKind.ShareTarget; see App.xaml.cs.
+        -->
+        <uap:Extension Category="windows.shareTarget">
+          <uap:ShareTarget Description="ms-resource:///Resources/ShareTargetTitle">
+            <uap:SupportedFileTypes>
+              <uap:SupportsAnyFileType />
+            </uap:SupportedFileTypes>
+            <uap:DataFormat>StorageItems</uap:DataFormat>
+          </uap:ShareTarget>
+        </uap:Extension>
+
+        <!--
+          TODO(File Explorer verb): DESIGN.md §8 also calls for a right-click
+          "Send with Wooosh" verb. On Windows 11 that is a sparse-package
+          IExplorerCommand COM server declared as:
+
+            <com:Extension Category="windows.comServer"> ... </com:Extension>
+            <desktop4:Extension Category="windows.fileExplorerContextMenus"> ... </desktop4:Extension>
+
+          It needs a separate C++/WinRT (or C# with CsWinRT COM activation) in-process
+          server that implements IExplorerCommand, which is a project of its own. Not
+          scaffolded here: an XML-only stub would register a verb that does nothing,
+          which is worse than no verb. The Share Target above covers the same flow via
+          the share sheet in the meantime.
+        -->
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!--
+      privateNetworkClientServer is the one that matters: it is what allows inbound QUIC
+      and mDNS on the local subnet. Without it Wooosh can see nothing and be seen by nothing.
+      internetClient/internetClientServer are for the iroh path (DESIGN.md §9.1).
+    -->
+    <Capability Name="privateNetworkClientServer" />
+    <Capability Name="internetClient" />
+    <Capability Name="internetClientServer" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

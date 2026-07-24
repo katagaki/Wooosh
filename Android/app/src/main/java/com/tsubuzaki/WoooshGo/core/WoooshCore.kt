@@ -32,8 +32,7 @@ data class CoreConfig(
  * rotating discovery id used by the NSD browser.
  *
  * [publicKey] is the peer's raw 32-byte Ed25519 identity key, proven in the TLS
- * handshake. Every core event that names a peer now carries it, so it is non-null for
- * anything that came off the wire; it is only null for a peer the shell knows by
+ * handshake. Non-null for anything that came off the wire; null only for a peer known by
  * DeviceID alone (a cache miss). Pass it back to `connectPeer` / `revokePeer`.
  */
 data class PeerRef(
@@ -71,10 +70,8 @@ data class PeerRef(
 }
 
 /**
- * One pinned peer from the core's own trust store (`trustedPeers()`).
- *
- * This is the shell's only trust list: there is no local mirror to drift any more. Read
- * it at launch, after every successful pairing and after a revoke.
+ * One pinned peer from the core's own trust store (`trustedPeers()`) — the shell's only
+ * trust list. Re-read it at launch, after every successful pairing and after a revoke.
  */
 data class TrustedPeerInfo(
     /** `Q7KM-3PXA-…` — identical to the `peerId` carried by every core event. */
@@ -190,11 +187,7 @@ sealed interface CoreEvent {
         val kind: FileKind,
     ) : CoreEvent
 
-    /**
-     * [durationMs] is the wall-clock time of this attempt as measured by the core (from
-     * the moment bytes could start flowing to the last DONE) — the shell no longer
-     * guesses it.
-     */
+    /** [durationMs] is the core's own wall-clock measurement; the shell never times transfers. */
     data class TransferDone(
         val transferId: TransferId,
         val okFiles: Int,
@@ -222,10 +215,7 @@ sealed interface CoreEvent {
 }
 
 /**
- * Shell-side seam over the wooosh-core FFI surface (DESIGN.md §4).
- *
- * Implemented by [RealCore] (the UniFFI bindings, the default) and [MockCore] (kept
- * reachable behind the debug section for scripted UI flows).
+ * Shell-side seam over the wooosh-core FFI surface (DESIGN.md §4), implemented by [RealCore].
  *
  * Blocking calls (`connectPeer`, `send`, `revokePeer`, `trustedPeers`) are `suspend`:
  * the core does real network and disk work on them and they must never run on the main

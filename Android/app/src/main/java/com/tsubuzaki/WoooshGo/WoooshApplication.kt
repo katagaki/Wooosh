@@ -1,11 +1,9 @@
 package com.tsubuzaki.WoooshGo
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import com.tsubuzaki.WoooshGo.core.CoreConfig
 import com.tsubuzaki.WoooshGo.core.CoreVisibility
-import com.tsubuzaki.WoooshGo.core.MockCore
 import com.tsubuzaki.WoooshGo.core.RealCore
 import com.tsubuzaki.WoooshGo.core.WoooshCore
 import com.tsubuzaki.WoooshGo.discovery.DiscoveryController
@@ -32,18 +30,7 @@ class WoooshApplication : Application() {
     val identityManager by lazy { IdentityManager(this) }
     val settingsRepository by lazy { SettingsRepository(this) }
 
-    /**
-     * The real Rust engine (UniFFI). [MockCore] stays reachable for the scripted debug
-     * flows — flip `useMockCore` in the debug prefs (Settings → Debug) and restart.
-     */
-    val core: WoooshCore by lazy {
-        if (useMockCore()) {
-            Log.w(TAG, "starting with the MOCK core (debug preference)")
-            MockCore(this, appScope)
-        } else {
-            RealCore(this, appScope, identityManager)
-        }
-    }
+    val core: WoooshCore by lazy { RealCore(this, appScope, identityManager) }
 
     val discovery by lazy {
         DiscoveryController(this, appScope, settingsRepository) {
@@ -87,12 +74,10 @@ class WoooshApplication : Application() {
                     TAG,
                     "core ready: deviceId=${core.deviceId()} listenAddr=${core.listenAddr()}",
                 )
-                // The trust list is read from the core at launch — there is no local
-                // mirror to restore any more (PROTOCOL.md §4.5).
+                // The core is the only trust list; read it at launch (PROTOCOL.md §4.5).
                 trustStore.refreshNow()
             } catch (t: Throwable) {
-                // The core reports failures in internal English; the shell shows
-                // its own sentence and keeps the raw text in the log.
+                // Core failures are internal English: never surface them raw.
                 coreStartError = getString(R.string.error_core_start)
                 Log.e(TAG, "core failed to start", t)
             }
@@ -136,20 +121,7 @@ class WoooshApplication : Application() {
         Visibility.OFF -> CoreVisibility.OFF
     }
 
-    // ---------------------------------------------------------------- debug toggle
-
-    private fun debugPrefs() = getSharedPreferences(DEBUG_PREFS, Context.MODE_PRIVATE)
-
-    fun useMockCore(): Boolean = debugPrefs().getBoolean(KEY_USE_MOCK, false)
-
-    /** Takes effect on the next app start (the core is created once per process). */
-    fun setUseMockCore(enabled: Boolean) {
-        debugPrefs().edit().putBoolean(KEY_USE_MOCK, enabled).apply()
-    }
-
     private companion object {
         const val TAG = "WoooshApp"
-        const val DEBUG_PREFS = "wooosh_debug"
-        const val KEY_USE_MOCK = "use_mock_core"
     }
 }

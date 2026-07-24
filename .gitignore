@@ -44,3 +44,19 @@ captures/
 # Editors
 .idea/
 *.swp
+
+# Windows / Visual Studio / MSIX
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxupload
+*.msixupload
+*.pfx

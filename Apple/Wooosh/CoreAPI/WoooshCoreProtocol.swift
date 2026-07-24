@@ -3,10 +3,9 @@ import UniformTypeIdentifiers
 
 // MARK: - Core ↔ shell API contract (DESIGN.md §4)
 //
-// This stays the app's seam. `RealCore` adapts the UniFFI-generated
-// `WoooshCoreFFI.WoooshCore` object to it; `MockCore` keeps the scripted demo
-// flows alive behind the DEBUG menu. Neither the views nor the stores know
-// which one they are talking to.
+// The app's FFI seam: `RealCore` adapts the UniFFI-generated
+// `WoooshCoreFFI.WoooshCore` object to it. Views and stores talk only to this
+// protocol, never to the generated bindings.
 
 /// Opaque transfer identifier (`tid` in PROTOCOL.md §5). Stable across resumes.
 struct TransferID: Hashable, Identifiable, Sendable {
@@ -107,7 +106,7 @@ struct CoreConfig: Sendable {
     let visibility: Visibility
     /// Core-private staging directory for incoming `.part` files.
     let stagingDirectory: URL
-    /// Core-owned trust store (pinned peer keys) — canonical from Milestone 3.
+    /// Core-owned trust store (pinned peer keys); canonical.
     let trustStoreURL: URL
     /// UDP bind address; nil = ephemeral port on all interfaces.
     let listenAddress: String?

@@ -1,0 +1,692 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Wooosh for Windows. Generated from the shipped Android translations so both
+    shells use one term per concept; see Assets/Documentation/COPY_STYLE.md.
+    Plural forms are selected by Localization/PluralRules.cs using the CLDR
+    category for the resource's locale, so keys carry a .One/.Few/.Many/.Other
+    suffix rather than being chosen with an English-shaped if (count == 1).
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Wooosh</value>
+    <comment>The product name. Never translated (COPY_STYLE.md §2).</comment>
+  </data>
+  <data name="DeviceKindIPhone" xml:space="preserve">
+    <value>iPhone</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindIPad" xml:space="preserve">
+    <value>iPad</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindMac" xml:space="preserve">
+    <value>Mac</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="ActionRefresh" xml:space="preserve">
+    <value>Uppdatera</value>
+    <comment>Command bar button: re-run device discovery.</comment>
+  </data>
+  <data name="ActionSettings" xml:space="preserve">
+    <value>Inställningar</value>
+    <comment>Command bar button and title of the settings page.</comment>
+  </data>
+  <data name="ActionPairDevice" xml:space="preserve">
+    <value>Parkoppla en enhet</value>
+    <comment>Button that opens the pairing page.</comment>
+  </data>
+  <data name="ActionCancel" xml:space="preserve">
+    <value>Avbryt</value>
+    <comment>Generic cancel button.</comment>
+  </data>
+  <data name="ActionDone" xml:space="preserve">
+    <value>Klar</value>
+    <comment>Generic confirmation button that closes a finished dialog.</comment>
+  </data>
+  <data name="ActionClose" xml:space="preserve">
+    <value>Stäng</value>
+    <comment>Generic button that dismisses a dialog without acting.</comment>
+  </data>
+  <data name="ActionOk" xml:space="preserve">
+    <value>OK</value>
+    <comment>Button that acknowledges an alert.</comment>
+  </data>
+  <data name="ActionDecline" xml:space="preserve">
+    <value>Avvisa</value>
+    <comment>Button that refuses an incoming file offer.</comment>
+  </data>
+  <data name="ActionAccept" xml:space="preserve">
+    <value>Acceptera</value>
+    <comment>Button that accepts an incoming file offer from a paired device.</comment>
+  </data>
+  <data name="ActionAcceptOnce" xml:space="preserve">
+    <value>Acceptera en gång</value>
+    <comment>Button that accepts one offer from a device that is not paired.</comment>
+  </data>
+  <data name="ActionSendFiles" xml:space="preserve">
+    <value>Skicka filer…</value>
+    <comment>Context-menu item that starts a transfer to the selected device.</comment>
+  </data>
+  <data name="ActionChooseFiles" xml:space="preserve">
+    <value>Välj filer</value>
+    <comment>Button that opens the system file picker.</comment>
+  </data>
+  <data name="ActionCancelTransfer" xml:space="preserve">
+    <value>Avbryt överföring</value>
+    <comment>Button that stops a transfer that is running.</comment>
+  </data>
+  <data name="ActionDismiss" xml:space="preserve">
+    <value>Stäng</value>
+    <comment>Button that removes a finished transfer card from the list.</comment>
+  </data>
+  <data name="ActionUnpair" xml:space="preserve">
+    <value>Ta bort parkoppling</value>
+    <comment>Button that removes a paired device and the key stored for it.</comment>
+  </data>
+  <data name="ActionTryAgain" xml:space="preserve">
+    <value>Försök igen</value>
+    <comment>Button that restarts a failed attempt.</comment>
+  </data>
+  <data name="ActionNotNow" xml:space="preserve">
+    <value>Inte nu</value>
+    <comment>Button that postpones a security warning without acting on it.</comment>
+  </data>
+  <data name="ActionPairAgain" xml:space="preserve">
+    <value>Parkoppla igen</value>
+    <comment>Button that starts pairing again after a security key changed.</comment>
+  </data>
+  <data name="ActionCopyCode" xml:space="preserve">
+    <value>Kopiera kod</value>
+    <comment>Button that copies this device&#x27;s pairing code to the clipboard.</comment>
+  </data>
+  <data name="ActionCopyPairingCode" xml:space="preserve">
+    <value>Kopiera parkopplingskod</value>
+    <comment>Accessibility label for the copy button next to the pairing code.</comment>
+  </data>
+  <data name="ActionCopied" xml:space="preserve">
+    <value>Kopierat</value>
+    <comment>Confirmation shown on the copy button right after a copy.</comment>
+  </data>
+  <data name="ActionNewCode" xml:space="preserve">
+    <value>Ny kod</value>
+    <comment>Button that generates a fresh pairing code.</comment>
+  </data>
+  <data name="ActionPairWithPasted" xml:space="preserve">
+    <value>Parkoppla med inklistrad kod</value>
+    <comment>Button that pairs using a pairing code the user pasted.</comment>
+  </data>
+  <data name="ActionCodesMatch" xml:space="preserve">
+    <value>Koderna matchar</value>
+    <comment>Button confirming that both devices show the same six-digit code.</comment>
+  </data>
+  <data name="ActionShowMyCode" xml:space="preserve">
+    <value>Visa min parkopplingskod…</value>
+    <comment>Context-menu item that shows this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="ActionPairThisDevice" xml:space="preserve">
+    <value>Parkoppla enhet…</value>
+    <comment>Context-menu item that starts pairing with the selected device.</comment>
+  </data>
+  <data name="ActionBack" xml:space="preserve">
+    <value>Tillbaka</value>
+    <comment>Accessibility label for the back button.</comment>
+  </data>
+  <data name="PeerStateReady" xml:space="preserve">
+    <value>Redo</value>
+    <comment>Device row subtitle: the device is reachable.</comment>
+  </data>
+  <data name="PeerStateReadyPaired" xml:space="preserve">
+    <value>Redo · Parkopplad</value>
+    <comment>Device row subtitle: reachable and already paired.</comment>
+  </data>
+  <data name="PeerStateAway" xml:space="preserve">
+    <value>Frånvarande</value>
+    <comment>Device row subtitle: the device stopped answering and cannot be used.</comment>
+  </data>
+  <data name="PeerStateTapToSend" xml:space="preserve">
+    <value>Tryck för att skicka</value>
+    <comment>Device row subtitle while files are waiting to be sent.</comment>
+  </data>
+  <data name="PeerBadgePaired" xml:space="preserve">
+    <value>Parkopplad</value>
+    <comment>Accessibility label for the checkmark on a paired device row.</comment>
+  </data>
+  <data name="PeerUnnamed" xml:space="preserve">
+    <value>Namnlös enhet</value>
+    <comment>Stand-in shown for a device that advertises no name of its own.</comment>
+  </data>
+  <data name="EmptyTitle" xml:space="preserve">
+    <value>Söker efter enheter</value>
+    <comment>Title of the empty device list.</comment>
+  </data>
+  <data name="EmptyBody" xml:space="preserve">
+    <value>Enheter som kör Wooosh i samma Wi-Fi-nätverk visas här automatiskt.</value>
+    <comment>Body of the empty device list.</comment>
+  </data>
+  <data name="EmptyVisibilityEveryone" xml:space="preserve">
+    <value>Alla enheter i närheten kan se den här enheten.</value>
+    <comment>Extra line on the empty device list when everyone can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityPaired" xml:space="preserve">
+    <value>Endast parkopplade enheter kan se den här enheten.</value>
+    <comment>Extra line on the empty device list when only paired devices can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityOff" xml:space="preserve">
+    <value>Den här enheten är dold och kan inte ta emot filer. Du ser fortfarande andra enheter och kan skicka till dem.</value>
+    <comment>Extra line on the empty device list when this device is hidden.</comment>
+  </data>
+  <data name="DeviceKindWindows" xml:space="preserve">
+    <value>Windows-dator</value>
+    <comment>Accessibility name for a Windows computer.</comment>
+  </data>
+  <data name="DeviceKindAndroidPhone" xml:space="preserve">
+    <value>Android-telefon</value>
+    <comment>Accessibility name for an Android phone.</comment>
+  </data>
+  <data name="DeviceKindAndroidTablet" xml:space="preserve">
+    <value>Android-surfplatta</value>
+    <comment>Accessibility name for an Android tablet.</comment>
+  </data>
+  <data name="DeviceKindUnknown" xml:space="preserve">
+    <value>Enhet</value>
+    <comment>Accessibility name for a device whose type is unknown.</comment>
+  </data>
+  <data name="StorageLocationDownloads" xml:space="preserve">
+    <value>Hämtade filer</value>
+    <comment>Where a received file was stored: the Downloads folder.</comment>
+  </data>
+  <data name="OfferNavIncoming" xml:space="preserve">
+    <value>Inkommande filer</value>
+    <comment>Title of the dialog asking whether to accept files.</comment>
+  </data>
+  <data name="OfferNavReceiving" xml:space="preserve">
+    <value>Tar emot</value>
+    <comment>Title shown while files are being received.</comment>
+  </data>
+  <data name="OfferPairedDevice" xml:space="preserve">
+    <value>Parkopplad enhet</value>
+    <comment>Label confirming the sender is already paired.</comment>
+  </data>
+  <data name="OfferUnpairedWarning" xml:space="preserve">
+    <value>Inte parkopplad. Kontrollera att orden nedan stämmer med dem på avsändarens skärm.</value>
+    <comment>Warning above the sender&#x27;s verification phrase on the accept dialog.</comment>
+  </data>
+  <data name="VerifyYourPhraseTitle" xml:space="preserve">
+    <value>Din verifieringsfras</value>
+    <comment>Heading above this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyYourPhraseBody" xml:space="preserve">
+    <value>Den andra enheten ber dig bekräfta att orden stämmer innan den tar emot.</value>
+    <comment>Explanation under this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseTitle" xml:space="preserve">
+    <value>Verifieringsfras</value>
+    <comment>Settings label for this device&#x27;s verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseBody" xml:space="preserve">
+    <value>Läs orden högt för att bekräfta att du pratar med rätt enhet. De kommer från enhetens identitetsnyckel, som aldrig lämnar den.</value>
+    <comment>Settings explanation of the verification phrase.</comment>
+  </data>
+  <data name="TransferSendingTo" xml:space="preserve">
+    <value>Skickar till {0}</value>
+    <comment>Header while sending. {0} is a device name.</comment>
+  </data>
+  <data name="TransferReceivingFrom" xml:space="preserve">
+    <value>Tar emot från {0}</value>
+    <comment>Header while receiving. {0} is a device name.</comment>
+  </data>
+  <data name="TransferNavSending" xml:space="preserve">
+    <value>Skickar</value>
+    <comment>Title while a send is in progress.</comment>
+  </data>
+  <data name="TransferNavSendFiles" xml:space="preserve">
+    <value>Skicka filer</value>
+    <comment>Title of the screen that picks what to send.</comment>
+  </data>
+  <data name="TransferStateConnecting" xml:space="preserve">
+    <value>Väntar på den andra enheten…</value>
+    <comment>Status line while waiting for the other device to answer.</comment>
+  </data>
+  <data name="TransferStateCancelled" xml:space="preserve">
+    <value>Avbruten</value>
+    <comment>Status line for a transfer the user stopped.</comment>
+  </data>
+  <data name="TransferStateDone" xml:space="preserve">
+    <value>Klar</value>
+    <comment>Status line for a transfer that finished, when no detail is available.</comment>
+  </data>
+  <data name="TransferProgressBytes" xml:space="preserve">
+    <value>{0} av {1}</value>
+    <comment>Progress line. {0} is bytes done, {1} the total.</comment>
+  </data>
+  <data name="TransferProgressRate" xml:space="preserve">
+    <value>{0}/s</value>
+    <comment>Transfer speed. {0} is a formatted byte size such as 12 MB.</comment>
+  </data>
+  <data name="TransferProgressEta" xml:space="preserve">
+    <value>Cirka {0} kvar</value>
+    <comment>Estimated time left. {0} is a formatted duration.</comment>
+  </data>
+  <data name="TransferSavedTo" xml:space="preserve">
+    <value>{0} · Sparad i {1}</value>
+    <comment>Per-file line after a file is stored. {0} is its size, {1} the location.</comment>
+  </data>
+  <data name="TransferConnectingTo" xml:space="preserve">
+    <value>Ansluter till {0}…</value>
+    <comment>Status while connecting. {0} is a device name.</comment>
+  </data>
+  <data name="TransferPreparing" xml:space="preserve">
+    <value>Förbereder…</value>
+    <comment>Status while files are being prepared for sending.</comment>
+  </data>
+  <data name="TransferResumable" xml:space="preserve">
+    <value>{0} Wooosh kan fortsätta där det slutade.</value>
+    <comment>Appended to a failure that can continue later. {0} is the failure message.</comment>
+  </data>
+  <data name="PairingTitle" xml:space="preserve">
+    <value>Parkoppla en enhet</value>
+    <comment>Title of the pairing page.</comment>
+  </data>
+  <data name="PairingTabMyCode" xml:space="preserve">
+    <value>Min kod</value>
+    <comment>Tab showing this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowBody" xml:space="preserve">
+    <value>Skanna koden med den andra enheten, eller kopiera parkopplingskoden och skicka den via en kanal du litar på.</value>
+    <comment>Instructions above this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowExpiry" xml:space="preserve">
+    <value>Koden fungerar en gång och upphör att gälla efter 2 minuter.</value>
+    <comment>Note under the pairing code explaining that it is short-lived.</comment>
+  </data>
+  <data name="PairingQrA11y" xml:space="preserve">
+    <value>QR-kod för parkoppling</value>
+    <comment>Accessibility label for the QR image.</comment>
+  </data>
+  <data name="PairingScanBodyDesktop" xml:space="preserve">
+    <value>Kopiera parkopplingskoden från den andra enheten och klistra in den nedan.</value>
+    <comment>Instructions on a computer, which pairs by pasting rather than scanning.</comment>
+  </data>
+  <data name="PairingPasteLabel" xml:space="preserve">
+    <value>Parkopplingskod</value>
+    <comment>Label of the text field for a pasted pairing code.</comment>
+  </data>
+  <data name="PairingInProgressTitle" xml:space="preserve">
+    <value>Parkopplar</value>
+    <comment>Title of the dialog shown while pairing runs.</comment>
+  </data>
+  <data name="PairingProgressBody" xml:space="preserve">
+    <value>Låt den andra enheten vara upplåst med parkopplingskoden på skärmen. Båda enheterna måste vara i samma Wi-Fi-nätverk. Det kan ta några sekunder.</value>
+    <comment>Explanation while a pairing attempt runs.</comment>
+  </data>
+  <data name="PairingSuccessTitle" xml:space="preserve">
+    <value>Parkopplad med {0}</value>
+    <comment>Title after a successful pairing. {0} is a device name.</comment>
+  </data>
+  <data name="PairingSuccessBody" xml:space="preserve">
+    <value>Wooosh litar på den här enheten från och med nu. Du behöver inte jämföra verifieringsfraser med den igen.</value>
+    <comment>Explanation after a successful pairing.</comment>
+  </data>
+  <data name="PairingFailedTitle" xml:space="preserve">
+    <value>Parkopplingen misslyckades</value>
+    <comment>Title shown when pairing did not succeed.</comment>
+  </data>
+  <data name="PairingFailedTitleNamed" xml:space="preserve">
+    <value>Wooosh kunde inte parkoppla med {0}</value>
+    <comment>Title when pairing with a named device failed. {0} is a device name.</comment>
+  </data>
+  <data name="SasTitle" xml:space="preserve">
+    <value>Parkoppla med {0}?</value>
+    <comment>Question asking whether to pair. {0} is a device name.</comment>
+  </data>
+  <data name="SasBody" xml:space="preserve">
+    <value>Båda enheterna visar en sexsiffrig kod. Fortsätt bara om koderna är lika.</value>
+    <comment>Instructions for comparing the six-digit verification code.</comment>
+  </data>
+  <data name="SasExpiresIn" xml:space="preserve">
+    <value>Upphör om {0} s</value>
+    <comment>Countdown until the verification code expires. {0} is seconds left.</comment>
+  </data>
+  <data name="SasConfirming" xml:space="preserve">
+    <value>Bekräftar…</value>
+    <comment>Status while the other device confirms the verification code.</comment>
+  </data>
+  <data name="KeyChangedTitle" xml:space="preserve">
+    <value>Säkerhetsnyckeln har ändrats</value>
+    <comment>Title of the warning that a paired device&#x27;s key changed.</comment>
+  </data>
+  <data name="KeyChangedBody" xml:space="preserve">
+    <value>”{0}” visar en annan säkerhetsnyckel än vid parkopplingen. Det händer oftast efter en ominstallation av Wooosh eller en återställning av enheten, men det kan också betyda att en annan enhet utger sig för att vara den. Överföringar med enheten är blockerade tills du parkopplar igen.</value>
+    <comment>Body of the security-key warning. {0} is a device name.</comment>
+  </data>
+  <data name="KeyChangedExpectedLabel" xml:space="preserve">
+    <value>Du parkopplade med</value>
+    <comment>Label above the verification phrase recorded at pairing time.</comment>
+  </data>
+  <data name="KeyChangedPresentedLabel" xml:space="preserve">
+    <value>Nu visar den</value>
+    <comment>Label above the verification phrase the device shows now.</comment>
+  </data>
+  <data name="KeyChangedPresentedUnknown" xml:space="preserve">
+    <value>Inte tillgänglig: anslutningen misslyckades innan nyckeln kunde läsas.</value>
+    <comment>Shown when the other device&#x27;s key could not be read at all.</comment>
+  </data>
+  <data name="KeyChangedAdvice" xml:space="preserve">
+    <value>Be ägaren läsa upp enhetens verifieringsfras högt. Parkoppla igen endast om den stämmer med den andra frasen.</value>
+    <comment>Advice under the two verification phrases in the security warning.</comment>
+  </data>
+  <data name="KeyChangedRowWarning" xml:space="preserve">
+    <value>Nyckeln har ändrats. Parkoppla igen för att fortsätta.</value>
+    <comment>Warning on a paired-device row whose key changed.</comment>
+  </data>
+  <data name="SettingsSectionDevice" xml:space="preserve">
+    <value>Enhet</value>
+    <comment>Settings section header for this device&#x27;s own name.</comment>
+  </data>
+  <data name="SettingsDisplayName" xml:space="preserve">
+    <value>Visningsnamn</value>
+    <comment>Label of the field holding the name other devices see.</comment>
+  </data>
+  <data name="SettingsDisplayNameFooter" xml:space="preserve">
+    <value>Visas för enheter i närheten.</value>
+    <comment>Helper text under the display-name field.</comment>
+  </data>
+  <data name="SettingsSectionWhoCanSee" xml:space="preserve">
+    <value>Vem som kan se den här enheten</value>
+    <comment>Settings section header for the discovery setting.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryone" xml:space="preserve">
+    <value>Alla</value>
+    <comment>Option: any nearby device can see this one.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryoneDesc" xml:space="preserve">
+    <value>Alla enheter i närheten kan se den här enheten och erbjuda den filer.</value>
+    <comment>Description of the Everyone option.</comment>
+  </data>
+  <data name="SettingsVisibilityPaired" xml:space="preserve">
+    <value>Endast parkopplade enheter</value>
+    <comment>Option: only paired devices may send.</comment>
+  </data>
+  <data name="SettingsVisibilityPairedDesc" xml:space="preserve">
+    <value>Enheter i närheten ser den här enheten, men bara parkopplade enheter kan skicka till den.</value>
+    <comment>Description of the Paired Devices Only option.</comment>
+  </data>
+  <data name="SettingsVisibilityOff" xml:space="preserve">
+    <value>Av</value>
+    <comment>Option: this device is hidden and cannot receive.</comment>
+  </data>
+  <data name="SettingsVisibilityOffDesc" xml:space="preserve">
+    <value>Den här enheten är dold och kan inte ta emot filer. Du ser fortfarande andra enheter och kan skicka till dem.</value>
+    <comment>Description of the Off option.</comment>
+  </data>
+  <data name="SettingsSectionPairing" xml:space="preserve">
+    <value>Parkoppling</value>
+    <comment>Settings section header for pairing.</comment>
+  </data>
+  <data name="SettingsPairingFooter" xml:space="preserve">
+    <value>Parkopplade enheter bekräftar varandras identitet automatiskt, så överföringar mellan dem ber dig aldrig jämföra verifieringsfraser.</value>
+    <comment>Explanation of what pairing buys the user.</comment>
+  </data>
+  <data name="SettingsSectionPairedDevices" xml:space="preserve">
+    <value>Parkopplade enheter</value>
+    <comment>Settings section header listing paired devices.</comment>
+  </data>
+  <data name="SettingsPairedDevicesEmpty" xml:space="preserve">
+    <value>Inga parkopplade enheter än. Använd ”Parkoppla en enhet” för att lägga till en.</value>
+    <comment>Shown when nothing is paired yet.</comment>
+  </data>
+  <data name="SettingsPairedDevicesFooter" xml:space="preserve">
+    <value>Att ta bort parkopplingen raderar den sparade nyckeln. Nästa överföring från enheten är inte betrodd förrän du parkopplar igen.</value>
+    <comment>Explanation of what unpairing does.</comment>
+  </data>
+  <data name="SettingsPairedOn" xml:space="preserve">
+    <value>Parkopplad {0}</value>
+    <comment>Date a device was paired. {0} is a formatted date.</comment>
+  </data>
+  <data name="SettingsSectionThisDevice" xml:space="preserve">
+    <value>Den här enheten</value>
+    <comment>Settings section header for this device&#x27;s identity.</comment>
+  </data>
+  <data name="SettingsDeviceId" xml:space="preserve">
+    <value>Enhets-ID</value>
+    <comment>Label of this device&#x27;s permanent identifier.</comment>
+  </data>
+  <data name="SettingsDeviceIdFooter" xml:space="preserve">
+    <value>Identifierar den här enheten för andra vid parkoppling.</value>
+    <comment>Helper text under the device identifier.</comment>
+  </data>
+  <data name="SettingsStarting" xml:space="preserve">
+    <value>Startar…</value>
+    <comment>Placeholder shown until Wooosh has finished starting up.</comment>
+  </data>
+  <data name="ErrorSendFailedTitle" xml:space="preserve">
+    <value>Wooosh kunde inte skicka</value>
+    <comment>Dialog title when a send could not start.</comment>
+  </data>
+  <data name="ErrorSendFailedBody" xml:space="preserve">
+    <value>Filerna kunde inte skickas. Försök igen.</value>
+    <comment>Fallback body when a send could not start.</comment>
+  </data>
+  <data name="ErrorFilesUnreadable" xml:space="preserve">
+    <value>Filerna kunde inte läsas. Välj dem igen.</value>
+    <comment>Shown when the chosen files could not be read.</comment>
+  </data>
+  <data name="ErrorStillResolving" xml:space="preserve">
+    <value>Wooosh letar fortfarande efter {0}. Försök igen om en stund.</value>
+    <comment>Shown when a device has been seen but not reached yet. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorUnreachable" xml:space="preserve">
+    <value>Wooosh kunde inte avgöra hur ”{0}” nås. Enheten kan just ha gått offline.</value>
+    <comment>Shown when no address for a device could be worked out. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorSaveFailed" xml:space="preserve">
+    <value>Wooosh kunde inte spara filen.</value>
+    <comment>Shown when a received file could not be stored.</comment>
+  </data>
+  <data name="ErrorStorageUnavailable" xml:space="preserve">
+    <value>Wooosh kunde inte nå mappen för mottagna filer. Kontrollera ledigt utrymme och försök igen.</value>
+    <comment>Shown when the folder for received files cannot be used.</comment>
+  </data>
+  <data name="ErrorPairingRequired" xml:space="preserve">
+    <value>Enheten tar bara emot filer från enheter den är parkopplad med.</value>
+    <comment>Core error: the other device accepts paired devices only.</comment>
+  </data>
+  <data name="ErrorVersionMismatch" xml:space="preserve">
+    <value>Enheten kör en version av Wooosh som inte är kompatibel. Uppdatera Wooosh på båda enheterna.</value>
+    <comment>Core error: incompatible Wooosh versions.</comment>
+  </data>
+  <data name="ErrorKeyChanged" xml:space="preserve">
+    <value>Enheten visar en annan säkerhetsnyckel än vid parkopplingen. Parkoppla igen för att fortsätta.</value>
+    <comment>Core error: a paired device presented a different key.</comment>
+  </data>
+  <data name="ErrorQrKeyMismatch" xml:space="preserve">
+    <value>Enheten som svarade är inte den i parkopplingskoden. Wooosh avbröt parkopplingen.</value>
+    <comment>Core error: the device that answered is not the one in the pairing code.</comment>
+  </data>
+  <data name="ErrorInvalidQr" xml:space="preserve">
+    <value>Det är inte en parkopplingskod för Wooosh.</value>
+    <comment>Core error: the scanned or pasted text is not a Wooosh pairing code.</comment>
+  </data>
+  <data name="ErrorPairingExpired" xml:space="preserve">
+    <value>Parkopplingskoden har upphört att gälla. Be om en ny.</value>
+    <comment>Core error: the pairing code is no longer valid.</comment>
+  </data>
+  <data name="ErrorPairingFailed" xml:space="preserve">
+    <value>Parkopplingen slutfördes inte. Försök igen.</value>
+    <comment>Generic pairing failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorPairingTimeout" xml:space="preserve">
+    <value>Wooosh nådde inte enheten i tid. Kontrollera att den fortfarande visar sin parkopplingskod och att båda enheterna är i samma Wi-Fi-nätverk.</value>
+    <comment>Shown when a pairing attempt ran out of time.</comment>
+  </data>
+  <data name="ErrorSasTimeout" xml:space="preserve">
+    <value>Den andra enheten bekräftade inte i tid. Starta parkopplingen igen när båda enheterna är redo.</value>
+    <comment>Shown when the other device did not confirm the verification code in time.</comment>
+  </data>
+  <data name="ErrorConnect" xml:space="preserve">
+    <value>Wooosh kunde inte nå enheten. Kontrollera att båda enheterna är i samma Wi-Fi-nätverk.</value>
+    <comment>Core error: the other device could not be reached at all.</comment>
+  </data>
+  <data name="ErrorUnknownPeer" xml:space="preserve">
+    <value>Enheten är inte längre ansluten.</value>
+    <comment>Core error: the connection to that device is gone.</comment>
+  </data>
+  <data name="ErrorNotStarted" xml:space="preserve">
+    <value>Wooosh startar fortfarande. Försök igen om en stund.</value>
+    <comment>Core error: Wooosh has not finished starting yet.</comment>
+  </data>
+  <data name="ErrorCrypto" xml:space="preserve">
+    <value>Wooosh kunde inte verifiera den säkra anslutningen. Försök igen.</value>
+    <comment>Core error: the secure connection could not be verified.</comment>
+  </data>
+  <data name="ErrorIo" xml:space="preserve">
+    <value>Wooosh kunde inte läsa eller skriva en fil. Kontrollera ledigt utrymme och försök igen.</value>
+    <comment>Core error: a file could not be read or written.</comment>
+  </data>
+  <data name="ErrorTransferFailed" xml:space="preserve">
+    <value>Överföringen stoppades innan den blev klar. Försök igen.</value>
+    <comment>Generic transfer failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorDeclinedByPeer" xml:space="preserve">
+    <value>Den andra enheten avvisade filerna.</value>
+    <comment>Shown when the other device refused the files.</comment>
+  </data>
+  <data name="ErrorCancelledByPeer" xml:space="preserve">
+    <value>Den andra enheten avbröt överföringen.</value>
+    <comment>Shown when the other device stopped the transfer.</comment>
+  </data>
+  <data name="ErrorNoAnswer" xml:space="preserve">
+    <value>Den andra enheten svarade inte i tid.</value>
+    <comment>Shown when the other device never answered a request.</comment>
+  </data>
+  <data name="ErrorCoreStart" xml:space="preserve">
+    <value>Wooosh kunde inte starta. Stäng Wooosh och öppna det igen.</value>
+    <comment>Shown when Wooosh failed to start up at all.</comment>
+  </data>
+  <data name="ErrorProtocol" xml:space="preserve">
+    <value>Den andra enheten skickade något Wooosh inte förstod. Uppdatera Wooosh på båda enheterna.</value>
+    <comment>Core error: the other device sent something this build does not understand.</comment>
+  </data>
+  <data name="OfferTitle.One" xml:space="preserve">
+    <value>{0} vill skicka {1} fil till dig</value>
+    <comment>Title of the incoming offer dialog. {0} is the sending device&#x27;s name, {1} the file count.</comment>
+  </data>
+  <data name="OfferTitle.Other" xml:space="preserve">
+    <value>{0} vill skicka {1} filer till dig</value>
+    <comment>Title of the incoming offer dialog. {0} is the sending device&#x27;s name, {1} the file count.</comment>
+  </data>
+  <data name="FilesCountAndSize.One" xml:space="preserve">
+    <value>{0} fil · {1}</value>
+    <comment>File count with the total size. {0} is the count, {1} a formatted byte size.</comment>
+  </data>
+  <data name="FilesCountAndSize.Other" xml:space="preserve">
+    <value>{0} filer · {1}</value>
+    <comment>File count with the total size. {0} is the count, {1} a formatted byte size.</comment>
+  </data>
+  <data name="TransferDoneSent.One" xml:space="preserve">
+    <value>Skickat: {0} fil</value>
+    <comment>Summary of a finished send. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneSent.Other" xml:space="preserve">
+    <value>Skickat: {0} filer</value>
+    <comment>Summary of a finished send. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneReceived.One" xml:space="preserve">
+    <value>Mottaget: {0} fil</value>
+    <comment>Summary of a finished receive. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneReceived.Other" xml:space="preserve">
+    <value>Mottaget: {0} filer</value>
+    <comment>Summary of a finished receive. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneFailed.One" xml:space="preserve">
+    <value>Överföringen misslyckades: {0} fil</value>
+    <comment>Summary when every file in a transfer failed. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneFailed.Other" xml:space="preserve">
+    <value>Överföringen misslyckades: {0} filer</value>
+    <comment>Summary when every file in a transfer failed. {0} is the file count.</comment>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>Öppna Wooosh</value>
+    <comment>Notification-area menu item that brings the window back.</comment>
+  </data>
+  <data name="TrayQuit" xml:space="preserve">
+    <value>Avsluta Wooosh</value>
+    <comment>Notification-area menu item that shuts Wooosh down completely.</comment>
+  </data>
+  <data name="SettingsSectionBackground" xml:space="preserve">
+    <value>I bakgrunden</value>
+    <comment>Settings section header for what Wooosh does when the window is closed.</comment>
+  </data>
+  <data name="SettingsKeepRunning" xml:space="preserve">
+    <value>Låt Wooosh fortsätta köra när fönstret stängs</value>
+    <comment>Toggle: closing the window leaves Wooosh in the notification area.</comment>
+  </data>
+  <data name="SettingsKeepRunningDesc" xml:space="preserve">
+    <value>Wooosh ligger kvar i meddelandefältet och kan fortsätta ta emot filer.</value>
+    <comment>Helper text under the keep-running toggle.</comment>
+  </data>
+  <data name="ShareTargetTitle" xml:space="preserve">
+    <value>Skicka med Wooosh</value>
+    <comment>Label Wooosh shows in the Windows share sheet.</comment>
+  </data>
+</root>

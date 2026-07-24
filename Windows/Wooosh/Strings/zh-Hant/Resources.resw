@@ -1,0 +1,672 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Wooosh for Windows. Generated from the shipped Android translations so both
+    shells use one term per concept; see Assets/Documentation/COPY_STYLE.md.
+    Plural forms are selected by Localization/PluralRules.cs using the CLDR
+    category for the resource's locale, so keys carry a .One/.Few/.Many/.Other
+    suffix rather than being chosen with an English-shaped if (count == 1).
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Wooosh</value>
+    <comment>The product name. Never translated (COPY_STYLE.md §2).</comment>
+  </data>
+  <data name="DeviceKindIPhone" xml:space="preserve">
+    <value>iPhone</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindIPad" xml:space="preserve">
+    <value>iPad</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindMac" xml:space="preserve">
+    <value>Mac</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="ActionRefresh" xml:space="preserve">
+    <value>重新整理</value>
+    <comment>Command bar button: re-run device discovery.</comment>
+  </data>
+  <data name="ActionSettings" xml:space="preserve">
+    <value>設定</value>
+    <comment>Command bar button and title of the settings page.</comment>
+  </data>
+  <data name="ActionPairDevice" xml:space="preserve">
+    <value>配對裝置</value>
+    <comment>Button that opens the pairing page.</comment>
+  </data>
+  <data name="ActionCancel" xml:space="preserve">
+    <value>取消</value>
+    <comment>Generic cancel button.</comment>
+  </data>
+  <data name="ActionDone" xml:space="preserve">
+    <value>完成</value>
+    <comment>Generic confirmation button that closes a finished dialog.</comment>
+  </data>
+  <data name="ActionClose" xml:space="preserve">
+    <value>關閉</value>
+    <comment>Generic button that dismisses a dialog without acting.</comment>
+  </data>
+  <data name="ActionOk" xml:space="preserve">
+    <value>好</value>
+    <comment>Button that acknowledges an alert.</comment>
+  </data>
+  <data name="ActionDecline" xml:space="preserve">
+    <value>拒絕</value>
+    <comment>Button that refuses an incoming file offer.</comment>
+  </data>
+  <data name="ActionAccept" xml:space="preserve">
+    <value>接受</value>
+    <comment>Button that accepts an incoming file offer from a paired device.</comment>
+  </data>
+  <data name="ActionAcceptOnce" xml:space="preserve">
+    <value>僅接受這一次</value>
+    <comment>Button that accepts one offer from a device that is not paired.</comment>
+  </data>
+  <data name="ActionSendFiles" xml:space="preserve">
+    <value>傳送檔案…</value>
+    <comment>Context-menu item that starts a transfer to the selected device.</comment>
+  </data>
+  <data name="ActionChooseFiles" xml:space="preserve">
+    <value>選擇檔案</value>
+    <comment>Button that opens the system file picker.</comment>
+  </data>
+  <data name="ActionCancelTransfer" xml:space="preserve">
+    <value>取消傳輸</value>
+    <comment>Button that stops a transfer that is running.</comment>
+  </data>
+  <data name="ActionDismiss" xml:space="preserve">
+    <value>關閉</value>
+    <comment>Button that removes a finished transfer card from the list.</comment>
+  </data>
+  <data name="ActionUnpair" xml:space="preserve">
+    <value>取消配對</value>
+    <comment>Button that removes a paired device and the key stored for it.</comment>
+  </data>
+  <data name="ActionTryAgain" xml:space="preserve">
+    <value>重試</value>
+    <comment>Button that restarts a failed attempt.</comment>
+  </data>
+  <data name="ActionNotNow" xml:space="preserve">
+    <value>稍後再說</value>
+    <comment>Button that postpones a security warning without acting on it.</comment>
+  </data>
+  <data name="ActionPairAgain" xml:space="preserve">
+    <value>重新配對</value>
+    <comment>Button that starts pairing again after a security key changed.</comment>
+  </data>
+  <data name="ActionCopyCode" xml:space="preserve">
+    <value>複製配對碼</value>
+    <comment>Button that copies this device&#x27;s pairing code to the clipboard.</comment>
+  </data>
+  <data name="ActionCopyPairingCode" xml:space="preserve">
+    <value>複製配對碼</value>
+    <comment>Accessibility label for the copy button next to the pairing code.</comment>
+  </data>
+  <data name="ActionCopied" xml:space="preserve">
+    <value>已複製</value>
+    <comment>Confirmation shown on the copy button right after a copy.</comment>
+  </data>
+  <data name="ActionNewCode" xml:space="preserve">
+    <value>新配對碼</value>
+    <comment>Button that generates a fresh pairing code.</comment>
+  </data>
+  <data name="ActionPairWithPasted" xml:space="preserve">
+    <value>使用貼上的配對碼配對</value>
+    <comment>Button that pairs using a pairing code the user pasted.</comment>
+  </data>
+  <data name="ActionCodesMatch" xml:space="preserve">
+    <value>兩端代碼一致</value>
+    <comment>Button confirming that both devices show the same six-digit code.</comment>
+  </data>
+  <data name="ActionShowMyCode" xml:space="preserve">
+    <value>顯示我的配對碼…</value>
+    <comment>Context-menu item that shows this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="ActionPairThisDevice" xml:space="preserve">
+    <value>配對此裝置…</value>
+    <comment>Context-menu item that starts pairing with the selected device.</comment>
+  </data>
+  <data name="ActionBack" xml:space="preserve">
+    <value>返回</value>
+    <comment>Accessibility label for the back button.</comment>
+  </data>
+  <data name="PeerStateReady" xml:space="preserve">
+    <value>就緒</value>
+    <comment>Device row subtitle: the device is reachable.</comment>
+  </data>
+  <data name="PeerStateReadyPaired" xml:space="preserve">
+    <value>就緒 · 已配對</value>
+    <comment>Device row subtitle: reachable and already paired.</comment>
+  </data>
+  <data name="PeerStateAway" xml:space="preserve">
+    <value>已離開</value>
+    <comment>Device row subtitle: the device stopped answering and cannot be used.</comment>
+  </data>
+  <data name="PeerStateTapToSend" xml:space="preserve">
+    <value>點一下即可傳送</value>
+    <comment>Device row subtitle while files are waiting to be sent.</comment>
+  </data>
+  <data name="PeerBadgePaired" xml:space="preserve">
+    <value>已配對</value>
+    <comment>Accessibility label for the checkmark on a paired device row.</comment>
+  </data>
+  <data name="PeerUnnamed" xml:space="preserve">
+    <value>未命名的裝置</value>
+    <comment>Stand-in shown for a device that advertises no name of its own.</comment>
+  </data>
+  <data name="EmptyTitle" xml:space="preserve">
+    <value>正在尋找裝置</value>
+    <comment>Title of the empty device list.</comment>
+  </data>
+  <data name="EmptyBody" xml:space="preserve">
+    <value>同一 Wi-Fi 網路中執行 Wooosh 的裝置會自動顯示在這裡。</value>
+    <comment>Body of the empty device list.</comment>
+  </data>
+  <data name="EmptyVisibilityEveryone" xml:space="preserve">
+    <value>附近的所有裝置都能看到這台裝置。</value>
+    <comment>Extra line on the empty device list when everyone can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityPaired" xml:space="preserve">
+    <value>只有已配對的裝置能看到這台裝置。</value>
+    <comment>Extra line on the empty device list when only paired devices can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityOff" xml:space="preserve">
+    <value>這台裝置已隱藏，無法接收檔案。你仍然可以看到其他裝置並傳送檔案給它們。</value>
+    <comment>Extra line on the empty device list when this device is hidden.</comment>
+  </data>
+  <data name="DeviceKindWindows" xml:space="preserve">
+    <value>Windows 電腦</value>
+    <comment>Accessibility name for a Windows computer.</comment>
+  </data>
+  <data name="DeviceKindAndroidPhone" xml:space="preserve">
+    <value>Android 手機</value>
+    <comment>Accessibility name for an Android phone.</comment>
+  </data>
+  <data name="DeviceKindAndroidTablet" xml:space="preserve">
+    <value>Android 平板電腦</value>
+    <comment>Accessibility name for an Android tablet.</comment>
+  </data>
+  <data name="DeviceKindUnknown" xml:space="preserve">
+    <value>裝置</value>
+    <comment>Accessibility name for a device whose type is unknown.</comment>
+  </data>
+  <data name="StorageLocationDownloads" xml:space="preserve">
+    <value>下載</value>
+    <comment>Where a received file was stored: the Downloads folder.</comment>
+  </data>
+  <data name="OfferNavIncoming" xml:space="preserve">
+    <value>傳入的檔案</value>
+    <comment>Title of the dialog asking whether to accept files.</comment>
+  </data>
+  <data name="OfferNavReceiving" xml:space="preserve">
+    <value>正在接收</value>
+    <comment>Title shown while files are being received.</comment>
+  </data>
+  <data name="OfferPairedDevice" xml:space="preserve">
+    <value>已配對的裝置</value>
+    <comment>Label confirming the sender is already paired.</comment>
+  </data>
+  <data name="OfferUnpairedWarning" xml:space="preserve">
+    <value>尚未配對。請確認下方的詞語與傳送端螢幕上顯示的一致。</value>
+    <comment>Warning above the sender&#x27;s verification phrase on the accept dialog.</comment>
+  </data>
+  <data name="VerifyYourPhraseTitle" xml:space="preserve">
+    <value>你的驗證短語</value>
+    <comment>Heading above this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyYourPhraseBody" xml:space="preserve">
+    <value>對方裝置在接受之前，會請你確認這些詞語是否一致。</value>
+    <comment>Explanation under this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseTitle" xml:space="preserve">
+    <value>驗證短語</value>
+    <comment>Settings label for this device&#x27;s verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseBody" xml:space="preserve">
+    <value>大聲唸出這些詞語，確認你連線的是正確的裝置。它們由這台裝置的身分金鑰產生，金鑰永遠不會離開本機。</value>
+    <comment>Settings explanation of the verification phrase.</comment>
+  </data>
+  <data name="TransferSendingTo" xml:space="preserve">
+    <value>正在傳送到 {0}</value>
+    <comment>Header while sending. {0} is a device name.</comment>
+  </data>
+  <data name="TransferReceivingFrom" xml:space="preserve">
+    <value>正在從 {0} 接收</value>
+    <comment>Header while receiving. {0} is a device name.</comment>
+  </data>
+  <data name="TransferNavSending" xml:space="preserve">
+    <value>正在傳送</value>
+    <comment>Title while a send is in progress.</comment>
+  </data>
+  <data name="TransferNavSendFiles" xml:space="preserve">
+    <value>傳送檔案</value>
+    <comment>Title of the screen that picks what to send.</comment>
+  </data>
+  <data name="TransferStateConnecting" xml:space="preserve">
+    <value>正在等待對方裝置…</value>
+    <comment>Status line while waiting for the other device to answer.</comment>
+  </data>
+  <data name="TransferStateCancelled" xml:space="preserve">
+    <value>已取消</value>
+    <comment>Status line for a transfer the user stopped.</comment>
+  </data>
+  <data name="TransferStateDone" xml:space="preserve">
+    <value>已完成</value>
+    <comment>Status line for a transfer that finished, when no detail is available.</comment>
+  </data>
+  <data name="TransferProgressBytes" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>Progress line. {0} is bytes done, {1} the total.</comment>
+  </data>
+  <data name="TransferProgressRate" xml:space="preserve">
+    <value>{0}/秒</value>
+    <comment>Transfer speed. {0} is a formatted byte size such as 12 MB.</comment>
+  </data>
+  <data name="TransferProgressEta" xml:space="preserve">
+    <value>約剩餘 {0}</value>
+    <comment>Estimated time left. {0} is a formatted duration.</comment>
+  </data>
+  <data name="TransferSavedTo" xml:space="preserve">
+    <value>{0} · 已儲存到 {1}</value>
+    <comment>Per-file line after a file is stored. {0} is its size, {1} the location.</comment>
+  </data>
+  <data name="TransferConnectingTo" xml:space="preserve">
+    <value>正在連線 {0}…</value>
+    <comment>Status while connecting. {0} is a device name.</comment>
+  </data>
+  <data name="TransferPreparing" xml:space="preserve">
+    <value>正在準備…</value>
+    <comment>Status while files are being prepared for sending.</comment>
+  </data>
+  <data name="TransferResumable" xml:space="preserve">
+    <value>{0} Wooosh 可以從中斷處繼續。</value>
+    <comment>Appended to a failure that can continue later. {0} is the failure message.</comment>
+  </data>
+  <data name="PairingTitle" xml:space="preserve">
+    <value>配對裝置</value>
+    <comment>Title of the pairing page.</comment>
+  </data>
+  <data name="PairingTabMyCode" xml:space="preserve">
+    <value>我的配對碼</value>
+    <comment>Tab showing this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowBody" xml:space="preserve">
+    <value>用另一台裝置掃描此 QR 碼，或複製配對碼並透過你信任的管道傳送。</value>
+    <comment>Instructions above this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowExpiry" xml:space="preserve">
+    <value>此配對碼只能使用一次，2 分鐘後失效。</value>
+    <comment>Note under the pairing code explaining that it is short-lived.</comment>
+  </data>
+  <data name="PairingQrA11y" xml:space="preserve">
+    <value>配對 QR 碼</value>
+    <comment>Accessibility label for the QR image.</comment>
+  </data>
+  <data name="PairingScanBodyDesktop" xml:space="preserve">
+    <value>從另一台裝置複製配對碼，然後貼到下方。</value>
+    <comment>Instructions on a computer, which pairs by pasting rather than scanning.</comment>
+  </data>
+  <data name="PairingPasteLabel" xml:space="preserve">
+    <value>配對碼</value>
+    <comment>Label of the text field for a pasted pairing code.</comment>
+  </data>
+  <data name="PairingInProgressTitle" xml:space="preserve">
+    <value>正在配對</value>
+    <comment>Title of the dialog shown while pairing runs.</comment>
+  </data>
+  <data name="PairingProgressBody" xml:space="preserve">
+    <value>請讓另一台裝置保持解鎖，並在螢幕上顯示配對碼。兩台裝置需要在同一 Wi-Fi 網路中。這可能需要幾秒鐘。</value>
+    <comment>Explanation while a pairing attempt runs.</comment>
+  </data>
+  <data name="PairingSuccessTitle" xml:space="preserve">
+    <value>已與 {0} 配對</value>
+    <comment>Title after a successful pairing. {0} is a device name.</comment>
+  </data>
+  <data name="PairingSuccessBody" xml:space="preserve">
+    <value>從現在起，Wooosh 會信任這台裝置。你不需要再與它核對驗證短語。</value>
+    <comment>Explanation after a successful pairing.</comment>
+  </data>
+  <data name="PairingFailedTitle" xml:space="preserve">
+    <value>配對失敗</value>
+    <comment>Title shown when pairing did not succeed.</comment>
+  </data>
+  <data name="PairingFailedTitleNamed" xml:space="preserve">
+    <value>Wooosh 無法與 {0} 配對</value>
+    <comment>Title when pairing with a named device failed. {0} is a device name.</comment>
+  </data>
+  <data name="SasTitle" xml:space="preserve">
+    <value>要與 {0} 配對嗎？</value>
+    <comment>Question asking whether to pair. {0} is a device name.</comment>
+  </data>
+  <data name="SasBody" xml:space="preserve">
+    <value>兩台裝置都會顯示一組六位數代碼。只有兩組代碼相同時才繼續。</value>
+    <comment>Instructions for comparing the six-digit verification code.</comment>
+  </data>
+  <data name="SasExpiresIn" xml:space="preserve">
+    <value>{0} 秒後失效</value>
+    <comment>Countdown until the verification code expires. {0} is seconds left.</comment>
+  </data>
+  <data name="SasConfirming" xml:space="preserve">
+    <value>正在確認…</value>
+    <comment>Status while the other device confirms the verification code.</comment>
+  </data>
+  <data name="KeyChangedTitle" xml:space="preserve">
+    <value>安全金鑰已變更</value>
+    <comment>Title of the warning that a paired device&#x27;s key changed.</comment>
+  </data>
+  <data name="KeyChangedBody" xml:space="preserve">
+    <value>「{0}」出示的安全金鑰與配對時不同。這通常發生在重新安裝 Wooosh 或重置裝置之後，但也可能表示另一台裝置正在冒充它。在你重新配對之前，與這台裝置的傳輸會被封鎖。</value>
+    <comment>Body of the security-key warning. {0} is a device name.</comment>
+  </data>
+  <data name="KeyChangedExpectedLabel" xml:space="preserve">
+    <value>你配對的是</value>
+    <comment>Label above the verification phrase recorded at pairing time.</comment>
+  </data>
+  <data name="KeyChangedPresentedLabel" xml:space="preserve">
+    <value>現在顯示的是</value>
+    <comment>Label above the verification phrase the device shows now.</comment>
+  </data>
+  <data name="KeyChangedPresentedUnknown" xml:space="preserve">
+    <value>無法取得：在讀取金鑰之前連線就失敗了。</value>
+    <comment>Shown when the other device&#x27;s key could not be read at all.</comment>
+  </data>
+  <data name="KeyChangedAdvice" xml:space="preserve">
+    <value>請對方大聲唸出其裝置上的驗證短語。只有與第二組短語一致時，才重新配對。</value>
+    <comment>Advice under the two verification phrases in the security warning.</comment>
+  </data>
+  <data name="KeyChangedRowWarning" xml:space="preserve">
+    <value>金鑰已變更。重新配對後才能繼續。</value>
+    <comment>Warning on a paired-device row whose key changed.</comment>
+  </data>
+  <data name="SettingsSectionDevice" xml:space="preserve">
+    <value>裝置</value>
+    <comment>Settings section header for this device&#x27;s own name.</comment>
+  </data>
+  <data name="SettingsDisplayName" xml:space="preserve">
+    <value>顯示名稱</value>
+    <comment>Label of the field holding the name other devices see.</comment>
+  </data>
+  <data name="SettingsDisplayNameFooter" xml:space="preserve">
+    <value>會顯示給附近的裝置。</value>
+    <comment>Helper text under the display-name field.</comment>
+  </data>
+  <data name="SettingsSectionWhoCanSee" xml:space="preserve">
+    <value>誰可以看到這台裝置</value>
+    <comment>Settings section header for the discovery setting.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryone" xml:space="preserve">
+    <value>所有人</value>
+    <comment>Option: any nearby device can see this one.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryoneDesc" xml:space="preserve">
+    <value>附近的任何裝置都能看到這台裝置並向它提出傳送請求。</value>
+    <comment>Description of the Everyone option.</comment>
+  </data>
+  <data name="SettingsVisibilityPaired" xml:space="preserve">
+    <value>僅已配對的裝置</value>
+    <comment>Option: only paired devices may send.</comment>
+  </data>
+  <data name="SettingsVisibilityPairedDesc" xml:space="preserve">
+    <value>附近的裝置能看到這台裝置，但只有已配對的裝置才能傳送檔案給它。</value>
+    <comment>Description of the Paired Devices Only option.</comment>
+  </data>
+  <data name="SettingsVisibilityOff" xml:space="preserve">
+    <value>關閉</value>
+    <comment>Option: this device is hidden and cannot receive.</comment>
+  </data>
+  <data name="SettingsVisibilityOffDesc" xml:space="preserve">
+    <value>這台裝置已隱藏，無法接收檔案。你仍然可以看到其他裝置並傳送檔案給它們。</value>
+    <comment>Description of the Off option.</comment>
+  </data>
+  <data name="SettingsSectionPairing" xml:space="preserve">
+    <value>配對</value>
+    <comment>Settings section header for pairing.</comment>
+  </data>
+  <data name="SettingsPairingFooter" xml:space="preserve">
+    <value>已配對的裝置會自動確認彼此的身分，因此它們之間的傳輸不會再要求你核對驗證短語。</value>
+    <comment>Explanation of what pairing buys the user.</comment>
+  </data>
+  <data name="SettingsSectionPairedDevices" xml:space="preserve">
+    <value>已配對的裝置</value>
+    <comment>Settings section header listing paired devices.</comment>
+  </data>
+  <data name="SettingsPairedDevicesEmpty" xml:space="preserve">
+    <value>還沒有已配對的裝置。使用「配對裝置」新增一台。</value>
+    <comment>Shown when nothing is paired yet.</comment>
+  </data>
+  <data name="SettingsPairedDevicesFooter" xml:space="preserve">
+    <value>取消配對會刪除已儲存的金鑰。在你重新配對之前，來自該裝置的下一次傳輸將不受信任。</value>
+    <comment>Explanation of what unpairing does.</comment>
+  </data>
+  <data name="SettingsPairedOn" xml:space="preserve">
+    <value>配對於 {0}</value>
+    <comment>Date a device was paired. {0} is a formatted date.</comment>
+  </data>
+  <data name="SettingsSectionThisDevice" xml:space="preserve">
+    <value>這台裝置</value>
+    <comment>Settings section header for this device&#x27;s identity.</comment>
+  </data>
+  <data name="SettingsDeviceId" xml:space="preserve">
+    <value>裝置 ID</value>
+    <comment>Label of this device&#x27;s permanent identifier.</comment>
+  </data>
+  <data name="SettingsDeviceIdFooter" xml:space="preserve">
+    <value>配對時用於向其他裝置識別這台裝置。</value>
+    <comment>Helper text under the device identifier.</comment>
+  </data>
+  <data name="SettingsStarting" xml:space="preserve">
+    <value>正在啟動…</value>
+    <comment>Placeholder shown until Wooosh has finished starting up.</comment>
+  </data>
+  <data name="ErrorSendFailedTitle" xml:space="preserve">
+    <value>Wooosh 無法傳送</value>
+    <comment>Dialog title when a send could not start.</comment>
+  </data>
+  <data name="ErrorSendFailedBody" xml:space="preserve">
+    <value>這些檔案無法傳送。請重試。</value>
+    <comment>Fallback body when a send could not start.</comment>
+  </data>
+  <data name="ErrorFilesUnreadable" xml:space="preserve">
+    <value>無法讀取這些檔案。請重新選擇。</value>
+    <comment>Shown when the chosen files could not be read.</comment>
+  </data>
+  <data name="ErrorStillResolving" xml:space="preserve">
+    <value>Wooosh 仍在尋找 {0}。請稍後重試。</value>
+    <comment>Shown when a device has been seen but not reached yet. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorUnreachable" xml:space="preserve">
+    <value>Wooosh 無法判斷如何連線「{0}」。它可能剛剛離線。</value>
+    <comment>Shown when no address for a device could be worked out. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorSaveFailed" xml:space="preserve">
+    <value>Wooosh 無法儲存此檔案。</value>
+    <comment>Shown when a received file could not be stored.</comment>
+  </data>
+  <data name="ErrorStorageUnavailable" xml:space="preserve">
+    <value>Wooosh 無法存取用於存放接收檔案的資料夾。請檢查是否有可用空間，然後重試。</value>
+    <comment>Shown when the folder for received files cannot be used.</comment>
+  </data>
+  <data name="ErrorPairingRequired" xml:space="preserve">
+    <value>該裝置只接受來自已配對裝置的檔案。</value>
+    <comment>Core error: the other device accepts paired devices only.</comment>
+  </data>
+  <data name="ErrorVersionMismatch" xml:space="preserve">
+    <value>該裝置執行的 Wooosh 版本不相容。請在兩台裝置上更新 Wooosh。</value>
+    <comment>Core error: incompatible Wooosh versions.</comment>
+  </data>
+  <data name="ErrorKeyChanged" xml:space="preserve">
+    <value>該裝置出示的安全金鑰與配對時不同。請重新配對後繼續。</value>
+    <comment>Core error: a paired device presented a different key.</comment>
+  </data>
+  <data name="ErrorQrKeyMismatch" xml:space="preserve">
+    <value>回應的裝置與配對碼中的裝置不符。Wooosh 已停止配對。</value>
+    <comment>Core error: the device that answered is not the one in the pairing code.</comment>
+  </data>
+  <data name="ErrorInvalidQr" xml:space="preserve">
+    <value>這不是 Wooosh 配對碼。</value>
+    <comment>Core error: the scanned or pasted text is not a Wooosh pairing code.</comment>
+  </data>
+  <data name="ErrorPairingExpired" xml:space="preserve">
+    <value>該配對碼已失效。請索取新的配對碼。</value>
+    <comment>Core error: the pairing code is no longer valid.</comment>
+  </data>
+  <data name="ErrorPairingFailed" xml:space="preserve">
+    <value>配對未完成。請重試。</value>
+    <comment>Generic pairing failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorPairingTimeout" xml:space="preserve">
+    <value>Wooosh 未能及時連線到該裝置。請確認它仍在顯示配對碼，且兩台裝置位於同一 Wi-Fi 網路中。</value>
+    <comment>Shown when a pairing attempt ran out of time.</comment>
+  </data>
+  <data name="ErrorSasTimeout" xml:space="preserve">
+    <value>對方裝置未及時確認。請在兩台裝置都準備好後重新開始配對。</value>
+    <comment>Shown when the other device did not confirm the verification code in time.</comment>
+  </data>
+  <data name="ErrorConnect" xml:space="preserve">
+    <value>Wooosh 無法連線到該裝置。請確認兩台裝置位於同一 Wi-Fi 網路中。</value>
+    <comment>Core error: the other device could not be reached at all.</comment>
+  </data>
+  <data name="ErrorUnknownPeer" xml:space="preserve">
+    <value>該裝置已中斷連線。</value>
+    <comment>Core error: the connection to that device is gone.</comment>
+  </data>
+  <data name="ErrorNotStarted" xml:space="preserve">
+    <value>Wooosh 仍在啟動中。請稍後重試。</value>
+    <comment>Core error: Wooosh has not finished starting yet.</comment>
+  </data>
+  <data name="ErrorCrypto" xml:space="preserve">
+    <value>Wooosh 無法驗證安全連線。請重試。</value>
+    <comment>Core error: the secure connection could not be verified.</comment>
+  </data>
+  <data name="ErrorIo" xml:space="preserve">
+    <value>Wooosh 無法讀取或寫入檔案。請檢查是否有可用空間，然後重試。</value>
+    <comment>Core error: a file could not be read or written.</comment>
+  </data>
+  <data name="ErrorTransferFailed" xml:space="preserve">
+    <value>傳輸在完成前中斷。請重試。</value>
+    <comment>Generic transfer failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorDeclinedByPeer" xml:space="preserve">
+    <value>對方裝置拒絕了這些檔案。</value>
+    <comment>Shown when the other device refused the files.</comment>
+  </data>
+  <data name="ErrorCancelledByPeer" xml:space="preserve">
+    <value>對方裝置取消了傳輸。</value>
+    <comment>Shown when the other device stopped the transfer.</comment>
+  </data>
+  <data name="ErrorNoAnswer" xml:space="preserve">
+    <value>對方裝置未及時回應。</value>
+    <comment>Shown when the other device never answered a request.</comment>
+  </data>
+  <data name="ErrorCoreStart" xml:space="preserve">
+    <value>Wooosh 無法啟動。請關閉 Wooosh 後重新開啟。</value>
+    <comment>Shown when Wooosh failed to start up at all.</comment>
+  </data>
+  <data name="ErrorProtocol" xml:space="preserve">
+    <value>對方裝置傳送了 Wooosh 無法識別的內容。請在兩台裝置上更新 Wooosh。</value>
+    <comment>Core error: the other device sent something this build does not understand.</comment>
+  </data>
+  <data name="OfferTitle.Other" xml:space="preserve">
+    <value>{0} 想傳送 {1} 個檔案 給你</value>
+    <comment>Title of the incoming offer dialog. {0} is the sending device&#x27;s name, {1} the file count.</comment>
+  </data>
+  <data name="FilesCountAndSize.Other" xml:space="preserve">
+    <value>{0} 個檔案 · {1}</value>
+    <comment>File count with the total size. {0} is the count, {1} a formatted byte size.</comment>
+  </data>
+  <data name="TransferDoneSent.Other" xml:space="preserve">
+    <value>已傳送 {0} 個檔案</value>
+    <comment>Summary of a finished send. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneReceived.Other" xml:space="preserve">
+    <value>已接收 {0} 個檔案</value>
+    <comment>Summary of a finished receive. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneFailed.Other" xml:space="preserve">
+    <value>{0} 個檔案 傳輸失敗</value>
+    <comment>Summary when every file in a transfer failed. {0} is the file count.</comment>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>開啟 Wooosh</value>
+    <comment>Notification-area menu item that brings the window back.</comment>
+  </data>
+  <data name="TrayQuit" xml:space="preserve">
+    <value>結束 Wooosh</value>
+    <comment>Notification-area menu item that shuts Wooosh down completely.</comment>
+  </data>
+  <data name="SettingsSectionBackground" xml:space="preserve">
+    <value>背景執行</value>
+    <comment>Settings section header for what Wooosh does when the window is closed.</comment>
+  </data>
+  <data name="SettingsKeepRunning" xml:space="preserve">
+    <value>關閉視窗後繼續執行 Wooosh</value>
+    <comment>Toggle: closing the window leaves Wooosh in the notification area.</comment>
+  </data>
+  <data name="SettingsKeepRunningDesc" xml:space="preserve">
+    <value>Wooosh 會保留在通知區域，可以繼續接收檔案。</value>
+    <comment>Helper text under the keep-running toggle.</comment>
+  </data>
+  <data name="ShareTargetTitle" xml:space="preserve">
+    <value>使用 Wooosh 傳送</value>
+    <comment>Label Wooosh shows in the Windows share sheet.</comment>
+  </data>
+</root>

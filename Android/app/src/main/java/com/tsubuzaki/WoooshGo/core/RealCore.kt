@@ -53,8 +53,7 @@ import uniffi.wooosh_core.WoooshCore as FfiCore
  *
  * Identity: the core owns it (PROTOCOL.md §2). [IdentityManager] is passed in as the
  * `KeyStore` platform adapter, so there is exactly one Ed25519 keypair per install.
- * Fingerprint and DeviceID derivation are the core's too — `fingerprint_phrase_for` and
- * `device_id_for` are called instead of being re-implemented here.
+ * Fingerprint and DeviceID derivation are the core's too — never re-implement them here.
  */
 class RealCore(
     context: Context,
@@ -81,8 +80,8 @@ class RealCore(
         File(config.stagingDir).mkdirs()
         File(config.trustStorePath).parentFile?.mkdirs()
 
-        // callbackFlow bridges the core's callback thread into the app's Flow world;
-        // trySend never blocks, so a slow collector can never stall the core.
+        // callbackFlow bridges the core's callback thread into Flow: trySend never
+        // blocks, so a slow collector can never stall the core.
         val ready = CountDownLatch(1)
         var failure: Throwable? = null
 
@@ -131,14 +130,14 @@ class RealCore(
             }
             awaitClose { runCatching { ffi.stop() } }
         }
-            // Buffer generously: the core bursts Progress events far faster than the UI
-            // consumes them, and no event may be dropped silently.
+            // The core bursts Progress far faster than the UI consumes it, and no event
+            // may be dropped silently.
             .buffer(EVENT_BUFFER)
             .onEach { _events.emit(it) }
             .launchIn(scope)
 
-        // start() is documented as blocking: the shell needs listen_addr() and the
-        // identity immediately after it returns (discovery TXT `p`, Settings screen).
+        // start() must block: the shell needs listen_addr() and the identity the moment
+        // it returns (discovery TXT `p`, Settings screen).
         if (!ready.await(START_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             throw CoreException("Timed out starting the Wooosh core")
         }
@@ -235,19 +234,18 @@ class RealCore(
     override fun pairWithQr(payload: String) {
         scope.launch(Dispatchers.IO) {
             // Parsed only for the failure path: on success the core's own PairingResult
-            // carries the pinned key, so there is nothing to learn out of band any more.
+            // carries the pinned key.
             val info = runCatching { parsePairingQr(payload.trim()) }.getOrNull()
             Log.i(TAG, "pairWithQr: parsed=${info != null} peer=${info?.deviceId} hints=${info?.hints}")
             val startedAt = SystemClock.elapsedRealtime()
             try {
                 val peerId = ffi.pairWithQr(payload.trim())
-                // Success is reported by the core's PairingResult event (with the key);
-                // no synthetic event here, or the shell would pin twice with less data.
+                // No synthetic success event: the core's own PairingResult carries the
+                // key, and emitting one here would pin twice with less data.
                 Log.i(TAG, "pairWithQr: paired with $peerId after ${elapsed(startedAt)}")
             } catch (e: Throwable) {
-                // This is the only signal for most failures — the core emits no
-                // PairingResult when the blocking call throws — so it must never be
-                // swallowed, and it must carry wording the user can act on.
+                // The core emits no PairingResult when the blocking call throws, so this
+                // is the only failure signal and it must carry actionable wording.
                 Log.w(TAG, "pairWithQr failed after ${elapsed(startedAt)}", e)
                 _events.emit(
                     CoreEvent.PairingResult(
@@ -310,8 +308,8 @@ class RealCore(
 
     override suspend fun send(peerId: String, uris: List<Uri>): TransferId =
         withContext(Dispatchers.IO) {
-            // The core takes filesystem paths; content:// URIs are materialised into an
-            // app-private outbox first (the core cannot read a ContentResolver).
+            // The core cannot read a ContentResolver, so content:// URIs are copied into
+            // an app-private outbox first.
             val paths = materialise(uris)
             if (paths.isEmpty()) throw CoreException("Nothing to send")
             try {
@@ -492,7 +490,6 @@ class RealCore(
                 peer = PeerRef(
                     id = event.peerId,
                     displayName = cached?.displayName ?: event.peerId,
-                    // The pinned key we expected — now concrete, not a stand-in.
                     fingerprint = fingerprintPhraseFor(event.expectedPubkey) ?: event.peerId,
                     paired = true,
                     publicKey = event.expectedPubkey,
@@ -538,13 +535,11 @@ class RealCore(
     private fun elapsed(startedAt: Long) = "${SystemClock.elapsedRealtime() - startedAt} ms"
 
     /**
-     * Pairing-specific wording. The generic map below is written for background
-     * failures; pairing is a ceremony the user is *standing through*, so the message has
-     * to say what to do next, not just what went wrong.
+     * Pairing-specific wording: the user is standing through the ceremony, so the
+     * message has to say what to do next, not just what went wrong.
      *
-     * The core reports the pairing sub-cases as one `Pairing` variant distinguished by
-     * message text (PROTOCOL.md §4.2), so those are matched on substrings and always
-     * fall through to the raw core message rather than inventing one.
+     * The core reports every pairing sub-case as one `Pairing` variant distinguished by
+     * message text (PROTOCOL.md §4.2), hence the substring matching.
      */
     private fun pairingMessage(error: Throwable): String = appContext.getString(
         when {
@@ -581,9 +576,8 @@ class RealCore(
         appContext.getString(messageRes(error))
 
     /**
-     * The core speaks in exception types and internal English detail strings. None of
-     * that is copy: it cannot be translated and it reads like a log line. Every case
-     * resolves to a real sentence here, and `error.message` stays in the log only.
+     * The core's exception types and detail strings are not copy: untranslatable and
+     * log-shaped. Every case resolves to a real sentence; `error.message` stays in the log.
      */
     private fun messageRes(error: Throwable): Int = when (error) {
         is WoooshException.PairingRequired -> R.string.error_pairing_required
@@ -612,13 +606,11 @@ class RealCore(
     }
 
     /**
-     * The core's `DeviceType` is still the old form-factor vocabulary
-     * (phone/tablet/laptop/desktop) while PROTOCOL.md §3.1 has moved on to
-     * platform-explicit values. These two functions are the whole bridge; when the core
-     * enum is re-aligned they become a 1:1 map and nothing else in the shell changes.
+     * The core's `DeviceType` is form-factor only (phone/tablet/laptop/desktop) while
+     * PROTOCOL.md §3.1 is platform-explicit. These two functions are the whole bridge.
      *
-     * Outbound (our own type, for HELLO) collapses to the nearest form factor — lossy
-     * but harmless, since it only ever says "phone" about a device that really is one.
+     * Outbound collapses to the nearest form factor — lossy but harmless, since it only
+     * ever says "phone" about a device that really is one.
      */
     private fun DeviceType.toFfi() = when (this) {
         DeviceType.IPHONE, DeviceType.ANDROID_PHONE -> FfiDeviceType.PHONE
@@ -631,10 +623,9 @@ class RealCore(
     }
 
     /**
-     * Inbound is deliberately **not** a guess. "phone" over the FFI could be an iPhone
-     * or a Pixel and PROTOCOL.md §3.1 is explicit that a wrong glyph is worse than a
-     * generic one, so every core value becomes UNKNOWN and the row keeps whatever the
-     * TXT record said (PeerRegistry only overrides with a known type).
+     * Inbound is deliberately never a guess: "phone" over the FFI could be an iPhone or a
+     * Pixel, and a wrong glyph is worse than a generic one (PROTOCOL.md §3.1). Every core
+     * value becomes UNKNOWN so the row keeps whatever the TXT record said.
      */
     private fun FfiDeviceType.toApp() = DeviceType.UNKNOWN
 

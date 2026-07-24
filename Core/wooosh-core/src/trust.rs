@@ -1,10 +1,10 @@
 //! Trust store: pinned peer public keys (PROTOCOL.md §4.5).
 //! JSON file: { pubkey_b64 -> { device_id, dn, dt?, paired_at, last_seen, last_addr? } }.
 //!
-//! Besides "is this key pinned?", the store is the core's own memory of *where*
-//! a pinned peer was last reached (`last_addr`, exact `ip:port`). That memory is
-//! what lets `connect_to` enforce a pin even when the shell passes no expected
-//! key — see `pinned_key_for_addr` and DESIGN.md §4.
+//! Beyond "is this key pinned?", the store remembers *where* a pinned peer was
+//! last reached (`last_addr`, exact `ip:port`). That memory is what lets
+//! `connect_to` enforce a pin when the shell passes no expected key — see
+//! `pinned_key_for_addr` and DESIGN.md §4.
 
 use crate::error::WoooshError;
 use crate::identity;
@@ -19,8 +19,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct TrustEntry {
     pub device_id: String,
     pub dn: String,
-    /// Device type from the peer's HELLO (`phone`/`tablet`/`laptop`/`desktop`),
-    /// recorded at pairing time so a trust-list row can show the right icon.
+    /// Device type from the peer's HELLO, recorded at pairing time so a
+    /// trust-list row can show the right icon.
     #[serde(default)]
     pub dt: Option<String>,
     pub paired_at: u64,
@@ -84,8 +84,8 @@ impl TrustStore {
         self.entries.lock().unwrap().get(&key_b64(pubkey)).cloned()
     }
 
-    /// Pin a peer. `dt` / `addr` are recorded when known (both are UI/routing
-    /// hints; neither participates in the trust decision).
+    /// Pin a peer. `dt` and `addr` are UI/routing hints only; neither
+    /// participates in the trust decision.
     pub fn insert(
         &self,
         pubkey: &[u8; 32],
@@ -96,9 +96,9 @@ impl TrustStore {
         let mut entries = self.entries.lock().unwrap();
         let now = now_unix();
         let me = key_b64(pubkey);
-        // One address belongs to at most one pinned identity, otherwise an
-        // address lookup could resolve to a stale key and hard-fail a peer
-        // that legitimately took the address over.
+        // One address maps to at most one pinned identity: otherwise a lookup
+        // resolves to a stale key and hard-fails a peer that legitimately
+        // took the address over.
         if let Some(a) = addr {
             for (k, e) in entries.iter_mut() {
                 if k != &me && e.last_addr.as_deref() == Some(a) {
@@ -121,8 +121,8 @@ impl TrustStore {
         self.save_locked(&entries)
     }
 
-    /// Record where a pinned peer was just authenticated (§4.5 pin memory),
-    /// and bump `last_seen`. No-op for unpinned keys — an untrusted peer can
+    /// Record where a pinned peer just authenticated (§4.5 pin memory) and
+    /// bump `last_seen`. No-op for unpinned keys, so an untrusted peer can
     /// never write here.
     pub fn note_addr(&self, pubkey: &[u8; 32], addr: &str) {
         let mut entries = self.entries.lock().unwrap();

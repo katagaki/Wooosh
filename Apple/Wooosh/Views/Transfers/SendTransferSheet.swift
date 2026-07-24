@@ -179,10 +179,8 @@ struct SendTransferSheet: View {
             guard !items.isEmpty else { return }
             loadingPhotos = true
             Task {
-                // `PickedMediaFile` imports each item as a *file*, so the
-                // asset's own name and extension survive the trip (IMG_4021
-                // .HEIC stays IMG_4021.HEIC). Loading it as `Data` is what
-                // used to throw the filename away.
+                // Imported as a file, never as `Data`, so the asset's own name
+                // and extension survive (see `PickedMediaFile`).
                 var imported: [URL] = []
                 for (index, item) in items.enumerated() {
                     if let media = try? await item.loadTransferable(type: PickedMediaFile.self) {

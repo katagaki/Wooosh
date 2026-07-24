@@ -246,9 +246,8 @@ final class TransferCenter {
 
     private func handleFileReady(tid: TransferID, fileID: UInt32, stagedURL: URL, kind: FileKind) {
         guard let transfer = transfer(for: tid) else { return }
-        // The core's FileReady carries the manifest `fid`, so routing no
-        // longer has to guess by comparing staged file names (staging names
-        // are `<fid>.part`-derived and need not match the manifest name).
+        // Matched on the manifest `fid`, never on the staged file name:
+        // staging names are `<fid>.part`-derived and need not match.
         let index = transfer.files.firstIndex { $0.id == fileID }
         guard transfer.direction == .incoming else {
             // Outgoing: per-file completion signal only — nothing to route.

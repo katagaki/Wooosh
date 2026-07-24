@@ -46,9 +46,8 @@ class DiscoveryController(
     )
 
     /**
-     * What goes in the TXT `dt` field. Platform-explicit per PROTOCOL.md §3.1 — the
-     * receiving UI cannot tell a Pixel from an iPhone if we only say "phone" — with the
-     * existing sw600dp heuristic still choosing the form factor.
+     * The TXT `dt` value. Platform-explicit per PROTOCOL.md §3.1 (the receiving UI cannot
+     * tell a Pixel from an iPhone given only "phone"); sw600dp picks the form factor.
      */
     private val deviceType: DeviceType
         get() = if (appContext.resources.configuration.smallestScreenWidthDp >= 600) {
@@ -67,9 +66,9 @@ class DiscoveryController(
 
         scope.launch(Dispatchers.IO) {
             settingsRepository.settings.collectLatest { settings ->
-                // Debounce: display-name edits arrive per keystroke; don't flap the
-                // NSD registration. apply()/stop() have no suspension points, so a
-                // newer emission can only cancel us during the delay.
+                // Display-name edits arrive per keystroke; don't flap the NSD
+                // registration. apply()/stop() have no suspension points, so a newer
+                // emission can only cancel this during the delay.
                 delay(REREGISTER_DEBOUNCE_MS)
                 advertiser.apply(
                     displayName = settings.displayName,

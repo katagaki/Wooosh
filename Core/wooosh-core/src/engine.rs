@@ -1,10 +1,9 @@
 //! The connection / pairing / transfer engine.
 //!
-//! One `Engine` owns a QUIC endpoint (server + client on one UDP socket),
-//! the trust store, the peer table and all transfer state. It emits
-//! `CoreEvent`s through a std mpsc channel; the API layer forwards them to
-//! the host on a dedicated callback thread so callbacks never block the
-//! tokio runtime.
+//! One `Engine` owns a QUIC endpoint (server + client on one UDP socket), the
+//! trust store, the peer table and all transfer state. Events leave through a
+//! std mpsc channel; the API layer pumps them to the host on its own thread so
+//! host callbacks never block the tokio runtime.
 
 use crate::api::{
     CoreEvent, DeviceType, FileKind, OfferedFile, TransferDirection, TrustedPeer, Visibility,
@@ -28,18 +27,11 @@ use tokio::sync::{mpsc, oneshot, Notify};
 
 const HELLO_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-/// Connect deadline for QR pairing dials specifically.
-///
-/// The general 10 s budget exists for background/opportunistic dials where
-/// nobody is watching. A pairing dial is the opposite: the two devices are in
-/// the same room on the same LAN, the QUIC handshake normally completes in
-/// tens of milliseconds, and a human is staring at a spinner the whole time.
-/// 6 s still covers three initial-packet PTO retransmissions (~1 s + 2 s + 4 s
-/// of quinn's exponential backoff) on a lossy Wi-Fi link, so it does not
-/// give up on a slow-but-alive peer — it only shortens how long a *dead* hint
-/// can hold the UI hostage. Since hints are now raced rather than tried in
-/// sequence (see `race_connect_qr`), this is the total connect budget for the
-/// whole attempt, not a per-hint one.
+/// Total connect budget for a QR pairing attempt, not per hint — the hints are
+/// raced (`race_connect_qr`). Shorter than `CONNECT_TIMEOUT` because a human is
+/// watching a spinner; 6 s still covers three quinn initial-packet PTO
+/// retransmissions (~1+2+4 s) on lossy Wi-Fi, so a slow-but-alive peer is not
+/// abandoned.
 const PAIR_CONNECT_TIMEOUT: Duration = Duration::from_secs(6);
 const DECISION_TIMEOUT: Duration = Duration::from_secs(120);
 const PAIR_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
@@ -135,8 +127,8 @@ struct RecvTransfer {
     peer_pubkey: [u8; 32],
     dir: PathBuf,
     /// In-memory authority for `staging/<tid>/ledger.json`. Up to 4 slot
-    /// streams persist progress concurrently, so the ledger is mutated and
-    /// written under this one lock — never re-read from disk mid-transfer.
+    /// streams persist concurrently, so it is mutated and written under this
+    /// one lock and never re-read from disk mid-transfer.
     ledger: Mutex<Option<Ledger>>,
     files: Mutex<BTreeMap<u32, RecvFileState>>,
     invalid: Mutex<Vec<(u32, String)>>,
@@ -178,7 +170,6 @@ fn tid_hex(tid: &[u8; 16]) -> String {
     hex::encode(tid)
 }
 
-/// Wall-clock milliseconds since a transfer attempt's clock was (re)started.
 fn elapsed_ms(started_at: &Mutex<Instant>) -> u64 {
     started_at
         .lock()
@@ -222,11 +213,11 @@ fn kind_for_mime(mime: &str) -> FileKind {
     }
 }
 
-/// Translate a peer's QUIC application close code (§4.1 rejection reasons)
-/// into the matching typed error, so shells can react to *why* they were
-/// refused instead of showing a generic "connection lost". Returns `None`
-/// when the connection is still open, was closed at the transport level, or
-/// carries a code this version does not know.
+/// Rejections travel as QUIC application close codes, never as control frames
+/// (PROTOCOL.md §4.1) — `close()` discards buffered stream data, so a frame
+/// would often be lost. Translating the code gives shells the real reason
+/// instead of a generic "connection lost". `None` when the connection is still
+/// open, closed at the transport level, or carries an unknown code.
 fn close_reason_error(conn: &quinn::Connection) -> Option<WoooshError> {
     app_close_error(&conn.close_reason()?)
 }
@@ -251,14 +242,14 @@ fn app_close_error(err: &quinn::ConnectionError) -> Option<WoooshError> {
 }
 
 /// A failed QR pairing attempt, carrying enough context for the single
-/// `PairingResult { success: false }` emission at the top of `pair_with_qr`.
+/// `PairingResult { success: false }` emission in `pair_with_qr`.
 struct PairFailure {
     err: WoooshError,
     /// The key the QR promised, so the event names the peer the user *thinks*
-    /// they are pairing with. `None` only when the payload did not even parse.
+    /// they are pairing with. `None` only when the payload did not parse.
     pubkey: Option<[u8; 32]>,
-    /// Set when a `PairingResult` was already emitted elsewhere for this
-    /// attempt (the PAIR_REJECT dispatch path).
+    /// A `PairingResult` was already emitted for this attempt elsewhere (the
+    /// PAIR_REJECT dispatch path); emitting a second would show two failures.
     reported: bool,
 }
 
@@ -273,10 +264,8 @@ impl PairFailure {
 }
 
 /// How informative a per-hint connect failure is, for picking which one to
-/// report when every hint in a QR failed. A typed close-code / key error says
-/// exactly why we were refused and always beats a transport failure; a real
-/// transport error ("no route to host") beats a bare timeout, which says only
-/// that nothing answered.
+/// report when every hint in a QR failed: a typed close-code / key error beats
+/// a transport error, which beats a bare timeout.
 fn connect_error_rank(e: &WoooshError) -> u8 {
     match e {
         WoooshError::Connect(m) if m.starts_with("connect timeout") => 0,
@@ -291,25 +280,16 @@ fn local_ip() -> Option<std::net::IpAddr> {
     s.local_addr().ok().map(|a| a.ip())
 }
 
-/// Address hints to embed in a pairing QR (§4.2), best-first.
+/// Address hints to embed in a pairing QR (PROTOCOL.md §4.2), best-first.
 ///
-/// A QR is *normally scanned by a different device*, so the only hint that can
-/// possibly work is one that is routable from off-box. Loopback is kept, but
-/// strictly last and explicitly as the same-machine fallback (macOS app ↔
-/// `wooosh-cli` on one host genuinely pairs over it) — a remote scanner that
-/// reaches it is dialling its own loopback, which at best wastes a connect
-/// attempt and at worst hits an unrelated local service.
+/// A QR is normally scanned by a *different* device, so loopback goes strictly
+/// last, purely as the same-machine fallback (macOS app ↔ `wooosh-cli`): a
+/// remote scanner reaching it dials its own loopback and at worst hits an
+/// unrelated local service.
 ///
-/// The bind address decides what is truthful to advertise at all:
-/// * bound to a wildcard (`0.0.0.0` / `::`, the default) → every interface is
-///   live: advertise the LAN address, then loopback.
-/// * bound to loopback only → the LAN guess from `local_ip()` is a lie, no
-///   packet sent there will ever reach this socket. Advertise loopback alone.
-/// * bound to one specific non-loopback interface → that address is the only
-///   one that works; loopback is a lie. Advertise it alone.
-///
-/// Duplicates are collapsed, so a wildcard bind on a host whose only address
-/// is loopback yields one hint rather than the same one twice.
+/// Only advertise what the bind address makes truthful — a wildcard bind means
+/// every interface is live (LAN, then loopback), while a specific bind means
+/// every *other* address is a lie no packet can reach. Duplicates collapse.
 fn pairing_hints(bind_ip: IpAddr, lan_ip: Option<IpAddr>, port: u16) -> Vec<String> {
     let mut hints: Vec<String> = Vec::new();
     let mut push = |ip: IpAddr| {
@@ -322,7 +302,6 @@ fn pairing_hints(bind_ip: IpAddr, lan_ip: Option<IpAddr>, port: u16) -> Vec<Stri
         if let Some(ip) = lan_ip.filter(|ip| !ip.is_loopback() && !ip.is_unspecified()) {
             push(ip);
         }
-        // Last resort, same machine only.
         push(match bind_ip {
             IpAddr::V4(_) => IpAddr::V4(Ipv4Addr::LOCALHOST),
             IpAddr::V6(_) => IpAddr::V6(Ipv6Addr::LOCALHOST),
@@ -437,11 +416,11 @@ impl Engine {
         .encode()
     }
 
-    /// Sender side of QR pairing (§4.2).
+    /// Sender side of QR pairing (PROTOCOL.md §4.2).
     ///
-    /// Every exit from here is also reported to the host as a
-    /// `PairingResult` event: shells drive their pairing UI off events, and a
-    /// path that only returns `Err` leaves that UI hanging forever.
+    /// Every exit must also report a `PairingResult` event: shells drive their
+    /// pairing UI off events, so a path that only returns `Err` leaves that UI
+    /// hanging forever.
     pub async fn pair_with_qr(&self, payload: &str) -> Result<String, WoooshError> {
         match self.pair_with_qr_inner(payload).await {
             Ok(peer_id) => Ok(peer_id),
@@ -461,7 +440,6 @@ impl Engine {
             let e = WoooshError::Pairing("QR payload expired".into());
             return Err(PairFailure::new(e, Some(key)));
         }
-        // Race the hints, then run HELLO and PAIR_REQUEST on the one winner.
         let conn = self
             .inner
             .race_connect_qr(&qr.hints, key)
@@ -481,11 +459,10 @@ impl Engine {
             .unwrap()
             .insert(peer.device_id.clone(), tx);
         peer.send_msg(Msg::PairRequest { token: Some(qr.token.to_vec()) });
-        // A rejecting peer answers with PAIR_REJECT *and* closes
-        // with TOKEN_INVALID (§4.5) — and `close()` discards
-        // buffered stream data, so the frame is frequently lost.
-        // Race the reply against the close so the close code is
-        // what surfaces instead of a 20 s timeout.
+        // A rejecting peer sends PAIR_REJECT *and* closes with TOKEN_INVALID,
+        // and `close()` discards buffered stream data, so the frame is often
+        // lost. Race the reply against the close, otherwise a rejection reads
+        // as a 20 s timeout.
         let conn = peer.conn.clone();
         let outcome = tokio::time::timeout(PAIR_REPLY_TIMEOUT, async move {
             tokio::select! {
@@ -494,15 +471,14 @@ impl Engine {
             }
         })
         .await;
-        // Whatever happened, this attempt is over: do not leave a dead waiter
-        // behind for a later reply on the same device_id to resolve.
+        // This attempt is over: a dead waiter left behind would be resolved by
+        // a later reply on the same device_id.
         if !matches!(outcome, Ok(Ok(Ok(_)))) {
             self.inner.qr_waiters.lock().unwrap().remove(&peer.device_id);
         }
         match outcome {
             Ok(Ok(Ok(true))) => Ok(peer.device_id.clone()),
-            // PAIR_REJECT arrived as a frame, so `dispatch` already emitted the
-            // PairingResult; a second one would show the user two failures.
+            // The PAIR_REJECT frame arrived, so `dispatch` already emitted.
             Ok(Ok(Ok(false))) => Err(PairFailure::reported(WoooshError::Pairing(
                 "pairing rejected".into(),
             ))),
@@ -569,7 +545,7 @@ impl Engine {
         Ok(())
     }
 
-    /// tests only: current SAS code for a peer.
+    /// Tests only: current SAS code for a peer.
     pub fn sas_code(&self, peer_id: &str) -> Option<u32> {
         self.inner.sas.lock().unwrap().get(peer_id).map(|s| s.code)
     }
@@ -672,13 +648,13 @@ impl Engine {
         None
     }
 
-    /// tests only: push a raw control message to a connected peer.
+    /// Tests only: push a raw control message to a connected peer.
     pub fn debug_send_control(&self, peer_id: &str, msg: Msg) -> Result<(), WoooshError> {
         self.inner.get_peer(peer_id)?.send_msg(msg);
         Ok(())
     }
 
-    /// tests only: true if the connection to `peer_id` is still open.
+    /// Tests only: true if the connection to `peer_id` is still open.
     pub fn peer_connected(&self, peer_id: &str) -> bool {
         self.inner
             .peers
@@ -696,9 +672,8 @@ impl Inner {
     }
 
     /// Report a pairing attempt that failed before (or instead of) any
-    /// PAIR_ACCEPT / PAIR_REJECT frame. Shells render pairing progress from
-    /// events, so a connect timeout or a bad QR must still produce a terminal
-    /// event — otherwise the sheet spins until the user kills the app.
+    /// PAIR_ACCEPT / PAIR_REJECT frame. A connect timeout or bad QR must still
+    /// produce a terminal event, or the shell's sheet spins forever.
     fn emit_pairing_failure(&self, pubkey: Option<[u8; 32]>, message: String) {
         let (peer_id, peer_pubkey, fingerprint) = match pubkey {
             Some(k) => (
@@ -706,7 +681,7 @@ impl Inner {
                 k.to_vec(),
                 identity::fingerprint_phrase_for(&k),
             ),
-            // The QR did not parse, so there is no peer identity to name.
+            // Payload did not parse: no peer identity to name.
             None => (String::new(), Vec::new(), String::new()),
         };
         self.emit(CoreEvent::PairingResult {
@@ -765,18 +740,14 @@ impl Inner {
     /// Dial every hint from a pairing QR at once and keep the first connection
     /// that comes up.
     ///
-    /// Hints are ordered best-first, but a *dead* hint is indistinguishable
-    /// from a slow one until it times out, so trying them in sequence costs a
-    /// full connect timeout for every dead entry ahead of the live one. That
-    /// is the field failure this replaces: an Android phone scanned an
-    /// iPhone's QR, dialled the stale LAN hint, and sat silent for 19 s before
-    /// the user killed the app — and the cost grew with every hint added.
-    /// Racing bounds the wait by the slowest *useful* attempt instead of the
-    /// sum of the useless ones.
+    /// A dead hint is indistinguishable from a slow one until it times out, so
+    /// dialling in sequence costs a full connect timeout per dead entry ahead
+    /// of the live one. Racing bounds the wait by the slowest *useful* attempt
+    /// instead of the sum of the useless ones. Never make this serial again.
     ///
-    /// Only the QUIC handshake is raced. HELLO and the PAIR_REQUEST exchange
-    /// run afterwards on the single winner, so there is never more than one
-    /// registered peer or one token redemption in flight.
+    /// Only the QUIC handshake is raced: HELLO and PAIR_REQUEST run afterwards
+    /// on the single winner, so there is never more than one registered peer
+    /// or one redemption of the single-use token in flight.
     async fn race_connect_qr(
         self: &Arc<Self>,
         hints: &[String],
@@ -810,8 +781,7 @@ impl Inner {
                         None => true,
                         Some((bi, be)) => {
                             let (r, br) = (connect_error_rank(&e), connect_error_rank(be));
-                            // Same quality => the earlier (better-ranked) hint
-                            // is the one worth telling the user about.
+                            // Tie: report the earlier, better-ranked hint.
                             r > br || (r == br && idx < *bi)
                         }
                     };
@@ -823,9 +793,9 @@ impl Inner {
                 Err(_) => {}
             }
         }
-        // Losers: cancel the ones still dialling, and hang up on any that also
-        // succeeded (two hints can reach the same device) so we do not leave a
-        // second connection to that peer alive.
+        // Cancel losers still dialling, and hang up on any that also succeeded
+        // (two hints can reach the same device) so no second connection to
+        // that peer is left alive.
         set.abort_all();
         while let Some(joined) = set.join_next().await {
             if let Ok((_, Ok(conn))) = joined {
@@ -838,9 +808,9 @@ impl Inner {
         }
     }
 
-    /// The QUIC half of a dial: address resolution, pinning, handshake. Split
-    /// out from `connect_to` so pairing can race it across hints without also
-    /// racing the HELLO exchange in `run_connection`.
+    /// The QUIC half of a dial: address resolution, pinning, handshake. Kept
+    /// separate from `connect_to` so pairing can race it across hints without
+    /// also racing the HELLO exchange in `run_connection`.
     async fn connect_quic(
         self: &Arc<Self>,
         addr: &str,
@@ -854,10 +824,9 @@ impl Inner {
             .next()
             .ok_or_else(|| WoooshError::Connect(format!("no address for {addr}")))?;
         // Pinning must not depend on the shell passing the right argument
-        // (PROTOCOL.md §4.5). When the caller gives no key, the core resolves
-        // the identity behind this address from its own trust store — a peer
-        // we previously authenticated at exactly this `ip:port` — and pins to
-        // it. A caller-supplied key always wins.
+        // (PROTOCOL.md §4.5): with no caller key, resolve the identity last
+        // authenticated at exactly this `ip:port` from our own trust store and
+        // pin to that. A caller-supplied key always wins.
         let expected_pubkey = match expected_pubkey {
             Some(k) => Some(k),
             None => {
@@ -894,15 +863,13 @@ impl Inner {
                     });
                     return Err(WoooshError::KeyChanged);
                 }
-                // A peer that refused us during the QUIC handshake states why
-                // in its application close code (§4.1).
                 return Err(app_close_error(&e).unwrap_or(WoooshError::Connect(msg)));
             }
         };
         Ok(conn)
     }
 
-    /// Handshake bookkeeping + HELLO exchange, then spawns the long-lived
+    /// Handshake bookkeeping + HELLO exchange, then spawn the long-lived
     /// reader / writer / uni-stream tasks. Returns the registered peer.
     async fn run_connection(
         self: Arc<Self>,
@@ -932,13 +899,12 @@ impl Inner {
                 caps: vec![],
             }
         };
-        // HELLO exchange (§4.1). The client speaks first; the *server* answers
-        // only after it has read the peer's HELLO and decided to keep the
-        // connection. Writing our HELLO before a rejection would (a) leak our
-        // display name to a peer we are about to refuse and (b) race the
-        // CONNECTION_CLOSE — `close()` drops buffered stream data, so the
-        // client would non-deterministically see either the HELLO or a torn
-        // read instead of the close code.
+        // HELLO exchange (PROTOCOL.md §4.1). The client speaks first; the
+        // server answers only after reading the peer's HELLO and deciding to
+        // keep the connection. Answering earlier would leak our display name
+        // to a peer we are about to refuse, and would race the
+        // CONNECTION_CLOSE so the client sees a torn read instead of the
+        // close code.
         if is_client {
             write_frame(&mut send, &hello).await?;
         }
@@ -965,11 +931,10 @@ impl Inner {
             conn.close(close_codes::VERSION_MISMATCH.into(), b"no common version");
             return Err(WoooshError::VersionMismatch);
         }
-        // Identity binding: the DeviceID a peer announces in HELLO must be the
-        // one derived from the key it just proved possession of. A peer that
-        // claims someone else's DeviceID is either broken or impersonating —
-        // and if the claimed identity is one we have pinned, that is exactly
-        // the KEY_CHANGED signal (§4.5), regardless of which side dialled.
+        // Identity binding (PROTOCOL.md §4.1.1): the DeviceID announced in
+        // HELLO must derive from the key the peer just proved possession of.
+        // Claiming an identity we have pinned is the KEY_CHANGED signal
+        // (§4.5), whichever side dialled.
         if !claimed_device_id.is_empty()
             && claimed_device_id.as_slice() != identity::device_id_for(&pubkey).as_slice()
         {
@@ -1003,9 +968,8 @@ impl Inner {
         }
 
         if trusted {
-            // Remember where this pinned peer just authenticated, so a later
-            // connect_peer(addr, None) can re-apply the pin without the shell
-            // supplying the key (§4.5).
+            // Remember where this pinned peer authenticated so a later
+            // connect_peer(addr, None) can re-apply the pin itself (§4.5).
             self.trust.note_addr(&pubkey, &conn.remote_address().to_string());
         }
 
@@ -1029,9 +993,7 @@ impl Inner {
             trusted,
         });
 
-        // Writer task.
         tokio::spawn(write_loop(send, out_rx));
-        // Control reader task.
         {
             let inner = self.clone();
             let peer = peer.clone();
@@ -1041,13 +1003,11 @@ impl Inner {
                 }
             });
         }
-        // Incoming file-stream loop.
         {
             let inner = self.clone();
             let peer = peer.clone();
             tokio::spawn(async move { inner.uni_accept_loop(peer).await });
         }
-        // Disconnect watcher.
         {
             let inner = self.clone();
             let peer = peer.clone();
@@ -1124,7 +1084,6 @@ impl Inner {
                 }
             }
             Msg::PairRequest { token: None } => {
-                // SAS flow (§4.3): both sides derive the code from the TLS exporter.
                 let code = transport::derive_sas(&peer.conn)?;
                 self.new_sas_entry(peer, code);
             }
@@ -1183,8 +1142,8 @@ impl Inner {
                 let st = self.sends.lock().unwrap().get(&tid).cloned();
                 match st {
                     // DECISION answers an OFFER we initiated on this
-                    // connection, so it is honored even on an untrusted
-                    // channel (accept-once transfers, §4.4).
+                    // connection, so it is honored even untrusted
+                    // (accept-once transfers, PROTOCOL.md §4.4).
                     Some(st) if st.peer_id == peer.device_id => {
                         *st.accepted.lock().unwrap() = Some(accept);
                         st.decision_notify.notify_waiters();
@@ -1198,8 +1157,8 @@ impl Inner {
             }
             Msg::ResumeQ { tid } => {
                 if !trusted {
-                    // Untrusted channels may only carry HELLO / PAIR_* / OFFER
-                    // (§4.1). Resume of accept-once transfers is unsupported.
+                    // Untrusted channels carry only HELLO / PAIR_* / OFFER
+                    // (PROTOCOL.md §4.1); accept-once transfers cannot resume.
                     self.untrusted_violation(peer, "RESUME_Q");
                     return Ok(());
                 }
@@ -1300,10 +1259,10 @@ impl Inner {
         Ok(())
     }
 
-    /// Persist the pin for a peer we just paired with: key + display name +
-    /// device type, plus the address it authenticated at so a later
+    /// Persist the pin for a newly paired peer: key, display name, device type
+    /// and the address it authenticated at, so a later
     /// `connect_peer(addr, None)` re-applies the pin by itself (§4.5).
-    /// Returns the display name that was recorded.
+    /// Returns the recorded display name.
     fn pin_peer(&self, peer: &Arc<Peer>) -> Result<String, WoooshError> {
         let dn = peer.dn.lock().unwrap().clone();
         let dt = peer.dt.lock().unwrap().clone();
@@ -1332,7 +1291,7 @@ impl Inner {
             peer_id: peer.device_id.clone(),
             code: format!("{code:06}"),
         });
-        // 60 s timeout (§4.3).
+        // SAS confirmation expires after 60 s (PROTOCOL.md §4.3).
         let inner = self.clone();
         let peer_id = peer.device_id.clone();
         let peer_pubkey = peer.pubkey;
@@ -1393,7 +1352,7 @@ impl Inner {
         let mut invalid = Vec::new();
         let mut offered = Vec::new();
         for f in files {
-            // Receiver-side sanitization (§5).
+            // Receiver-side sanitization (PROTOCOL.md §5).
             let safe_name = match sanitize::sanitize_name(&f.name) {
                 Ok(n) => n,
                 Err(e) => {
@@ -1478,7 +1437,6 @@ impl Inner {
         };
         if !valid.is_empty() {
             std::fs::create_dir_all(&rt.dir)?;
-            // Preallocate .part files + write the initial ledger.
             let mut ledger = Ledger {
                 tid_hex: tid_hex(&tid),
                 sender_pubkey_b64: {
@@ -1496,7 +1454,7 @@ impl Inner {
                     .write(true)
                     .truncate(false)
                     .open(&part)?;
-                f.set_len(st.meta.size)?; // preallocation (§6)
+                f.set_len(st.meta.size)?; // preallocation (PROTOCOL.md §6)
                 ledger.files.insert(
                     *fid,
                     LedgerFile {
@@ -1557,8 +1515,7 @@ impl Inner {
         peer: &Arc<Peer>,
         tid: [u8; 16],
     ) -> Result<(), WoooshError> {
-        // Reload from the persisted ledger if we don't have it in memory
-        // (receiver restarted).
+        // Not in memory means the receiver restarted: reload from the ledger.
         let rt = {
             let existing = self.recvs.lock().unwrap().get(&tid).cloned();
             match existing {
@@ -1572,7 +1529,6 @@ impl Inner {
                 None => {
                     let dir = self.staging.join(tid_hex(&tid));
                     let Some(ledger) = Ledger::load(&dir)? else {
-                        // Nothing to resume.
                         peer.send_msg(Msg::ResumeA { tid, have: vec![] });
                         return Ok(());
                     };
@@ -1634,8 +1590,9 @@ impl Inner {
             }
         };
 
-        // Prime hashers by re-hashing .part prefixes (trust-but-verify the
-        // ledger, §6/§7 of DESIGN.md).
+        // Prime hashers by re-hashing .part prefixes: the ledger's
+        // verified_off is a hint, the bytes on disk are the authority
+        // (DESIGN.md §6/§7).
         let mut have = Vec::new();
         let fids: Vec<u32> = rt.files.lock().unwrap().keys().copied().collect();
         for fid in fids {
@@ -1670,7 +1627,6 @@ impl Inner {
             };
             have.push(ResumeHave { fid, verified_off: off });
         }
-        // Tell the shell the (resumed) receive is starting again.
         {
             let states = rt.files.lock().unwrap();
             let files: Vec<OfferedFile> = states
@@ -1717,7 +1673,7 @@ impl Inner {
     }
 
     /// One unidirectional stream = one big file, or several small files
-    /// back-to-back (§6).
+    /// back-to-back (PROTOCOL.md §6).
     async fn handle_file_stream(
         self: &Arc<Self>,
         peer: Arc<Peer>,
@@ -1751,7 +1707,8 @@ impl Inner {
                 acc.as_ref().map(|a| a.contains(&header.fid)).unwrap_or(false)
             };
             if !accepted {
-                // Sender must not open file streams before DECISION (§5).
+                // Sender must not open file streams before DECISION
+                // (PROTOCOL.md §5).
                 let _ = stream.stop(quinn::VarInt::from_u32(close_codes::UNTRUSTED_MSG));
                 return Err(WoooshError::Protocol("stream for unaccepted file".into()));
             }
@@ -1824,9 +1781,9 @@ impl Inner {
             since_progress += n as u64;
             rt.bytes_this_attempt.fetch_add(n as u64, Ordering::SeqCst);
 
-            // Ledger fsync every 16 MiB (§6). Failures must `break Err` — a
-            // `?` here would skip the cleanup arm below and leave the file
-            // pinned `active`, so it could never be retried or resumed.
+            // Ledger fsync every 16 MiB (PROTOCOL.md §6). Failures must
+            // `break Err`, never `?`: `?` skips the cleanup arm below and
+            // leaves the file pinned `active`, unable to retry or resume.
             if since_sync >= FSYNC_INTERVAL {
                 since_sync = 0;
                 if let Err(e) = file.flush().await {
@@ -1851,7 +1808,8 @@ impl Inner {
                 let actual = hasher.finalize();
                 let ok = actual.as_bytes() == &expected_b3;
                 if ok {
-                    // Verify-then-report: route only after the hash matches.
+                    // Verify-then-report: nothing leaves staging, and no
+                    // FileReady is emitted, until the hash matches.
                     let final_path = self.finalize_file(rt, fid).await?;
                     self.persist_file_done(rt, fid, size);
                     {
@@ -1893,13 +1851,13 @@ impl Inner {
                 let _ = file.flush().await;
                 let _ = file.sync_data().await;
                 drop(file);
-                let safe_off = written; // everything above was flushed + synced
+                let safe_off = written; // flushed + synced above
                 self.persist_verified_off(rt, fid, safe_off);
                 {
                     let mut files = rt.files.lock().unwrap();
                     if let Some(st) = files.get_mut(&fid) {
                         st.verified_off = safe_off;
-                        st.hasher = None; // will re-hash prefix on resume
+                        st.hasher = None; // re-hash the prefix on resume
                         st.active = false;
                     }
                 }
@@ -1925,11 +1883,11 @@ impl Inner {
 
     /// Mutate + atomically rewrite the transfer's ledger under its lock.
     ///
-    /// Best-effort: the ledger only accelerates a future resume — the
-    /// authoritative state is the `.part` file plus the BLAKE3 check — so a
-    /// persistence failure is logged, never propagated into the data path
-    /// (propagating it would tear down a whole pipelined slot stream and
-    /// strand every file still queued behind it).
+    /// Best-effort by design: the ledger only accelerates a future resume, the
+    /// `.part` file plus the BLAKE3 check being authoritative. A write failure
+    /// is logged and never propagated into the transfer path — propagating it
+    /// would tear down a whole pipelined slot stream and strand every file
+    /// queued behind it.
     fn write_ledger(&self, rt: &RecvTransfer, fid: u32, f: impl FnOnce(&mut LedgerFile)) {
         let mut guard = rt.ledger.lock().unwrap_or_else(|e| e.into_inner());
         let Some(ledger) = guard.as_mut() else { return };
@@ -1974,7 +1932,7 @@ impl Inner {
         if let Some(parent) = dest.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
-        // Name collisions: append " (2)", " (3)"… — never overwrite.
+        // Collisions append " (2)", " (3)"… — never overwrite.
         if tokio::fs::try_exists(&dest).await.unwrap_or(false) {
             let stem = dest
                 .file_stem()
@@ -2025,7 +1983,6 @@ impl Inner {
         peer: Arc<Peer>,
         paths: Vec<PathBuf>,
     ) -> Result<(), WoooshError> {
-        // Hash + stat every file (blocking pool).
         let mut files = BTreeMap::new();
         let mut metas = Vec::new();
         let mut total = 0u64;
@@ -2085,7 +2042,7 @@ impl Inner {
 
         peer.send_msg(Msg::Offer { tid, files: metas, total, note: None });
 
-        // Sender must not open file streams before DECISION (§5).
+        // Sender must not open file streams before DECISION (PROTOCOL.md §5).
         let waited = tokio::time::timeout(DECISION_TIMEOUT, async {
             loop {
                 if st.accepted.lock().unwrap().is_some() {
@@ -2155,8 +2112,8 @@ impl Inner {
         }
         *st.accepted.lock().unwrap() = Some(accepted.clone());
         st.done.lock().unwrap().clear();
-        // Files already complete on the receiver need no bytes; but they also
-        // send no DONE, so mark them done locally.
+        // Files the receiver already has send no DONE, so mark them done
+        // locally or the transfer never completes.
         let mut fully_done = Vec::new();
         {
             let offsets = st.offsets.lock().unwrap();
@@ -2178,7 +2135,8 @@ impl Inner {
     }
 
     /// ≤4 concurrent slots; big files get their own uni stream, small files
-    /// (<1 MiB) are pipelined back-to-back over shared slot streams (§6).
+    /// (<1 MiB) are pipelined back-to-back over shared slot streams
+    /// (PROTOCOL.md §6).
     async fn stream_files(
         self: &Arc<Self>,
         st: &Arc<SendTransfer>,
@@ -2214,14 +2172,13 @@ impl Inner {
             let small = small.clone();
             let offsets = offsets.clone();
             workers.push(tokio::spawn(async move {
-                // Big files: one stream per file.
                 loop {
                     let fid = big.lock().unwrap().pop_front();
                     let Some(fid) = fid else { break };
                     let off = offsets.get(&fid).copied().unwrap_or(0);
                     inner.send_one_file(&st, &peer, fid, off, None).await?;
                 }
-                // Small files: open one stream and pipeline until drained.
+                // Small files share one stream, pipelined until drained.
                 let has_small = !small.lock().unwrap().is_empty();
                 if has_small {
                     let mut stream = peer
@@ -2259,8 +2216,8 @@ impl Inner {
             });
             return Err(e);
         }
-        // If everything was already on the receiver (pure catch-up resume),
-        // no DONEs will arrive; check completion locally.
+        // A pure catch-up resume sends no bytes, so no DONE arrives: check
+        // completion locally as well.
         let all_done = {
             let done = st.done.lock().unwrap();
             accepted.iter().all(|f| done.contains_key(f))

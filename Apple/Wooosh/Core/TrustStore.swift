@@ -4,11 +4,10 @@ import Observation
 /// The user-visible trust list (PROTOCOL.md §4.5), read straight from the
 /// core's canonical `trust.json` via `trustedPeers()`.
 ///
-/// This deliberately holds no persisted state of its own. The previous
-/// UserDefaults mirror could disagree with the core about who was pinned (and
-/// carried its own copy of the pubkeys); the core is now the single source, so
-/// this type is a refresh-on-demand cache plus the one piece of state the core
-/// does not model: which peers have shown a KEY_CHANGED *this session*.
+/// Deliberately holds no persisted state of its own — a shell-side mirror could
+/// disagree with the core about who is pinned. This is a refresh-on-demand
+/// cache plus the one thing the core does not model: which peers have shown a
+/// KEY_CHANGED this session.
 @MainActor
 @Observable
 final class TrustStore {

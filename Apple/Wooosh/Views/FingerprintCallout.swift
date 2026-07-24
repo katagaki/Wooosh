@@ -3,14 +3,11 @@ import SwiftUI
 /// This device's own 6-word fingerprint, shown to the *sender* while an
 /// unpaired receiver is deciding whether to accept.
 ///
-/// The receiver's consent sheet asks the user to verify the sender's
-/// fingerprint (PROTOCOL.md §2). That check is only performable if the sending
-/// device actually puts the phrase on screen at the same moment — otherwise
-/// the UI is asking for a comparison against nothing. So: large, monospaced,
-/// selectable, and readable across a desk, exactly like the SAS code.
-///
-/// The phrase comes from the core (`fingerprintPhrase()`, surfaced by
-/// `AppModel`); it is never re-derived in Swift.
+/// The receiver's consent sheet asks its user to verify the sender's
+/// fingerprint (PROTOCOL.md §2), so the sending device must show the phrase at
+/// the same moment or the comparison is against nothing. Hence large,
+/// monospaced, selectable, readable across a desk. The phrase always comes from
+/// the core and is never re-derived in Swift.
 struct FingerprintCallout: View {
     let phrase: String
 

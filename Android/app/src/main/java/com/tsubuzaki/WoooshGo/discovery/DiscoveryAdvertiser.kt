@@ -8,9 +8,7 @@ import com.tsubuzaki.WoooshGo.settings.Visibility
 
 /**
  * Advertises this device via NSD (mDNS/DNS-SD) with the TXT layout of PROTOCOL.md §3.1.
- *
- * The advertised port is the core's real QUIC listener (`core.listenAddr()`); the
- * Milestone-1 placeholder ServerSocket is gone — the core owns the socket now.
+ * The advertised port is the core's QUIC listener (`core.listenAddr()`).
  */
 class DiscoveryAdvertiser(private val nsdManager: NsdManager) {
 

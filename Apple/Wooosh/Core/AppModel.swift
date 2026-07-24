@@ -17,16 +17,13 @@ struct SASRequest: Identifiable, Equatable {
 /// Progress of the one pairing attempt that can be in flight, whichever entry
 /// point started it (scanned/pasted QR, or a SAS request from a list row).
 ///
-/// `connecting` exists because pairing crosses a network: it resolves mDNS,
-/// dials QUIC and waits for the other side's user. That can take many seconds
-/// or never finish, and a UI that shows nothing during it reads as a hung app —
-/// which is exactly how users lose the flow (they force-quit). Every path into
-/// pairing must land here first, name the peer, and offer a way out.
+/// Pairing crosses a network and can take many seconds or never finish, so
+/// every path into it must land in `connecting` first, name the peer, and offer
+/// a way out. A silent wait reads as a hung app and users force-quit.
 enum PairingPhase: Equatable {
     case idle
-    /// Named so the sheet can say "Connecting to Aki's MacBook Pro…" rather
-    /// than a bare spinner. `nil` when the name is not known yet, which gets a
-    /// sentence of its own rather than a placeholder word dropped into one.
+    /// `nil` name means the copy must stand on its own; never splice a
+    /// placeholder noun into a translated sentence.
     case connecting(peerName: String?)
     case success(PeerRef)
     case failed(String)
@@ -42,9 +39,9 @@ enum PairingPhase: Equatable {
     }
 }
 
-/// A pinned peer presenting a different key (PROTOCOL.md §4.5), rendered with
-/// both fingerprints so the warning is concrete rather than "something
-/// changed". Phrases come from the core (`fingerprintPhraseFor`).
+/// A pinned peer presenting a different key (PROTOCOL.md §4.5). Both
+/// fingerprints are carried so the warning is concrete rather than "something
+/// changed"; the phrases come from the core.
 struct KeyChangeWarning: Identifiable, Equatable {
     let peer: PeerRef
     /// Phrase for the key the user actually paired with.
@@ -61,17 +58,6 @@ struct ShareBatch: Identifiable, Equatable {
     let urls: [URL]
 }
 
-/// Which engine the app is driving. `RealCore` is the default; `MockCore`
-/// stays reachable from the DEBUG menu so the scripted UI demo still works
-/// without a peer on the network.
-enum CoreBackend: String, CaseIterable, Identifiable {
-    case real
-    case mock
-
-    var id: String { rawValue }
-    var label: String { self == .real ? "Rust core" : "Mock core" }
-}
-
 @MainActor
 @Observable
 final class AppModel {
@@ -82,7 +68,6 @@ final class AppModel {
     @ObservationIgnored
     private(set) var core: any WoooshCore = RealCore()
 
-    private(set) var backend: CoreBackend = .real
     /// Identity, as reported by the core — the single source (PROTOCOL.md §2).
     private(set) var deviceIDString: String = L.t("settings_starting")
     private(set) var fingerprintPhrase: String = ""
@@ -90,11 +75,11 @@ final class AppModel {
     /// Set when starting the core failed; surfaced in Settings.
     private(set) var startupError: String?
 
-    // Pairing UI state, driven by core events.
     var activeSAS: SASRequest?
     var sasConfirming = false
     var pairingPhase: PairingPhase = .idle
-    /// A pinned peer presented a different key — prominent alert (§4.5).
+    /// A pinned peer presented a different key — prominent alert
+    /// (PROTOCOL.md §4.5).
     var keyChangeWarning: KeyChangeWarning?
 
     /// Reason the last send attempt never produced a transfer (usually a
@@ -160,9 +145,6 @@ final class AppModel {
         self.discovery = discovery
         discovery.startBrowsing()
         restartAdvertising()
-        #if DEBUG
-        AutoTest.run(model: self)
-        #endif
     }
 
     /// Explicit refresh: the only way (besides relaunch) that rows leave the list.
@@ -171,10 +153,9 @@ final class AppModel {
         discovery?.startBrowsing()
     }
 
-    /// Called on app termination. The core joins its callback thread and
-    /// shuts the tokio runtime down here; skipping it leaves the runtime to
-    /// be dropped from `deinit` at an arbitrary point, which is how FFI
-    /// shutdowns hang.
+    /// Called on app termination. Skipping it leaves the tokio runtime to be
+    /// dropped from `deinit` at an arbitrary point, which is how FFI shutdowns
+    /// hang.
     func shutdown() {
         eventPumpTask?.cancel()
         eventPumpTask = nil
@@ -202,26 +183,9 @@ final class AppModel {
         fingerprintPhrase = core.fingerprintPhrase ?? ""
         listenAddress = core.listenAddress ?? ""
         transfers.attach(core: core)
-        // Trust list comes from the core's own trust.json, read at launch.
         trustStore.attach(core: core)
         startEventPump()
     }
-
-    #if DEBUG
-    /// Swaps the engine at runtime so the scripted demo flows stay available.
-    func switchBackend(to backend: CoreBackend) {
-        guard backend != self.backend else { return }
-        shutdown()
-        self.backend = backend
-        core = backend == .real ? RealCore() : MockCore()
-        registry.clear()
-        Task {
-            await startCore()
-            restartAdvertising()
-            discovery?.startBrowsing()
-        }
-    }
-    #endif
 
     // MARK: - Core event pump
 
@@ -245,8 +209,7 @@ final class AppModel {
             registry.disconnected(peerID: peerID)
         case .pairingSAS(let peer, let sixDigits):
             sasConfirming = false
-            // The code exchange is up: the SAS sheet takes over from the
-            // connecting spinner.
+            // The SAS sheet takes over from the connecting spinner.
             pairingTimeoutTask?.cancel()
             pairingTimeoutTask = nil
             if pairingPhase.isConnecting { pairingPhase = .idle }
@@ -255,9 +218,9 @@ final class AppModel {
             pairingTimeoutTask?.cancel()
             pairingTimeoutTask = nil
             if success {
-                // The core has just written trust.json; re-read it rather than
-                // mirroring the event into a shell-side list. This happens even
-                // for an abandoned attempt — the pin is real either way.
+                // Re-read the core's trust.json rather than mirroring the event
+                // shell-side. Runs even for an abandoned attempt: the pin is
+                // real either way.
                 trustStore.refresh()
                 registry.connected(peerID: peer.id, displayName: peer.displayName,
                                    deviceType: peer.deviceType, trusted: true)
@@ -290,10 +253,8 @@ final class AppModel {
     }
 
     func pairWithQR(payload: String) {
-        // Name the peer straight from the payload, so the very first frame
-        // after the scan says who we are talking to.
-        // No name yet means the copy has to stand on its own rather than
-        // splice a placeholder noun into a sentence a translator cannot see.
+        // Named from the payload so the first frame after the scan already
+        // says who we are talking to.
         let name = core.peerHint(forPairingPayload: payload)?.displayName
         beginPairingAttempt(peerName: name)
         core.pairWithQR(payload: payload)
@@ -304,9 +265,8 @@ final class AppModel {
         let generation = pairingGeneration
         Task {
             do {
-                // Blocking mDNS resolve + QUIC handshake; already off the main
-                // actor inside the core adapter. The UI stays live and
-                // cancellable while it runs.
+                // Blocking mDNS resolve + QUIC handshake, off the main actor
+                // inside the core adapter, so the UI stays cancellable.
                 let peerID = try await ensureConnection(to: peer)
                 guard generation == pairingGeneration else { return }
                 core.requestSASPairing(peerID: peerID)
@@ -317,7 +277,6 @@ final class AppModel {
         }
     }
 
-    /// Enters the visible connecting state and arms the client-side timeout.
     private func beginPairingAttempt(peerName: String?) {
         pairingGeneration += 1
         let generation = pairingGeneration
@@ -333,9 +292,9 @@ final class AppModel {
     }
 
     /// User-initiated abort. The core's pairing call is blocking and cannot be
-    /// interrupted, so the attempt is *disowned* rather than killed: the
-    /// generation moves on, and a result that lands afterwards is ignored
-    /// instead of reopening a screen the user already left.
+    /// interrupted, so the attempt is disowned rather than killed: a result
+    /// landing afterwards is ignored instead of reopening a screen the user
+    /// already left.
     func cancelPairing() {
         pairingGeneration += 1
         pairingTimeoutTask?.cancel()
@@ -372,8 +331,8 @@ final class AppModel {
         }
         sasConfirming = true
         core.confirmSAS(peerID: sas.peer.id, accepted: true)
-        // "Confirming…" is another wait on the other device. Same rule: it may
-        // not hang forever with no explanation.
+        // "Confirming…" is another wait on the other device, and must not hang
+        // forever with no explanation either.
         pairingGeneration += 1
         let generation = pairingGeneration
         pairingTimeoutTask?.cancel()
@@ -388,8 +347,7 @@ final class AppModel {
         }
     }
 
-    /// Revokes the pin in the core and re-reads the resulting trust list. The
-    /// pubkey is always available now that it comes from `trustedPeers()`.
+    /// Revokes the pin in the core and re-reads the resulting trust list.
     func revoke(device: TrustedPeerInfo) {
         core.revokePeer(publicKey: device.publicKey)
         trustStore.refresh()
@@ -399,12 +357,12 @@ final class AppModel {
     // MARK: - Connecting (DESIGN.md §4 `connect_peer`)
 
     /// Resolves a discovered row to an address and opens the QUIC connection,
-    /// pinning the peer's key whenever we can name it. Returns the core's peer id.
+    /// returning the core's peer id.
     ///
-    /// The pin lookup is keyed by DeviceID against `trustedPeers()`, not by
+    /// The pin lookup is keyed by DeviceID against `trustedPeers()`, never by
     /// discovery id or display name. Passing the key matters: the core's own
-    /// fallback resolves a pin from the *address*, which only matches a peer
-    /// that came back on the same `ip:port`.
+    /// fallback resolves a pin from the address, which only matches a peer that
+    /// came back on the same `ip:port`.
     @discardableResult
     func ensureConnection(to peer: Peer) async throws -> String {
         if let existing = peer.corePeerID { return existing }
@@ -451,8 +409,8 @@ final class AppModel {
         return PeerRef(
             id: peerID,
             displayName: peer.displayName,
-            // Core-facing form factor only; the row's precise `deviceKind`
-            // has no equivalent in the core's enum yet (PROTOCOL.md §3.1).
+            // Core-facing form factor only; the row's precise `deviceKind` has
+            // no equivalent in the core's enum (PROTOCOL.md §3.1).
             deviceType: pinned?.deviceType ?? peer.coreDeviceType,
             fingerprint: pinned?.fingerprint ?? "",
             publicKey: pinned?.publicKey
@@ -471,10 +429,9 @@ final class AppModel {
     }
 
     #if os(iOS)
-    /// Sends photos/videos imported from `PhotosPicker`. The URLs are already
-    /// ours (see `PickedMediaFile`) and, crucially, already carry the asset's
-    /// original filename — staging preserves it verbatim, so the receiver sees
-    /// "IMG_4021.HEIC", not a name this app invented.
+    /// Sends photos/videos imported from `PhotosPicker`. The URLs already carry
+    /// the asset's original filename and staging preserves it verbatim, so the
+    /// receiver sees "IMG_4021.HEIC" and not a name this app invented.
     func sendPickedMedia(to peer: Peer, urls: [URL]) async -> Transfer? {
         defer { PickedMediaFile.clearImports() }
         let staged = stageOutgoing(urls: urls, securityScoped: false)
@@ -513,8 +470,8 @@ final class AppModel {
 
     /// Copies one batch into a single staging directory, keeping every file's
     /// own name. One directory per batch (not per file) is what makes the
-    /// " (2)" suffix kick in when a pick contains two items with the same
-    /// name — the receiver's collision policy, applied at the source.
+    /// " (2)" suffix kick in for two picked items with the same name — the
+    /// receiver's collision policy, applied at the source.
     private func stageOutgoing(urls: [URL], securityScoped: Bool) -> [URL] {
         let dir = Self.outgoingDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -555,103 +512,6 @@ final class AppModel {
         }
         pendingShareBatch = nil
     }
-
-    // MARK: - Debug simulation (drives the mock backend only)
-
-    #if DEBUG
-    /// A screen the DEBUG demo harness can open directly (`WOOOSH_DEMO=…`).
-    ///
-    /// This exists because the UI has to be reviewable on a simulator with no
-    /// Simulator.app to tap — and because the scripted states (an incoming
-    /// offer, a pairing that is still connecting) need a second device
-    /// otherwise. Every case drives the *real* state machine; none of it fakes
-    /// a view.
-    enum DebugScreen: String {
-        case devices
-        case pair
-        case offer
-        case sas
-        case send
-        case pairingConnecting = "pairing-connecting"
-        case pairingFailed = "pairing-failed"
-        case pairingFailedInSheet = "pairing-failed-sheet"
-        case pairingOverlay = "pairing-overlay"
-        case settings
-    }
-
-    /// Set from the launch environment; observed by `DeviceListView`.
-    var debugScreen: DebugScreen?
-
-    /// Puts the app into a scripted, screenshot-stable state.
-    func debugPresent(screen: DebugScreen) {
-        // Deterministic list: no live mDNS churn behind the scripted rows.
-        discovery?.stopBrowsing()
-        registry.clear()
-        debugPopulateNearbyDevices()
-        switch screen {
-        case .devices, .pair, .send, .settings:
-            break
-        case .offer:
-            debugSimulateIncomingOffer()
-        case .sas:
-            debugSimulateIncomingSASRequest()
-        case .pairingConnecting, .pairingOverlay:
-            beginPairingAttempt(peerName: "Aki's MacBook Pro")
-        case .pairingFailed:
-            failPairing(Self.debugUnreachableMessage)
-        case .pairingFailedInSheet:
-            // Mirrors the real sequence: the sheet is already up when the
-            // attempt fails, so `onAppear`'s reset has already happened.
-            Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(900))
-                self?.failPairing(Self.debugUnreachableMessage)
-            }
-        }
-        debugScreen = screen
-    }
-
-    static let debugUnreachableMessage = """
-        Couldn't reach that device. Make sure it's still showing its pairing code \
-        and that both devices are on the same Wi-Fi network.
-        """
-
-    /// Appends a few scripted rows so the device list can be demoed (and
-    /// screenshotted) without anything on the network. Goes through the same
-    /// `sighted`/`markStale` path as mDNS, so the append-only ordering and the
-    /// gray-in-place rule (DESIGN.md §5) are exercised, not bypassed.
-    func debugPopulateNearbyDevices() {
-        registry.sighted(rid: "mock-macbook", displayName: "Aki's MacBook Pro", deviceKind: .mac)
-        registry.sighted(rid: "mock-pixel", displayName: "Pixel 9 Pro", deviceKind: .androidPhone)
-        registry.sighted(rid: "mock-iphone", displayName: "Yuki's iPhone", deviceKind: .iphone)
-        registry.sighted(rid: "mock-surface", displayName: "Studio PC", deviceKind: .windows)
-        registry.sighted(rid: "mock-unknown", displayName: "Unrecognised Device", deviceKind: nil)
-        registry.sighted(rid: "mock-ipad", displayName: "Studio iPad", deviceKind: .ipad)
-        // Last row goes Away in place — never removed, never re-sorted.
-        registry.debugMarkStale(rid: "mock-ipad")
-    }
-
-    func debugSimulateIncomingOffer() {
-        (core as? MockCore)?.debugSimulateIncomingOffer()
-    }
-
-    func debugSimulateIncomingSASRequest() {
-        (core as? MockCore)?.debugSimulateIncomingSASRequest()
-    }
-
-    func debugSimulateKeyChanged() {
-        let peer: PeerRef
-        if let paired = trustStore.devices.first {
-            peer = PeerRef(id: paired.deviceID, displayName: paired.displayName,
-                           deviceType: paired.deviceType, fingerprint: paired.fingerprint,
-                           publicKey: paired.publicKey)
-        } else {
-            peer = PeerRef(id: "mock-keychange", displayName: "Aki's MacBook Pro",
-                           deviceType: .laptop,
-                           fingerprint: MockCore.fingerprint(for: "mock-keychange"))
-        }
-        (core as? MockCore)?.debugSimulateKeyChanged(peer: peer)
-    }
-    #endif
 
     // MARK: - Advertising
 

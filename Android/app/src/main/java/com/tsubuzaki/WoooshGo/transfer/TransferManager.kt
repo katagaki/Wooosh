@@ -64,16 +64,13 @@ data class TransferUi(
 }
 
 /**
- * An outgoing OFFER that is on the wire and waiting for the receiver's DECISION
- * (PROTOCOL.md §5). The core only emits `TransferStarted` for a send *after* the
- * receiver accepts, so without this there is no send-side UI at all during the
- * window in which the other user is staring at their consent sheet.
+ * An outgoing OFFER on the wire, waiting for the receiver's DECISION (PROTOCOL.md §5).
+ * The core only emits `TransferStarted` after the receiver accepts, so this is the only
+ * send-side state during that window.
  *
- * That window is exactly when the verification ceremony happens: an unpaired
- * receiver is being told to compare the sender's fingerprint (PROTOCOL.md §4.4),
- * so the sender has to be showing it at the same moment. [peerIsPaired] is what
- * decides whether the sending UI shows the phrase — for a paired peer no
- * comparison is asked for and the phrase would be noise.
+ * That window is the verification ceremony: an unpaired receiver is told to compare the
+ * sender's fingerprint (PROTOCOL.md §4.4), so the sender must be showing it at the same
+ * moment. [peerIsPaired] gates that — for a paired peer the phrase is noise.
  */
 data class OutgoingOffer(
     val transferId: TransferId,
@@ -100,10 +97,9 @@ class TransferManager(
     val transfers: StateFlow<List<TransferUi>> = _transfers.asStateFlow()
 
     /**
-     * Number of transfers that have been requested but whose TransferStarted has not
-     * arrived yet: with the real core there is a real connect + OFFER/consent round trip
-     * in between (which can be a user waiting on the other device). The foreground
-     * service must stay up across it.
+     * Transfers requested but whose TransferStarted has not arrived: a connect plus an
+     * OFFER/consent round trip sits in between, and the other user may take a while. The
+     * foreground service must stay up across it.
      */
     private val pendingStarts = ConcurrentHashMap.newKeySet<String>()
     private val _pending = MutableStateFlow(0)
@@ -149,9 +145,8 @@ class TransferManager(
     // ---------------------------------------------------------------- commands
 
     /**
-     * Tap-to-send on a discovered row: resolve the address the mDNS browser captured,
-     * connect (pinning the peer key when we hold one), then offer the files.
-     * Everything blocking happens off the main thread inside the core adapter.
+     * Tap-to-send on a discovered row. Everything blocking happens off the main thread
+     * inside the core adapter.
      */
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
         val addr = peer.address
@@ -165,9 +160,9 @@ class TransferManager(
         beginPending(pendingKey)
         scope.launch(Dispatchers.IO) {
             try {
-                // Pin whenever we can: the core's own address-based fallback only covers
-                // reconnects to the same ip:port, so the shell passing the pinned key is
-                // what closes the gap on a peer that moved (PROTOCOL.md §4.5).
+                // Always pin: the core's address-based fallback only covers reconnects to
+                // the same ip:port, so passing the key is what covers a peer that moved
+                // (PROTOCOL.md §4.5).
                 val pinnedKey = trustStore.pinnedKeyFor(peer.peerId)
                 Log.i(
                     TAG,
@@ -179,11 +174,9 @@ class TransferManager(
                 persistReadGrants(uris)
                 val transferId = core.send(peerId, uris)
                 requestedPeerNames[transferId] = peer.displayName
-                // The OFFER is on the wire and the core will now sit on DECISION for up
-                // to two minutes while the other user reads their consent sheet. Hold the
-                // pending slot on the transfer id (not the throwaway send key) so the
-                // foreground service survives that wait, and publish the waiting card —
-                // for an unpaired peer it is what carries our fingerprint.
+                // The core now sits on DECISION for up to two minutes. Hold the pending
+                // slot on the transfer id, not the throwaway send key, so the foreground
+                // service survives that wait.
                 beginPending(transferId)
                 val paired = trustStore.find(peerId) != null
                 Log.i(TAG, "offer $transferId to ${peer.displayName} paired=$paired")
@@ -260,8 +253,8 @@ class TransferManager(
         when (event) {
             is CoreEvent.TransferStarted -> {
                 endPending(event.transferId)
-                // DECISION arrived: the receiver has finished the comparison, so the
-                // waiting card (and the fingerprint on it) gives way to the progress card.
+                // DECISION arrived: the comparison is over, so the fingerprint stops
+                // being displayed.
                 clearOutgoingOffer(event.transferId)
                 manifests[event.transferId] = event.manifest.associateBy { it.id }
                 if (event.direction == TransferDirection.RECEIVE &&
@@ -317,14 +310,13 @@ class TransferManager(
                 endPending(event.transferId)
                 // Declined, timed out or cancelled while waiting — the card goes away
                 // either way; the message is surfaced below.
-                val waiting = clearOutgoingOffer(event.transferId)
+                clearOutgoingOffer(event.transferId)
                 var known = false
                 updateTransfer(event.transferId) { transfer ->
                     known = true
                     transfer.copy(status = TransferStatus.FAILED, message = event.message)
                 }
                 // Failures before TransferStarted have no card to update — surface them.
-                // Name the peer when the failure ended a wait the user was watching.
                 if (!known) scope.launch {
                     _errors.emit(
                         transferErrorMessage(context, event.message)
@@ -332,8 +324,8 @@ class TransferManager(
                 }
             }
 
-            // HELLO is authoritative for who this is and what kind of device it is —
-            // better than the mDNS TXT guess the row was created from.
+            // HELLO is authoritative for identity and device type; the mDNS TXT the row
+            // was created from is only a hint.
             is CoreEvent.PeerConnected -> registry.onConnected(
                 peerId = event.peer.id,
                 displayName = event.peer.displayName,
@@ -344,18 +336,14 @@ class TransferManager(
         }
     }
 
-    /**
-     * Completion line for the card. Counts, bytes and elapsed time all come from the
-     * core's `TransferDone` — the shell does not time transfers itself.
-     */
+    /** Completion line for the card; every number comes from the core's `TransferDone`. */
     private fun summaryOf(event: CoreEvent.TransferDone, direction: TransferDirection): String {
         val sent = direction == TransferDirection.SEND
         val elapsed = formatDuration(context, event.durationMs)
         val res = context.resources
         return when {
-            // Every count goes through the platform's plural machinery, and
-            // the elapsed time is a second placeholder inside the same format
-            // string rather than a fragment appended afterwards.
+            // Counts go through the platform's plural machinery and the elapsed time is a
+            // placeholder in the same format string: translators never get a fragment.
             event.okFiles == 0 && event.failedFiles > 0 -> res.getQuantityString(
                 R.plurals.transfer_done_failed, event.failedFiles, event.failedFiles,
             )
@@ -409,8 +397,8 @@ class TransferManager(
     }
 
     private fun persistReadGrants(uris: List<Uri>) {
-        // Best-effort persist of read grants (ACTION_OPEN_DOCUMENT allows it; the
-        // Photo Picker and share-sheet grants do not — those are copied out promptly).
+        // Best effort: only ACTION_OPEN_DOCUMENT grants are persistable. Photo Picker and
+        // share-sheet grants are not, so those items are copied out promptly instead.
         uris.forEach { uri ->
             runCatching {
                 context.contentResolver.takePersistableUriPermission(

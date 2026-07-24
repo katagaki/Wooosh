@@ -85,8 +85,7 @@ class StorageRouter(context: Context) {
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val targetDir = if (subfolder != null) File(downloads, subfolder) else downloads
         if (!targetDir.isDirectory && !targetDir.mkdirs()) {
-            // Internal detail for the log; the user-facing wording comes from
-            // the shell, which knows nothing about paths.
+            // Log detail only; the user-facing wording is chosen by the caller.
             throw IOException("cannot create " + targetDir.path)
         }
         val uniqueName = firstFreeName(name) { candidate -> File(targetDir, candidate).exists() }

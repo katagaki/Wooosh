@@ -1,9 +1,9 @@
 //! wooosh-core — shared Rust engine for the Wooosh file-sharing app.
 //!
 //! Implements identity, connections (QUIC/TLS 1.3 with key pinning), pairing
-//! (QR + SAS), the CBOR control protocol, and the transfer engine per
-//! docs/PROTOCOL.md. Discovery is deliberately NOT implemented here — the
-//! native shells own mDNS discovery (deviation from DESIGN.md §2).
+//! (QR + SAS), the CBOR control protocol and the transfer engine per
+//! PROTOCOL.md. Discovery is deliberately NOT implemented here: the native
+//! shells own mDNS (a deliberate deviation from DESIGN.md §2).
 
 pub mod api;
 pub mod control;

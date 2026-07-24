@@ -1,0 +1,672 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Wooosh for Windows. Generated from the shipped Android translations so both
+    shells use one term per concept; see Assets/Documentation/COPY_STYLE.md.
+    Plural forms are selected by Localization/PluralRules.cs using the CLDR
+    category for the resource's locale, so keys carry a .One/.Few/.Many/.Other
+    suffix rather than being chosen with an English-shaped if (count == 1).
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Wooosh</value>
+    <comment>The product name. Never translated (COPY_STYLE.md §2).</comment>
+  </data>
+  <data name="DeviceKindIPhone" xml:space="preserve">
+    <value>iPhone</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindIPad" xml:space="preserve">
+    <value>iPad</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="DeviceKindMac" xml:space="preserve">
+    <value>Mac</value>
+    <comment>Device kind that is a brand name and stays untranslated.</comment>
+  </data>
+  <data name="ActionRefresh" xml:space="preserve">
+    <value>更新</value>
+    <comment>Command bar button: re-run device discovery.</comment>
+  </data>
+  <data name="ActionSettings" xml:space="preserve">
+    <value>設定</value>
+    <comment>Command bar button and title of the settings page.</comment>
+  </data>
+  <data name="ActionPairDevice" xml:space="preserve">
+    <value>デバイスをペアリング</value>
+    <comment>Button that opens the pairing page.</comment>
+  </data>
+  <data name="ActionCancel" xml:space="preserve">
+    <value>キャンセル</value>
+    <comment>Generic cancel button.</comment>
+  </data>
+  <data name="ActionDone" xml:space="preserve">
+    <value>完了</value>
+    <comment>Generic confirmation button that closes a finished dialog.</comment>
+  </data>
+  <data name="ActionClose" xml:space="preserve">
+    <value>閉じる</value>
+    <comment>Generic button that dismisses a dialog without acting.</comment>
+  </data>
+  <data name="ActionOk" xml:space="preserve">
+    <value>OK</value>
+    <comment>Button that acknowledges an alert.</comment>
+  </data>
+  <data name="ActionDecline" xml:space="preserve">
+    <value>拒否</value>
+    <comment>Button that refuses an incoming file offer.</comment>
+  </data>
+  <data name="ActionAccept" xml:space="preserve">
+    <value>受け取る</value>
+    <comment>Button that accepts an incoming file offer from a paired device.</comment>
+  </data>
+  <data name="ActionAcceptOnce" xml:space="preserve">
+    <value>今回のみ受け取る</value>
+    <comment>Button that accepts one offer from a device that is not paired.</comment>
+  </data>
+  <data name="ActionSendFiles" xml:space="preserve">
+    <value>ファイルを送信…</value>
+    <comment>Context-menu item that starts a transfer to the selected device.</comment>
+  </data>
+  <data name="ActionChooseFiles" xml:space="preserve">
+    <value>ファイルを選択</value>
+    <comment>Button that opens the system file picker.</comment>
+  </data>
+  <data name="ActionCancelTransfer" xml:space="preserve">
+    <value>転送をキャンセル</value>
+    <comment>Button that stops a transfer that is running.</comment>
+  </data>
+  <data name="ActionDismiss" xml:space="preserve">
+    <value>閉じる</value>
+    <comment>Button that removes a finished transfer card from the list.</comment>
+  </data>
+  <data name="ActionUnpair" xml:space="preserve">
+    <value>ペアリングを解除</value>
+    <comment>Button that removes a paired device and the key stored for it.</comment>
+  </data>
+  <data name="ActionTryAgain" xml:space="preserve">
+    <value>もう一度試す</value>
+    <comment>Button that restarts a failed attempt.</comment>
+  </data>
+  <data name="ActionNotNow" xml:space="preserve">
+    <value>後で</value>
+    <comment>Button that postpones a security warning without acting on it.</comment>
+  </data>
+  <data name="ActionPairAgain" xml:space="preserve">
+    <value>再度ペアリング</value>
+    <comment>Button that starts pairing again after a security key changed.</comment>
+  </data>
+  <data name="ActionCopyCode" xml:space="preserve">
+    <value>コードをコピー</value>
+    <comment>Button that copies this device&#x27;s pairing code to the clipboard.</comment>
+  </data>
+  <data name="ActionCopyPairingCode" xml:space="preserve">
+    <value>ペアリングコードをコピー</value>
+    <comment>Accessibility label for the copy button next to the pairing code.</comment>
+  </data>
+  <data name="ActionCopied" xml:space="preserve">
+    <value>コピーしました</value>
+    <comment>Confirmation shown on the copy button right after a copy.</comment>
+  </data>
+  <data name="ActionNewCode" xml:space="preserve">
+    <value>新しいコード</value>
+    <comment>Button that generates a fresh pairing code.</comment>
+  </data>
+  <data name="ActionPairWithPasted" xml:space="preserve">
+    <value>貼り付けたコードでペアリング</value>
+    <comment>Button that pairs using a pairing code the user pasted.</comment>
+  </data>
+  <data name="ActionCodesMatch" xml:space="preserve">
+    <value>コードが一致</value>
+    <comment>Button confirming that both devices show the same six-digit code.</comment>
+  </data>
+  <data name="ActionShowMyCode" xml:space="preserve">
+    <value>自分のペアリングコードを表示…</value>
+    <comment>Context-menu item that shows this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="ActionPairThisDevice" xml:space="preserve">
+    <value>このデバイスとペアリング…</value>
+    <comment>Context-menu item that starts pairing with the selected device.</comment>
+  </data>
+  <data name="ActionBack" xml:space="preserve">
+    <value>戻る</value>
+    <comment>Accessibility label for the back button.</comment>
+  </data>
+  <data name="PeerStateReady" xml:space="preserve">
+    <value>準備完了</value>
+    <comment>Device row subtitle: the device is reachable.</comment>
+  </data>
+  <data name="PeerStateReadyPaired" xml:space="preserve">
+    <value>準備完了・ペアリング済み</value>
+    <comment>Device row subtitle: reachable and already paired.</comment>
+  </data>
+  <data name="PeerStateAway" xml:space="preserve">
+    <value>応答なし</value>
+    <comment>Device row subtitle: the device stopped answering and cannot be used.</comment>
+  </data>
+  <data name="PeerStateTapToSend" xml:space="preserve">
+    <value>タップして送信</value>
+    <comment>Device row subtitle while files are waiting to be sent.</comment>
+  </data>
+  <data name="PeerBadgePaired" xml:space="preserve">
+    <value>ペアリング済み</value>
+    <comment>Accessibility label for the checkmark on a paired device row.</comment>
+  </data>
+  <data name="PeerUnnamed" xml:space="preserve">
+    <value>名前のないデバイス</value>
+    <comment>Stand-in shown for a device that advertises no name of its own.</comment>
+  </data>
+  <data name="EmptyTitle" xml:space="preserve">
+    <value>デバイスを検索中</value>
+    <comment>Title of the empty device list.</comment>
+  </data>
+  <data name="EmptyBody" xml:space="preserve">
+    <value>同じ Wi-Fi ネットワークで Wooosh を実行しているデバイスが、ここに自動的に表示されます。</value>
+    <comment>Body of the empty device list.</comment>
+  </data>
+  <data name="EmptyVisibilityEveryone" xml:space="preserve">
+    <value>近くのすべてのデバイスから、このデバイスが見えています。</value>
+    <comment>Extra line on the empty device list when everyone can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityPaired" xml:space="preserve">
+    <value>ペアリング済みのデバイスからのみ、このデバイスが見えています。</value>
+    <comment>Extra line on the empty device list when only paired devices can see this device.</comment>
+  </data>
+  <data name="EmptyVisibilityOff" xml:space="preserve">
+    <value>このデバイスは非表示で、ファイルを受信できません。他のデバイスを見て送信することはできます。</value>
+    <comment>Extra line on the empty device list when this device is hidden.</comment>
+  </data>
+  <data name="DeviceKindWindows" xml:space="preserve">
+    <value>Windows PC</value>
+    <comment>Accessibility name for a Windows computer.</comment>
+  </data>
+  <data name="DeviceKindAndroidPhone" xml:space="preserve">
+    <value>Android スマートフォン</value>
+    <comment>Accessibility name for an Android phone.</comment>
+  </data>
+  <data name="DeviceKindAndroidTablet" xml:space="preserve">
+    <value>Android タブレット</value>
+    <comment>Accessibility name for an Android tablet.</comment>
+  </data>
+  <data name="DeviceKindUnknown" xml:space="preserve">
+    <value>デバイス</value>
+    <comment>Accessibility name for a device whose type is unknown.</comment>
+  </data>
+  <data name="StorageLocationDownloads" xml:space="preserve">
+    <value>ダウンロード</value>
+    <comment>Where a received file was stored: the Downloads folder.</comment>
+  </data>
+  <data name="OfferNavIncoming" xml:space="preserve">
+    <value>受信するファイル</value>
+    <comment>Title of the dialog asking whether to accept files.</comment>
+  </data>
+  <data name="OfferNavReceiving" xml:space="preserve">
+    <value>受信中</value>
+    <comment>Title shown while files are being received.</comment>
+  </data>
+  <data name="OfferPairedDevice" xml:space="preserve">
+    <value>ペアリング済みのデバイス</value>
+    <comment>Label confirming the sender is already paired.</comment>
+  </data>
+  <data name="OfferUnpairedWarning" xml:space="preserve">
+    <value>ペアリングされていません。下の単語が、送信側の画面に表示されている単語と一致するか確認してください。</value>
+    <comment>Warning above the sender&#x27;s verification phrase on the accept dialog.</comment>
+  </data>
+  <data name="VerifyYourPhraseTitle" xml:space="preserve">
+    <value>あなたの確認フレーズ</value>
+    <comment>Heading above this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyYourPhraseBody" xml:space="preserve">
+    <value>相手のデバイスは、受け取る前にこれらの単語が一致するかどうかの確認を求めます。</value>
+    <comment>Explanation under this device&#x27;s own verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseTitle" xml:space="preserve">
+    <value>確認フレーズ</value>
+    <comment>Settings label for this device&#x27;s verification phrase.</comment>
+  </data>
+  <data name="VerifyPhraseBody" xml:space="preserve">
+    <value>これらの単語を声に出して読み、正しいデバイスと通信していることを確認してください。単語はこのデバイスの識別キーから作られ、キーが外に出ることはありません。</value>
+    <comment>Settings explanation of the verification phrase.</comment>
+  </data>
+  <data name="TransferSendingTo" xml:space="preserve">
+    <value>{0} に送信中</value>
+    <comment>Header while sending. {0} is a device name.</comment>
+  </data>
+  <data name="TransferReceivingFrom" xml:space="preserve">
+    <value>{0} から受信中</value>
+    <comment>Header while receiving. {0} is a device name.</comment>
+  </data>
+  <data name="TransferNavSending" xml:space="preserve">
+    <value>送信中</value>
+    <comment>Title while a send is in progress.</comment>
+  </data>
+  <data name="TransferNavSendFiles" xml:space="preserve">
+    <value>ファイルを送信</value>
+    <comment>Title of the screen that picks what to send.</comment>
+  </data>
+  <data name="TransferStateConnecting" xml:space="preserve">
+    <value>相手のデバイスの応答を待っています…</value>
+    <comment>Status line while waiting for the other device to answer.</comment>
+  </data>
+  <data name="TransferStateCancelled" xml:space="preserve">
+    <value>キャンセルしました</value>
+    <comment>Status line for a transfer the user stopped.</comment>
+  </data>
+  <data name="TransferStateDone" xml:space="preserve">
+    <value>完了</value>
+    <comment>Status line for a transfer that finished, when no detail is available.</comment>
+  </data>
+  <data name="TransferProgressBytes" xml:space="preserve">
+    <value>{1} 中 {0}</value>
+    <comment>Progress line. {0} is bytes done, {1} the total.</comment>
+  </data>
+  <data name="TransferProgressRate" xml:space="preserve">
+    <value>{0}/秒</value>
+    <comment>Transfer speed. {0} is a formatted byte size such as 12 MB.</comment>
+  </data>
+  <data name="TransferProgressEta" xml:space="preserve">
+    <value>残り約 {0}</value>
+    <comment>Estimated time left. {0} is a formatted duration.</comment>
+  </data>
+  <data name="TransferSavedTo" xml:space="preserve">
+    <value>{0} ・{1} に保存</value>
+    <comment>Per-file line after a file is stored. {0} is its size, {1} the location.</comment>
+  </data>
+  <data name="TransferConnectingTo" xml:space="preserve">
+    <value>{0} に接続中…</value>
+    <comment>Status while connecting. {0} is a device name.</comment>
+  </data>
+  <data name="TransferPreparing" xml:space="preserve">
+    <value>準備中…</value>
+    <comment>Status while files are being prepared for sending.</comment>
+  </data>
+  <data name="TransferResumable" xml:space="preserve">
+    <value>{0} Wooosh は中断したところから再開できます。</value>
+    <comment>Appended to a failure that can continue later. {0} is the failure message.</comment>
+  </data>
+  <data name="PairingTitle" xml:space="preserve">
+    <value>デバイスをペアリング</value>
+    <comment>Title of the pairing page.</comment>
+  </data>
+  <data name="PairingTabMyCode" xml:space="preserve">
+    <value>自分のコード</value>
+    <comment>Tab showing this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowBody" xml:space="preserve">
+    <value>このコードを相手のデバイスでスキャンするか、ペアリングコードをコピーして信頼できる方法で送ってください。</value>
+    <comment>Instructions above this device&#x27;s own pairing code.</comment>
+  </data>
+  <data name="PairingShowExpiry" xml:space="preserve">
+    <value>このコードは 1 回だけ使用でき、2 分で期限切れになります。</value>
+    <comment>Note under the pairing code explaining that it is short-lived.</comment>
+  </data>
+  <data name="PairingQrA11y" xml:space="preserve">
+    <value>ペアリング用 QR コード</value>
+    <comment>Accessibility label for the QR image.</comment>
+  </data>
+  <data name="PairingScanBodyDesktop" xml:space="preserve">
+    <value>相手のデバイスからペアリングコードをコピーして、下に貼り付けてください。</value>
+    <comment>Instructions on a computer, which pairs by pasting rather than scanning.</comment>
+  </data>
+  <data name="PairingPasteLabel" xml:space="preserve">
+    <value>ペアリングコード</value>
+    <comment>Label of the text field for a pasted pairing code.</comment>
+  </data>
+  <data name="PairingInProgressTitle" xml:space="preserve">
+    <value>ペアリング中</value>
+    <comment>Title of the dialog shown while pairing runs.</comment>
+  </data>
+  <data name="PairingProgressBody" xml:space="preserve">
+    <value>相手のデバイスのロックを解除したまま、ペアリングコードを画面に表示しておいてください。両方のデバイスが同じ Wi-Fi ネットワークに接続されている必要があります。数秒かかることがあります。</value>
+    <comment>Explanation while a pairing attempt runs.</comment>
+  </data>
+  <data name="PairingSuccessTitle" xml:space="preserve">
+    <value>{0} とペアリングしました</value>
+    <comment>Title after a successful pairing. {0} is a device name.</comment>
+  </data>
+  <data name="PairingSuccessBody" xml:space="preserve">
+    <value>Wooosh は今後このデバイスを信頼します。次回以降、確認フレーズを照合する必要はありません。</value>
+    <comment>Explanation after a successful pairing.</comment>
+  </data>
+  <data name="PairingFailedTitle" xml:space="preserve">
+    <value>ペアリングできませんでした</value>
+    <comment>Title shown when pairing did not succeed.</comment>
+  </data>
+  <data name="PairingFailedTitleNamed" xml:space="preserve">
+    <value>Wooosh は {0} とペアリングできませんでした</value>
+    <comment>Title when pairing with a named device failed. {0} is a device name.</comment>
+  </data>
+  <data name="SasTitle" xml:space="preserve">
+    <value>{0} とペアリングしますか?</value>
+    <comment>Question asking whether to pair. {0} is a device name.</comment>
+  </data>
+  <data name="SasBody" xml:space="preserve">
+    <value>両方のデバイスに 6 桁のコードが表示されます。2 つのコードが同じ場合にのみ続行してください。</value>
+    <comment>Instructions for comparing the six-digit verification code.</comment>
+  </data>
+  <data name="SasExpiresIn" xml:space="preserve">
+    <value>あと {0} 秒で期限切れ</value>
+    <comment>Countdown until the verification code expires. {0} is seconds left.</comment>
+  </data>
+  <data name="SasConfirming" xml:space="preserve">
+    <value>確認しています…</value>
+    <comment>Status while the other device confirms the verification code.</comment>
+  </data>
+  <data name="KeyChangedTitle" xml:space="preserve">
+    <value>セキュリティキーが変更されました</value>
+    <comment>Title of the warning that a paired device&#x27;s key changed.</comment>
+  </data>
+  <data name="KeyChangedBody" xml:space="preserve">
+    <value>「{0}」は、ペアリング時とは異なるセキュリティキーを提示しています。通常は Wooosh の再インストールやデバイスの初期化の後に起こりますが、別のデバイスがなりすましている可能性もあります。再度ペアリングするまで、このデバイスとの転送はブロックされます。</value>
+    <comment>Body of the security-key warning. {0} is a device name.</comment>
+  </data>
+  <data name="KeyChangedExpectedLabel" xml:space="preserve">
+    <value>ペアリングした相手</value>
+    <comment>Label above the verification phrase recorded at pairing time.</comment>
+  </data>
+  <data name="KeyChangedPresentedLabel" xml:space="preserve">
+    <value>現在の表示</value>
+    <comment>Label above the verification phrase the device shows now.</comment>
+  </data>
+  <data name="KeyChangedPresentedUnknown" xml:space="preserve">
+    <value>取得できません: キーを読み取る前に接続が失敗しました。</value>
+    <comment>Shown when the other device&#x27;s key could not be read at all.</comment>
+  </data>
+  <data name="KeyChangedAdvice" xml:space="preserve">
+    <value>相手に、そのデバイスの確認フレーズを声に出して読んでもらってください。2 つ目のフレーズと一致する場合にのみ、再度ペアリングしてください。</value>
+    <comment>Advice under the two verification phrases in the security warning.</comment>
+  </data>
+  <data name="KeyChangedRowWarning" xml:space="preserve">
+    <value>キーが変更されました。続けるには再度ペアリングしてください。</value>
+    <comment>Warning on a paired-device row whose key changed.</comment>
+  </data>
+  <data name="SettingsSectionDevice" xml:space="preserve">
+    <value>デバイス</value>
+    <comment>Settings section header for this device&#x27;s own name.</comment>
+  </data>
+  <data name="SettingsDisplayName" xml:space="preserve">
+    <value>表示名</value>
+    <comment>Label of the field holding the name other devices see.</comment>
+  </data>
+  <data name="SettingsDisplayNameFooter" xml:space="preserve">
+    <value>近くのデバイスに表示されます。</value>
+    <comment>Helper text under the display-name field.</comment>
+  </data>
+  <data name="SettingsSectionWhoCanSee" xml:space="preserve">
+    <value>このデバイスを見られる相手</value>
+    <comment>Settings section header for the discovery setting.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryone" xml:space="preserve">
+    <value>すべての人</value>
+    <comment>Option: any nearby device can see this one.</comment>
+  </data>
+  <data name="SettingsVisibilityEveryoneDesc" xml:space="preserve">
+    <value>近くのすべてのデバイスがこのデバイスを検出し、ファイルを送ろうとすることができます。</value>
+    <comment>Description of the Everyone option.</comment>
+  </data>
+  <data name="SettingsVisibilityPaired" xml:space="preserve">
+    <value>ペアリング済みのデバイスのみ</value>
+    <comment>Option: only paired devices may send.</comment>
+  </data>
+  <data name="SettingsVisibilityPairedDesc" xml:space="preserve">
+    <value>近くのデバイスからこのデバイスは見えますが、送信できるのはペアリング済みのデバイスだけです。</value>
+    <comment>Description of the Paired Devices Only option.</comment>
+  </data>
+  <data name="SettingsVisibilityOff" xml:space="preserve">
+    <value>オフ</value>
+    <comment>Option: this device is hidden and cannot receive.</comment>
+  </data>
+  <data name="SettingsVisibilityOffDesc" xml:space="preserve">
+    <value>このデバイスは非表示で、ファイルを受信できません。他のデバイスを見て送信することはできます。</value>
+    <comment>Description of the Off option.</comment>
+  </data>
+  <data name="SettingsSectionPairing" xml:space="preserve">
+    <value>ペアリング</value>
+    <comment>Settings section header for pairing.</comment>
+  </data>
+  <data name="SettingsPairingFooter" xml:space="preserve">
+    <value>ペアリング済みのデバイスは互いの身元を自動的に確認するため、その間の転送で確認フレーズを照合する必要はありません。</value>
+    <comment>Explanation of what pairing buys the user.</comment>
+  </data>
+  <data name="SettingsSectionPairedDevices" xml:space="preserve">
+    <value>ペアリング済みのデバイス</value>
+    <comment>Settings section header listing paired devices.</comment>
+  </data>
+  <data name="SettingsPairedDevicesEmpty" xml:space="preserve">
+    <value>ペアリング済みのデバイスはまだありません。「デバイスをペアリング」から追加してください。</value>
+    <comment>Shown when nothing is paired yet.</comment>
+  </data>
+  <data name="SettingsPairedDevicesFooter" xml:space="preserve">
+    <value>ペアリングを解除すると、保存されているキーが削除されます。次にそのデバイスから転送があった場合、再度ペアリングするまで信頼されません。</value>
+    <comment>Explanation of what unpairing does.</comment>
+  </data>
+  <data name="SettingsPairedOn" xml:space="preserve">
+    <value>{0} にペアリング</value>
+    <comment>Date a device was paired. {0} is a formatted date.</comment>
+  </data>
+  <data name="SettingsSectionThisDevice" xml:space="preserve">
+    <value>このデバイス</value>
+    <comment>Settings section header for this device&#x27;s identity.</comment>
+  </data>
+  <data name="SettingsDeviceId" xml:space="preserve">
+    <value>デバイス ID</value>
+    <comment>Label of this device&#x27;s permanent identifier.</comment>
+  </data>
+  <data name="SettingsDeviceIdFooter" xml:space="preserve">
+    <value>ペアリング時に、このデバイスを相手に識別させるための値です。</value>
+    <comment>Helper text under the device identifier.</comment>
+  </data>
+  <data name="SettingsStarting" xml:space="preserve">
+    <value>起動中…</value>
+    <comment>Placeholder shown until Wooosh has finished starting up.</comment>
+  </data>
+  <data name="ErrorSendFailedTitle" xml:space="preserve">
+    <value>Wooosh は送信できませんでした</value>
+    <comment>Dialog title when a send could not start.</comment>
+  </data>
+  <data name="ErrorSendFailedBody" xml:space="preserve">
+    <value>それらのファイルを送信できませんでした。もう一度お試しください。</value>
+    <comment>Fallback body when a send could not start.</comment>
+  </data>
+  <data name="ErrorFilesUnreadable" xml:space="preserve">
+    <value>それらのファイルを読み取れませんでした。もう一度選択してください。</value>
+    <comment>Shown when the chosen files could not be read.</comment>
+  </data>
+  <data name="ErrorStillResolving" xml:space="preserve">
+    <value>Wooosh は {0} を探しています。少し待ってからもう一度お試しください。</value>
+    <comment>Shown when a device has been seen but not reached yet. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorUnreachable" xml:space="preserve">
+    <value>Wooosh は「{0}」への接続方法を判別できませんでした。オフラインになった可能性があります。</value>
+    <comment>Shown when no address for a device could be worked out. {0} is a device name.</comment>
+  </data>
+  <data name="ErrorSaveFailed" xml:space="preserve">
+    <value>Wooosh はこのファイルを保存できませんでした。</value>
+    <comment>Shown when a received file could not be stored.</comment>
+  </data>
+  <data name="ErrorStorageUnavailable" xml:space="preserve">
+    <value>Wooosh は受信ファイル用のフォルダにアクセスできませんでした。空き容量を確認してもう一度お試しください。</value>
+    <comment>Shown when the folder for received files cannot be used.</comment>
+  </data>
+  <data name="ErrorPairingRequired" xml:space="preserve">
+    <value>そのデバイスは、ペアリング済みのデバイスからのファイルのみを受け付けます。</value>
+    <comment>Core error: the other device accepts paired devices only.</comment>
+  </data>
+  <data name="ErrorVersionMismatch" xml:space="preserve">
+    <value>そのデバイスは互換性のないバージョンの Wooosh を実行しています。両方のデバイスで Wooosh を更新してください。</value>
+    <comment>Core error: incompatible Wooosh versions.</comment>
+  </data>
+  <data name="ErrorKeyChanged" xml:space="preserve">
+    <value>そのデバイスは、ペアリング時とは異なるセキュリティキーを提示しています。続けるには再度ペアリングしてください。</value>
+    <comment>Core error: a paired device presented a different key.</comment>
+  </data>
+  <data name="ErrorQrKeyMismatch" xml:space="preserve">
+    <value>応答したデバイスは、ペアリングコードのデバイスではありません。Wooosh はペアリングを中止しました。</value>
+    <comment>Core error: the device that answered is not the one in the pairing code.</comment>
+  </data>
+  <data name="ErrorInvalidQr" xml:space="preserve">
+    <value>これは Wooosh のペアリングコードではありません。</value>
+    <comment>Core error: the scanned or pasted text is not a Wooosh pairing code.</comment>
+  </data>
+  <data name="ErrorPairingExpired" xml:space="preserve">
+    <value>そのペアリングコードは期限切れです。新しいコードを表示してもらってください。</value>
+    <comment>Core error: the pairing code is no longer valid.</comment>
+  </data>
+  <data name="ErrorPairingFailed" xml:space="preserve">
+    <value>ペアリングが完了しませんでした。もう一度お試しください。</value>
+    <comment>Generic pairing failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorPairingTimeout" xml:space="preserve">
+    <value>Wooosh は時間内にそのデバイスに接続できませんでした。相手のデバイスにペアリングコードがまだ表示されていること、両方のデバイスが同じ Wi-Fi ネットワークにあることを確認してください。</value>
+    <comment>Shown when a pairing attempt ran out of time.</comment>
+  </data>
+  <data name="ErrorSasTimeout" xml:space="preserve">
+    <value>相手のデバイスが時間内に確認しませんでした。両方のデバイスの準備ができてから、もう一度ペアリングを開始してください。</value>
+    <comment>Shown when the other device did not confirm the verification code in time.</comment>
+  </data>
+  <data name="ErrorConnect" xml:space="preserve">
+    <value>Wooosh はそのデバイスに接続できませんでした。両方のデバイスが同じ Wi-Fi ネットワークにあることを確認してください。</value>
+    <comment>Core error: the other device could not be reached at all.</comment>
+  </data>
+  <data name="ErrorUnknownPeer" xml:space="preserve">
+    <value>そのデバイスは接続されていません。</value>
+    <comment>Core error: the connection to that device is gone.</comment>
+  </data>
+  <data name="ErrorNotStarted" xml:space="preserve">
+    <value>Wooosh は起動中です。少し待ってからもう一度お試しください。</value>
+    <comment>Core error: Wooosh has not finished starting yet.</comment>
+  </data>
+  <data name="ErrorCrypto" xml:space="preserve">
+    <value>Wooosh は安全な接続を確認できませんでした。もう一度お試しください。</value>
+    <comment>Core error: the secure connection could not be verified.</comment>
+  </data>
+  <data name="ErrorIo" xml:space="preserve">
+    <value>Wooosh はファイルの読み書きができませんでした。空き容量を確認してもう一度お試しください。</value>
+    <comment>Core error: a file could not be read or written.</comment>
+  </data>
+  <data name="ErrorTransferFailed" xml:space="preserve">
+    <value>転送は完了する前に停止しました。もう一度お試しください。</value>
+    <comment>Generic transfer failure with no more detail available.</comment>
+  </data>
+  <data name="ErrorDeclinedByPeer" xml:space="preserve">
+    <value>相手のデバイスがファイルを拒否しました。</value>
+    <comment>Shown when the other device refused the files.</comment>
+  </data>
+  <data name="ErrorCancelledByPeer" xml:space="preserve">
+    <value>相手のデバイスが転送をキャンセルしました。</value>
+    <comment>Shown when the other device stopped the transfer.</comment>
+  </data>
+  <data name="ErrorNoAnswer" xml:space="preserve">
+    <value>相手のデバイスから時間内に応答がありませんでした。</value>
+    <comment>Shown when the other device never answered a request.</comment>
+  </data>
+  <data name="ErrorCoreStart" xml:space="preserve">
+    <value>Wooosh を起動できませんでした。Wooosh を終了してから、もう一度開いてください。</value>
+    <comment>Shown when Wooosh failed to start up at all.</comment>
+  </data>
+  <data name="ErrorProtocol" xml:space="preserve">
+    <value>相手のデバイスから、Wooosh が解釈できないデータが送られてきました。両方のデバイスで Wooosh を更新してください。</value>
+    <comment>Core error: the other device sent something this build does not understand.</comment>
+  </data>
+  <data name="OfferTitle.Other" xml:space="preserve">
+    <value>{0} が{1} 件のファイルを送信しようとしています</value>
+    <comment>Title of the incoming offer dialog. {0} is the sending device&#x27;s name, {1} the file count.</comment>
+  </data>
+  <data name="FilesCountAndSize.Other" xml:space="preserve">
+    <value>{0} 件のファイル ・{1}</value>
+    <comment>File count with the total size. {0} is the count, {1} a formatted byte size.</comment>
+  </data>
+  <data name="TransferDoneSent.Other" xml:space="preserve">
+    <value>{0} 件のファイルを送信しました</value>
+    <comment>Summary of a finished send. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneReceived.Other" xml:space="preserve">
+    <value>{0} 件のファイルを受信しました</value>
+    <comment>Summary of a finished receive. {0} is the file count.</comment>
+  </data>
+  <data name="TransferDoneFailed.Other" xml:space="preserve">
+    <value>{0} 件のファイルを転送できませんでした</value>
+    <comment>Summary when every file in a transfer failed. {0} is the file count.</comment>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>Wooosh を開く</value>
+    <comment>Notification-area menu item that brings the window back.</comment>
+  </data>
+  <data name="TrayQuit" xml:space="preserve">
+    <value>Wooosh を終了</value>
+    <comment>Notification-area menu item that shuts Wooosh down completely.</comment>
+  </data>
+  <data name="SettingsSectionBackground" xml:space="preserve">
+    <value>バックグラウンド</value>
+    <comment>Settings section header for what Wooosh does when the window is closed.</comment>
+  </data>
+  <data name="SettingsKeepRunning" xml:space="preserve">
+    <value>ウィンドウを閉じても Wooosh を実行し続ける</value>
+    <comment>Toggle: closing the window leaves Wooosh in the notification area.</comment>
+  </data>
+  <data name="SettingsKeepRunningDesc" xml:space="preserve">
+    <value>Wooosh は通知領域に残り、引き続きファイルを受信できます。</value>
+    <comment>Helper text under the keep-running toggle.</comment>
+  </data>
+  <data name="ShareTargetTitle" xml:space="preserve">
+    <value>Wooosh で送信</value>
+    <comment>Label Wooosh shows in the Windows share sheet.</comment>
+  </data>
+</root>

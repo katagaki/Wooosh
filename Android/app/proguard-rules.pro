@@ -1,1 +1,1 @@
-# No app-specific rules yet (minification disabled in Milestone 1).
+# No app-specific rules: minification is disabled.

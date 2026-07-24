@@ -86,9 +86,6 @@ struct SettingsView: View {
                         .foregroundStyle(.red)
                 }
             }
-            #if DEBUG
-            debugSection
-            #endif
         }
     }
 
@@ -101,29 +98,6 @@ struct SettingsView: View {
         case .off: L.t("settings_visibility_off_desc")
         }
     }
-
-    #if DEBUG
-    /// Engine switch: the mock keeps the scripted UI demo available without a
-    /// peer on the network. Ships DEBUG-only; release always uses the core.
-    @ViewBuilder
-    private var debugSection: some View {
-        @Bindable var model = model
-        Section {
-            Picker("Engine", selection: Binding(
-                get: { model.backend },
-                set: { model.switchBackend(to: $0) }
-            )) {
-                ForEach(CoreBackend.allCases) { backend in
-                    Text(backend.label).tag(backend)
-                }
-            }
-        } header: {
-            Text("Debug")
-        } footer: {
-            Text("The mock engine replays scripted transfers so the UI can be demoed offline.")
-        }
-    }
-    #endif
 
     @ViewBuilder
     private var pairedDevicesSection: some View {

@@ -20,14 +20,11 @@ pub enum WoooshError {
     KeyChanged,
     #[error("QR_KEY_MISMATCH: presented certificate key does not match the QR key")]
     QrKeyMismatch,
-    /// The peer closed the connection with `PAIRING_REQUIRED` (§4.1): it is in
-    /// PairedOnly visibility and we are not a paired device. Shells should say
-    /// "this device only accepts transfers from paired devices" and offer to
-    /// pair, rather than reporting a generic failure.
+    /// Peer is in PairedOnly visibility and we are not paired (§4.1). Shells
+    /// should offer to pair rather than report a generic failure.
     #[error("PAIRING_REQUIRED: peer only accepts connections from paired devices")]
     PairingRequired,
-    /// The peer closed the connection with `VERSION_MISMATCH` (§4.1/§8): no
-    /// common protocol version.
+    /// No common protocol version (§4.1/§8).
     #[error("VERSION_MISMATCH: no common protocol version with peer")]
     VersionMismatch,
     #[error("pairing failed: {0}")]

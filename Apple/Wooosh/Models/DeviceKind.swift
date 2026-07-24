@@ -37,13 +37,11 @@ enum DeviceKind: String, Sendable, CaseIterable {
     }
 }
 
-/// The single place that turns a device type into an SF Symbol.
-///
-/// Two sources feed it: the TXT `dt` vocabulary above (authoritative, used for
-/// the device list) and the Rust core's older form-factor enum, which still
-/// says phone/tablet/laptop/desktop and surfaces through `PeerConnected` and
-/// `IncomingOffer`. When the core's enum is aligned with PROTOCOL.md §3.1,
-/// `symbol(forCoreType:)` is the only thing that has to change.
+/// The single place that turns a device type into an SF Symbol. Two sources
+/// feed it: the TXT `dt` vocabulary above (authoritative), and the core's
+/// coarser form-factor enum arriving on `PeerConnected` / `IncomingOffer`. If
+/// the core's enum is ever aligned with PROTOCOL.md §3.1,
+/// `symbol(forCoreType:)` is the only edit.
 enum DeviceIcon {
     /// Used whenever the device type is unknown or ambiguous. A generic icon
     /// is always acceptable; a confidently wrong one is not (PROTOCOL.md §3.1).

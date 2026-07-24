@@ -70,11 +70,10 @@ import kotlinx.coroutines.flow.SharedFlow
 fun MainScreen(
     peers: List<Peer>,
     /**
-     * DeviceIDs of the core's pinned peers. A row can only be matched against this once
-     * it has a DeviceID of its own — i.e. after a connection — because the mDNS TXT
-     * carries a rotating rid, not an identity (PROTOCOL.md §3.1). Matching on the
-     * display name, as this screen used to, would put a "Paired" checkmark on any device
-     * that happened to share a name with a paired one.
+     * DeviceIDs of the core's pinned peers. A row can only be matched once it has a
+     * DeviceID of its own — i.e. after a connection — because the mDNS TXT carries a
+     * rotating rid, not an identity (PROTOCOL.md §3.1). Never match on display name: that
+     * puts a "Paired" checkmark on any device sharing a name with a paired one.
      */
     pairedDeviceIds: Set<String>,
     visibility: Visibility?,
@@ -116,9 +115,9 @@ fun MainScreen(
         launchTarget = null
     }
 
-    // Direct Share arrival: auto-send once the targeted paired device is alive in the list.
-    // Prefer an identity match; fall back to the display name only because a freshly
-    // discovered row has no DeviceID until something connects to it.
+    // Direct Share arrival: auto-send once the targeted device is alive in the list.
+    // The display-name fallback exists only because a freshly discovered row has no
+    // DeviceID until something connects to it.
     LaunchedEffect(stagedShare, peers) {
         val share = stagedShare ?: return@LaunchedEffect
         val alive = peers.filterNot { it.isStale }
@@ -166,7 +165,7 @@ fun MainScreen(
             )
         } else {
             // Order comes straight from the registry: append-only by first sighting.
-            // Deliberately no sorting and no reorder animations here (DESIGN.md §5).
+            // Never sort or animate reorders here (DESIGN.md §5).
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -180,9 +179,8 @@ fun MainScreen(
                         )
                     }
                 }
-                // Above the transfer cards: the verification window. The receiver is
-                // looking at its consent sheet right now, so an unpaired send has to be
-                // showing our fingerprint here (PROTOCOL.md §4.4).
+                // The verification window: the receiver is on its consent sheet, so an
+                // unpaired send must be showing our fingerprint here (PROTOCOL.md §4.4).
                 items(outgoingOffers, key = { "offer-${it.transferId}" }) { offer ->
                     OutgoingOfferCard(
                         offer = offer,
@@ -338,7 +336,7 @@ private fun PeerRow(
     ) {
         Icon(
             imageVector = peer.deviceType.icon(),
-            // The glyph is now the only place the platform is stated, so name it.
+            // The glyph is the only place the platform is stated, so name it.
             contentDescription = peer.deviceType.label(),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,

@@ -91,7 +91,6 @@ struct QRScannerView: UIViewControllerRepresentable {
             sessionQueue.async {
                 do {
                     try device.lockForConfiguration()
-                    // Unlocked on every path, including the throwing ones.
                     defer { device.unlockForConfiguration() }
                     if device.isFocusPointOfInterestSupported {
                         device.focusPointOfInterest = focusPoint

@@ -5,12 +5,11 @@ import UIKit
 
 /// The Rust core's form-factor vocabulary (`WoooshCoreFFI.DeviceType`).
 ///
-/// Deliberately *not* what the app advertises or renders any more: the wire
-/// vocabulary is `DeviceKind` (PROTOCOL.md §3.1), which is platform-explicit.
-/// This enum survives only because the FFI still speaks it; every use of it in
-/// the UI goes through `DeviceIcon.symbol(forCoreType:)`, which refuses to
-/// guess a platform from a form factor. When the core's enum is realigned,
-/// that one function is the edit.
+/// Deliberately not what the app advertises or renders: the wire vocabulary is
+/// the platform-explicit `DeviceKind` (PROTOCOL.md §3.1). This enum exists only
+/// because the FFI speaks it, and every UI use goes through
+/// `DeviceIcon.symbol(forCoreType:)`, which refuses to guess a platform from a
+/// form factor.
 enum DeviceType: String {
     case phone
     case tablet

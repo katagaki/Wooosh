@@ -132,9 +132,9 @@ final class RealCore: WoooshCore {
         let ffi = self.ffi
         Task.detached(priority: .userInitiated) {
             do {
+                // Success arrives as the core's own PairingResult event on
+                // PAIR_ACCEPT; only the failure needs synthesizing here.
                 _ = try ffi.pairWithQr(payload: payload)
-                // Success arrives as the core's own PairingResult event
-                // (emitted on PAIR_ACCEPT), so nothing to synthesize here.
             } catch {
                 let message = coreErrorMessage(error)
                 await MainActor.run { [weak self] in
@@ -226,8 +226,6 @@ final class RealCore: WoooshCore {
         switch raw {
         case .peerConnected(let peerId, let peerPubkey, let deviceName, let deviceType,
                             let fingerprint, let trusted):
-            // Every field now comes from the event itself — the shell no
-            // longer derives a fingerprint or guesses a device type.
             let ref = PeerRef(
                 id: peerId,
                 displayName: deviceName.isEmpty ? (peerInfo[peerId]?.displayName ?? "Unknown Device") : deviceName,
@@ -429,15 +427,11 @@ extension Visibility {
 
 // MARK: - Errors
 
-/// Maps the core's typed errors to user-facing text. The close-code errors
-/// (PROTOCOL.md §4.1.1) are the reason this mapping exists: reporting
-/// `PAIRING_REQUIRED` as a generic transport failure is a conformance bug.
-/// Turns a core error into something a person can act on.
-///
-/// The core's own messages are internal English strings ("cancelled by peer",
-/// "timed out waiting for DECISION") and must never reach the screen: they are
-/// untranslatable and read like a stack trace. Every case maps to a localized
-/// sentence instead, and the raw text stays in the log.
+/// Maps the core's typed errors to user-facing text. Two reasons this mapping
+/// exists: reporting a close code such as `PAIRING_REQUIRED` (PROTOCOL.md
+/// §4.1.1) as a generic transport failure is a conformance bug, and the core's
+/// own messages are untranslatable internal English that must never reach the
+/// screen. The raw text stays in the log.
 func coreErrorMessage(_ error: Error) -> String {
     guard let error = error as? WoooshCoreFFI.WoooshError else {
         return L.t("error_transfer_failed")
@@ -462,9 +456,9 @@ func coreErrorMessage(_ error: Error) -> String {
     }
 }
 
-/// The core reports transfer outcomes as short English tokens on the event
-/// stream. They are the only description of *why* a transfer stopped, so they
-/// are recognised here and answered with real copy rather than shown raw.
+/// The core reports transfer outcomes as short English tokens, and they are the
+/// only description of why a transfer stopped. Recognised here and answered
+/// with real copy rather than shown raw.
 func transferErrorMessage(_ raw: String) -> String {
     let text = raw.lowercased()
     if text.contains("declined") || text.contains("rejected") {

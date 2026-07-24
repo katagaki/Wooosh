@@ -1,0 +1,23 @@
+<Application
+    x:Class="Wooosh.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+                Wooosh has no brand colour. Everything tinted reaches for the system accent
+                theme resources at the point of use: AccentFillColorDefaultBrush,
+                AccentTextFillColorPrimaryBrush and AccentButtonStyle (DESIGN.md §5), so the
+                app follows the user's Windows accent for free.
+
+                They are deliberately NOT aliased into this dictionary: a StaticResource
+                alias to a theme resource resolves once at load and then stops following a
+                light/dark switch.
+            -->
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

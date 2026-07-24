@@ -3,10 +3,9 @@ import SwiftUI
 /// Shown over the device list while a pairing attempt started from a row is
 /// in flight (there is no sheet up to host it).
 ///
-/// The bug this exists for: pairing dials a peer across a network, which took
-/// 19 s in the field, and the app showed *nothing* — no spinner, no name, no
-/// way out — so the user assumed it had died and force-quit. Silence is the
-/// bug; this is the fix. It always names the peer and always offers Cancel.
+/// Pairing dials a peer across a network and has been measured at 19 s, so it
+/// must always name the peer and always offer Cancel. Silence reads as a dead
+/// app and gets force-quit.
 struct PairingProgressOverlay: View {
     let peerName: String?
     let cancel: () -> Void

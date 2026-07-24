@@ -2,16 +2,13 @@ import Foundation
 import os
 import WoooshCoreFFI
 
-/// The core's `KeyStore` adapter (DESIGN.md §4 `PlatformAdapters.key_store`),
-/// backed by the Keychain item this app has used since Milestone 1.
+/// The core's `KeyStore` adapter (DESIGN.md §4 `PlatformAdapters.key_store`).
+/// The app lends the core storage only; it derives no identity of its own.
 ///
-/// Milestone 3 makes the **core** the single source of identity. The app no
-/// longer derives a DeviceID of its own; it only lends the core its storage.
-/// The stored blob is the raw 32-byte Ed25519 seed, which is exactly what
-/// `CryptoKit.Curve25519.Signing.PrivateKey.rawRepresentation` produced and
-/// exactly what `ed25519_dalek::SigningKey::from_bytes` expects — so an
-/// install that already has a key keeps it, and there is never more than one
-/// keypair per install.
+/// The stored blob is the raw 32-byte Ed25519 seed — what
+/// `Curve25519.Signing.PrivateKey.rawRepresentation` produces and what
+/// `ed25519_dalek::SigningKey::from_bytes` expects. Keeping that format is what
+/// lets an existing install keep its key, so there is never a second keypair.
 ///
 /// Called from a core thread inside `WoooshCore.start`, so this type is
 /// deliberately not actor-isolated and touches no UI state.
@@ -84,11 +81,10 @@ final class KeychainKeyStore: KeyStore, @unchecked Sendable {
     // MARK: - File fallback
     //
     // Ad-hoc-signed local builds (CODE_SIGNING_ALLOWED=NO) get no keychain
-    // access group, so SecItemAdd fails with errSecMissingEntitlement. Rather
-    // than generate a fresh identity on every launch — which would break the
-    // "exactly one keypair per install" invariant this milestone exists to
-    // fix — fall back to an app-private file. Properly signed builds never
-    // reach this path.
+    // access group, so SecItemAdd fails with errSecMissingEntitlement.
+    // Regenerating on every launch would break the one-keypair-per-install
+    // invariant, so those builds fall back to an app-private file. Properly
+    // signed builds never reach this path.
 
     private var fallbackURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

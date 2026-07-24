@@ -1,10 +1,11 @@
 //! QUIC transport (PROTOCOL.md §4.1 + §6 tuning).
 //!
-//! Self-signed X.509 certs wrapping the Ed25519 identity key. Custom rustls
-//! verifiers on both sides accept any well-formed cert (the cert is an
-//! envelope; CA chains are never evaluated) while still verifying the TLS 1.3
-//! handshake signature against the cert's key. Pinning/trust decisions happen
-//! above the TLS layer, using the Ed25519 SPKI extracted from the peer cert.
+//! Self-signed X.509 certs wrapping the Ed25519 identity key. The cert is only
+//! an envelope, so the custom rustls verifiers on both sides accept any
+//! well-formed one and never evaluate a CA chain — but they still verify the
+//! TLS 1.3 handshake signature against its key, which is what proves key
+//! possession. Trust and pinning decisions happen above TLS, on the Ed25519
+//! SPKI extracted from the peer cert.
 
 use crate::error::WoooshError;
 use crate::identity::Identity;
@@ -85,7 +86,8 @@ impl ClientCertVerifier for AcceptAnyClientCert {
         _intermediates: &[CertificateDer<'_>],
         _now: UnixTime,
     ) -> Result<ClientCertVerified, rustls::Error> {
-        // Well-formedness: must parse and carry an Ed25519 key.
+        // Acceptance is well-formedness only: parses and carries an Ed25519
+        // key. Trust is decided above TLS.
         ed25519_spki_from_cert(end_entity)
             .map_err(|e| rustls::Error::General(e.to_string()))?;
         Ok(ClientCertVerified::assertion())
@@ -129,8 +131,8 @@ struct AcceptAnyServerCert {
     /// exactly this Ed25519 key (used for QR pairing and pinned reconnects).
     expected_key: Option<[u8; 32]>,
     /// The key the server actually presented, recorded even when the pin
-    /// rejects it — a failed handshake yields no `peer_identity()`, and the
-    /// KEY_CHANGED event is far more useful with the offending key attached.
+    /// rejects it: a failed handshake exposes no `peer_identity()`, so this is
+    /// the only way KEY_CHANGED can name the offending key.
     seen_key: Arc<std::sync::Mutex<Option<[u8; 32]>>>,
 }
 
@@ -259,7 +261,10 @@ pub fn client_config(
     Ok((cfg, seen_key))
 }
 
-/// SAS derivation (PROTOCOL.md §4.3): 6-digit code from the TLS exporter.
+/// SAS derivation (PROTOCOL.md §4.3): 6-digit code from the TLS exporter, so
+/// the code is bound to this exact TLS transcript. A relaying MITM holds two
+/// separate sessions and therefore cannot make both ends show the same digits.
+///
 /// export_keying_material(label="EXPORTER-wooosh-sas", context=empty, 32 bytes),
 /// first 4 bytes as big-endian u32, mod 1_000_000.
 pub fn derive_sas(conn: &quinn::Connection) -> Result<u32, WoooshError> {

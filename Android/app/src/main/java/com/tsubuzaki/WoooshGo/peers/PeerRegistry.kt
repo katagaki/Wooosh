@@ -97,11 +97,9 @@ class PeerRegistry(private val scope: CoroutineScope) {
      * authoritative — the mDNS TXT is an unauthenticated hint — and rows tied to this
      * DeviceID adopt it.
      *
-     * The device type is *only* adopted when it is a known platform. The core's HELLO
-     * type is still the old form-factor vocabulary and therefore arrives as
-     * [DeviceType.UNKNOWN]; letting that overwrite the row would replace a correct
-     * `android-phone` glyph from the TXT record with a neutral one. Unknown never wins
-     * over known.
+     * The device type is adopted only when it is a known platform: the core's HELLO type
+     * arrives as [DeviceType.UNKNOWN], and letting that win would replace a correct
+     * `android-phone` glyph from the TXT record with a neutral one.
      */
     @Synchronized
     fun onConnected(peerId: String, displayName: String, deviceType: DeviceType?) {

@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsubuzaki.WoooshGo.WoooshApplication
 import com.tsubuzaki.WoooshGo.core.CoreEvent
-import com.tsubuzaki.WoooshGo.core.MockCore
 import com.tsubuzaki.WoooshGo.core.TransferId
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 import com.tsubuzaki.WoooshGo.pairing.PairingManager
@@ -39,8 +38,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
-     * Identity comes from the CORE now (PROTOCOL.md §2) — one keypair per install.
-     * The core boots asynchronously, so poll briefly until it answers.
+     * Identity comes from the core (PROTOCOL.md §2) — one keypair per install. The core
+     * boots asynchronously, so poll briefly until it answers.
      */
     val deviceIdFormatted: StateFlow<String?> = flow {
         while (true) {
@@ -93,8 +92,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---- share target ----
     val stagedShare: StateFlow<OutboxRepository.StagedShare?> = app.outbox.staged
-
-    val usingMockCore: Boolean get() = app.core is MockCore
 
     // ------------------------------------------------------------- actions
 
@@ -153,23 +150,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelPairingAttempt() = app.pairingManager.cancelAttempt()
 
     fun dismissPairingAttempt() = app.pairingManager.dismissAttempt()
-
-    // ------------------------------------------------------------- debug
-
-    val mockCorePreferred: Boolean get() = app.useMockCore()
-
-    /** Applies on next launch — the core object is created once per process. */
-    fun setMockCorePreferred(enabled: Boolean) = app.setUseMockCore(enabled)
-
-    fun debugSimulateOffer(fileCount: Int) {
-        (app.core as? MockCore)?.debugSimulateIncomingOffer(fileCount)
-    }
-
-    fun debugSimulateSas() {
-        (app.core as? MockCore)?.debugSimulateIncomingSas()
-    }
-
-    fun debugSimulateKeyChanged() {
-        (app.core as? MockCore)?.debugSimulateKeyChanged()
-    }
 }

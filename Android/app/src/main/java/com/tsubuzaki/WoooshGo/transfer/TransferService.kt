@@ -40,11 +40,10 @@ class TransferService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
 
     /**
-     * The service is started before the core emits TransferStarted — with the real core
-     * there is a connect + OFFER/consent round trip in between, and the receiving user
-     * may take a while. TransferManager therefore reports "a request is in flight OR a
-     * transfer is running" through `serviceNeeded`, and the service only stops once that
-     * has gone false after having been true (or the startup grace expires).
+     * The service starts before TransferStarted arrives: a connect plus an OFFER/consent
+     * round trip sits in between. `serviceNeeded` covers both that window and running
+     * transfers, and the service only stops once it has gone false after having been true
+     * (or the startup grace expires).
      */
     private var sawWork = false
 
@@ -72,9 +71,6 @@ class TransferService : Service() {
         )
 
         if (observeJob == null) {
-            // Lifecycle keys off real core events: Progress / TransferDone /
-            // TransferError feed `transfers`, and `serviceNeeded` additionally covers
-            // the request-in-flight window before TransferStarted arrives.
             observeJob = serviceScope.launch {
                 launch {
                     transferManager.serviceNeeded.collect { needed ->

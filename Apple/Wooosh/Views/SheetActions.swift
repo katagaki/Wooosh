@@ -71,18 +71,10 @@ struct SheetActions<Primary: View, Secondary: View>: View {
 
 // MARK: - Standard-role buttons
 //
-// iOS 26 added `Button(role:action:)` — a button with a role and *no* label,
-// for which the system supplies the standard title/glyph and the Liquid Glass
-// treatment it gives its own Done/Cancel/Close. Verified against
-// iPhoneOS27.0.sdk: `ButtonRole.confirm` and `.close` are `iOS 26.0, macOS
-// 26.0+`, and the label-less initialiser is `extension Button where Label ==
-// DefaultButtonLabel { init(role: ButtonRole, action: ...) }`, same
-// availability. The app's floor is 26 on both, so no `#available` is needed.
-//
-// Scoped to iOS on purpose, the same way this file already scopes sheet button
-// metrics: on macOS these buttons live in an AppKit sheet footer or a window
-// toolbar, both of which are rows of *spelled-out* titles. A system-supplied
-// glyph in that row reads as a different control, so the Mac keeps its words.
+// The label-less `Button(role:action:)` lets the system supply the standard
+// title/glyph and Liquid Glass treatment. Scoped to iOS on purpose: on macOS
+// these sit in a sheet footer or window toolbar, which are rows of spelled-out
+// titles, and a system glyph there reads as a different control.
 
 /// The bare confirmation button — "Done".
 struct DoneButton: View {

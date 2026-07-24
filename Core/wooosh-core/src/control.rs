@@ -4,10 +4,10 @@
 //! with u32 big-endian on the control stream. Unknown map keys are ignored
 //! (forward compatibility); unknown `t` values yield `Msg::Unknown`.
 //!
-//! Tag assignment note: PROTOCOL.md gives HELLO no explicit tag and reserves
-//! t:16..19 for PAIR_* without individual assignments. We use:
-//!   HELLO=0, PAIR_REQUEST=16, PAIR_ACCEPT=17, PAIR_CONFIRM=18, PAIR_REJECT=19,
-//!   ERR_UNSUPPORTED=254, BYE=255.
+//! PROTOCOL.md gives HELLO no explicit tag and reserves t:16..19 for PAIR_*
+//! without assigning them individually, so these are wire-compatibility
+//! commitments, not free choices: HELLO=0, PAIR_REQUEST=16, PAIR_ACCEPT=17,
+//! PAIR_CONFIRM=18, PAIR_REJECT=19, ERR_UNSUPPORTED=254, BYE=255.
 
 use ciborium::Value;
 
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn unknown_keys_ignored() {
-        // Build a BYE with an extra key — must still parse (forward compat).
+        // A BYE with an extra key must still parse (forward compat).
         let v = Value::Map(vec![
             (Value::Text("t".into()), Value::Integer(255.into())),
             (Value::Text("future".into()), Value::Text("stuff".into())),

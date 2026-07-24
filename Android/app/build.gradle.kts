@@ -30,9 +30,6 @@ android {
     }
     buildFeatures {
         compose = true
-        // BuildConfig.DEBUG gates the developer-only section of Settings, which
-        // must not ship to users: it speaks in engine internals, not copy.
-        buildConfig = true
     }
     lint {
         // Keep the intentionally uppercase package/applicationId out of lint noise.

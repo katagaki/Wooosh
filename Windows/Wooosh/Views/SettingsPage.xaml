@@ -1,0 +1,142 @@
+<Page
+    x:Class="Wooosh.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:loc="using:Wooosh.Localization"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <loc:LocalizeConverter x:Key="Localize" />
+    </Page.Resources>
+
+    <ScrollViewer>
+        <StackPanel Margin="24" MaxWidth="720" Spacing="24">
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    AutomationProperties.Name="{loc:Localize Key=ActionBack}"
+                    Click="OnBackClick"
+                    Content="&#xE72B;"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Text="{loc:Localize Key=ActionSettings}" />
+            </StackPanel>
+
+            <!-- Device name -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionDevice}" />
+                <TextBox
+                    x:Name="DisplayNameBox"
+                    Header="{loc:Localize Key=SettingsDisplayName}"
+                    LostFocus="OnDisplayNameCommitted" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsDisplayNameFooter}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Visibility (PROTOCOL.md §3.1 `vis`, DESIGN.md §10) -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionWhoCanSee}" />
+                <RadioButton
+                    x:Name="VisibilityEveryone"
+                    Checked="OnVisibilityChanged"
+                    Content="{loc:Localize Key=SettingsVisibilityEveryone}"
+                    Tag="everyone" />
+                <TextBlock
+                    Margin="32,0,0,8"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsVisibilityEveryoneDesc}"
+                    TextWrapping="Wrap" />
+                <RadioButton
+                    x:Name="VisibilityPaired"
+                    Checked="OnVisibilityChanged"
+                    Content="{loc:Localize Key=SettingsVisibilityPaired}"
+                    Tag="pairedOnly" />
+                <TextBlock
+                    Margin="32,0,0,8"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsVisibilityPairedDesc}"
+                    TextWrapping="Wrap" />
+                <RadioButton
+                    x:Name="VisibilityOff"
+                    Checked="OnVisibilityChanged"
+                    Content="{loc:Localize Key=SettingsVisibilityOff}"
+                    Tag="off" />
+                <TextBlock
+                    Margin="32,0,0,0"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsVisibilityOffDesc}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Minimize to the notification area (DESIGN.md §7) -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionBackground}" />
+                <ToggleSwitch
+                    x:Name="KeepRunningToggle"
+                    Header="{loc:Localize Key=SettingsKeepRunning}"
+                    Toggled="OnKeepRunningToggled" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsKeepRunningDesc}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Paired devices: rendered from the core's trust store, never from a mirror. -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionPairedDevices}" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsPairedDevicesEmpty}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsPairedDevicesFooter}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- This device's identity, straight from the core (PROTOCOL.md §2). -->
+            <StackPanel Spacing="4">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionThisDevice}" />
+                <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Text="{loc:Localize Key=SettingsDeviceId}" />
+                <TextBlock
+                    FontFamily="Consolas"
+                    IsTextSelectionEnabled="True"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Text="{x:Bind DeviceIdText, Mode=OneWay}" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=SettingsDeviceIdFooter}"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Margin="0,12,0,0"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Text="{loc:Localize Key=VerifyPhraseTitle}" />
+                <TextBlock
+                    IsTextSelectionEnabled="True"
+                    Style="{ThemeResource BodyStrongTextBlockStyle}"
+                    Text="{x:Bind FingerprintText, Mode=OneWay}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=VerifyPhraseBody}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

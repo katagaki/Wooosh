@@ -43,7 +43,7 @@ fn is_reserved_windows(name: &str) -> bool {
 
 /// Sanitize a bare file name. Strips path separators, then validates.
 pub fn sanitize_name(name: &str) -> Result<String, SanitizeError> {
-    // Strip path separators per spec ("strip path separators from name").
+    // PROTOCOL.md §5 says strip separators, not reject the whole name.
     let stripped: String = name.chars().filter(|c| *c != '/' && *c != '\\').collect();
     let stripped = stripped.trim().to_string();
     if stripped.is_empty() {
@@ -58,7 +58,6 @@ pub fn sanitize_name(name: &str) -> Result<String, SanitizeError> {
     if is_reserved_windows(&stripped) {
         return Err(SanitizeError::ReservedName);
     }
-    // Also reject names that are all dots.
     if stripped.chars().all(|c| c == '.') {
         return Err(SanitizeError::DotDot);
     }

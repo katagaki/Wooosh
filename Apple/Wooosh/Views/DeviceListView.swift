@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
 struct DeviceListView: View {
     @Environment(AppModel.self) private var model
@@ -21,11 +18,6 @@ struct DeviceListView: View {
             deviceList
                 .navigationTitle(L.t("Wooosh"))
                 .toolbar {
-                    #if DEBUG
-                    ToolbarItem {
-                        debugMenu
-                    }
-                    #endif
                     ToolbarItem {
                         Button(L.t("action_refresh"), systemImage: "arrow.clockwise") {
                             model.refresh()
@@ -122,28 +114,6 @@ struct DeviceListView: View {
         .onOpenURL { url in
             model.handleIncomingURL(url)
         }
-        #if DEBUG
-        // Sheet presentation lives in this view's own state, so the demo
-        // harness reaches it through here rather than from the model.
-        .onChange(of: model.debugScreen) { _, screen in
-            switch screen {
-            case .pair, .pairingConnecting, .pairingFailedInSheet:
-                showingPairSheet = true
-            case .send:
-                selectedPeer = model.registry.peers.first { !$0.isStale }
-            case .settings:
-                #if os(macOS)
-                // Proves the ⌘, Settings *scene* opens — there is no in-window
-                // settings screen on the Mac any more.
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                #else
-                showingSettings = true
-                #endif
-            case .devices, .offer, .sas, .pairingFailed, .pairingOverlay, nil:
-                break
-            }
-        }
-        #endif
         #if os(macOS)
         .frame(minWidth: 380, minHeight: 460)
         #endif
@@ -301,39 +271,6 @@ struct DeviceListView: View {
         return L.t("empty_body") + " " + visibility
     }
 
-    #if DEBUG
-    /// Drives MockCore's scripted flows. The simulations only mean anything
-    /// on the mock engine, so switching is part of the same menu.
-    private var debugMenu: some View {
-        Menu("Debug", systemImage: "ladybug") {
-            Picker("Engine", selection: Binding(
-                get: { model.backend },
-                set: { model.switchBackend(to: $0) }
-            )) {
-                ForEach(CoreBackend.allCases) { backend in
-                    Text(backend.label).tag(backend)
-                }
-            }
-            Section("Device List") {
-                Button("Add Nearby Devices") {
-                    model.debugPopulateNearbyDevices()
-                }
-            }
-            Section("Mock Simulations") {
-                Button("Simulate Incoming Offer") {
-                    model.debugSimulateIncomingOffer()
-                }
-                Button("Simulate Pairing Request (SAS)") {
-                    model.debugSimulateIncomingSASRequest()
-                }
-                Button("Simulate Key Change") {
-                    model.debugSimulateKeyChanged()
-                }
-            }
-            .disabled(model.backend != .mock)
-        }
-    }
-    #endif
 }
 
 struct PeerRowView: View {

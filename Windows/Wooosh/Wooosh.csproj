@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <!-- WinAppSDK 1.7 supports back to 1809; nothing here needs a newer floor. -->
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Wooosh</RootNamespace>
+    <AssemblyName>Wooosh</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WinUI 3 has no AnyCPU: the Windows App SDK ships per-architecture native bits. -->
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <AppxBundlePlatforms>x64|ARM64</AppxBundlePlatforms>
+    <GenerateTestArtifacts>False</GenerateTestArtifacts>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <!-- DPAPI (Platform/DpapiKeyStore.cs) is not in the shared framework on .NET 8. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+    <!-- Package.appxmanifest is picked up by the MSIX tooling and needs no entry here. -->
+    <Content Include="Assets\**\*.png" />
+  </ItemGroup>
+
+  <!--
+    Strings/<locale>/Resources.resw is picked up by the default PRIResource glob that
+    Microsoft.WindowsAppSDK enables. Listing them explicitly here as well produces
+    duplicate-item errors, so do not add <PRIResource> entries unless the default
+    globbing is first disabled with <EnableDefaultPRIResourceItems>false.
+  -->
+
+  <!--
+    wooosh_core.dll (the Rust core, built for the same architecture) is loaded by
+    Core/Interop/NativeMethods.cs. It is NOT in the tree yet: see Windows/README.md
+    for how to build it and drop it in. Once it exists, restore this item group so the
+    DLL travels with the package:
+
+    <ItemGroup>
+      <None Include="Native\$(Platform)\wooosh_core.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>wooosh_core.dll</Link>
+      </None>
+    </ItemGroup>
+  -->
+
+</Project>

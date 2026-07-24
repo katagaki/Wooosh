@@ -20,29 +20,23 @@ import kotlinx.coroutines.launch
 /**
  * Browses for `_wooosh._tcp.` services and feeds sightings/losses into the PeerRegistry.
  *
- * Resolution uses the ServiceInfoCallback API on 34+ (also delivers TXT updates) and
- * the legacy one-at-a-time resolveService below that, serialized through a queue.
+ * Resolution uses the ServiceInfoCallback API on 34+ (which also delivers TXT updates)
+ * and the legacy one-at-a-time resolveService below that, serialized through a queue.
  *
  * ## Scan cadence (PROTOCOL.md §3.2 / §3.3)
  *
- * The spec's "every 2 s" is an *announce/scan* cadence for the UDP-broadcast fallback.
- * On Android there is no such knob to turn: `discoverServices` is a subscription, and
- * the platform's mDNS daemon owns query timing and pushes `onServiceFound` /
- * `onServiceLost`. Tearing the browser down and restarting it on a 2 s loop to force
- * queries would churn the peer list — every restart re-fires discovery from scratch —
- * and the device list is append-only and never reorders (DESIGN.md §5). So that is
- * deliberately not done.
+ * The spec's "every 2 s" is a scan cadence for the UDP-broadcast fallback; Android has
+ * no such knob. `discoverServices` is a subscription and the platform mDNS daemon owns
+ * query timing. Restarting the browser on a 2 s loop to force queries would churn the
+ * peer list, which is append-only and never reorders (DESIGN.md §5) — so it is not done.
  *
- * What the shell *does* own is refreshing services it already knows about, and only on
- * API < 34: `resolveService` is one-shot, so a peer's address and TXT are captured once
- * at discovery and never revisited. A peer that restarts on a new ephemeral port keeps a
- * stale address in the row until NSD happens to report it lost. [SCAN_INTERVAL_MS] is
- * therefore applied as a re-resolve tick on that path — it refreshes rows in place and
- * cannot add, remove or reorder any. On API 34+ `registerServiceInfoCallback` already
- * streams those updates, so a timer there would only duplicate the system's work.
+ * [SCAN_INTERVAL_MS] is instead a re-resolve tick, and only on API < 34: `resolveService`
+ * is one-shot, so a peer that restarts on a new ephemeral port would keep a stale address
+ * until NSD reported it lost. The tick refreshes rows in place and can never add, remove
+ * or reorder one. On 34+ `registerServiceInfoCallback` already streams those updates.
  *
- * Not implemented, and not implied by this: the 30 s background tier. The shell has no
- * foreground/background distinction — discovery runs for as long as the process does.
+ * The spec's 30 s background tier is not implemented: the shell has no
+ * foreground/background distinction and discovery runs for as long as the process does.
  */
 class DiscoveryBrowser(
     context: Context,
@@ -132,9 +126,8 @@ class DiscoveryBrowser(
      * Legacy-path refresh at the PROTOCOL.md §3.3 cadence — see the class doc for why
      * this re-resolves instead of restarting discovery, and why 34+ needs no ticker.
      *
-     * Re-resolving cannot create or drop a row: a successful resolve updates an existing
-     * `rid` in place, and a resolve that fails is simply dropped. It also never
-     * shortcuts the 10 s stale threshold, which is untouched.
+     * Re-resolving can never create or drop a row, and never shortcuts the 10 s stale
+     * threshold.
      */
     private fun startRescanTicker() {
         if (Build.VERSION.SDK_INT >= 34) return
@@ -250,11 +243,10 @@ class DiscoveryBrowser(
     }
 
     /**
-     * The resolved addresses are what `connect_peer` needs (DESIGN.md §4) — the TXT
-     * record only carries the port. API 34+ exposes the full list via `hostAddresses`;
-     * below that only the single deprecated `host` is available.
+     * The resolved addresses are what `connect_peer` needs (DESIGN.md §4); the TXT record
+     * only carries the port.
      *
-     * IPv4 first: QUIC over a link-local IPv6 address needs a scope id that
+     * IPv4 first, and link-local IPv6 dropped: those need a scope id that
      * `InetAddress.getHostAddress()` renders as `fe80::1%wlan0`, which the core's
      * `lookup_host` cannot parse on every platform.
      */
@@ -281,12 +273,9 @@ class DiscoveryBrowser(
         val RID_PATTERN = Regex("[0-9a-f]{16}")
 
         /**
-         * Foreground scan cadence from PROTOCOL.md §3.3 (2 s, was 5 s).
-         *
-         * Deliberately NOT paired with a change to the registry's 10 s stale threshold:
-         * that is now ~5 missed announces instead of 2, so one dropped multicast packet
-         * can no longer grey out a device that is still there. Scanning faster is for
-         * finding devices sooner, never for dropping them sooner.
+         * Foreground scan cadence (PROTOCOL.md §3.3). Never pair a change here with a
+         * change to the registry's 10 s stale threshold: scanning faster is for finding
+         * devices sooner, never for dropping them sooner.
          */
         const val SCAN_INTERVAL_MS = 2_000L
     }

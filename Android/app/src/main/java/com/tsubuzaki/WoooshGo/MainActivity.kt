@@ -86,10 +86,9 @@ private fun AppRoot(viewModel: MainViewModel) {
         onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
-    // Runtime-permission gate run just before a transfer starts:
-    // POST_NOTIFICATIONS (API 33+) for the foreground-service progress notification,
-    // WRITE_EXTERNAL_STORAGE (API 26–28) for the direct-to-Downloads receive path.
-    // The transfer proceeds whatever the user answers.
+    // Asked just before a transfer starts: POST_NOTIFICATIONS (API 33+) for the
+    // foreground-service notification, WRITE_EXTERNAL_STORAGE (API 26–28) for the
+    // direct-to-Downloads receive path. The transfer proceeds whatever the user answers.
     var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -141,7 +140,6 @@ private fun AppRoot(viewModel: MainViewModel) {
     when {
         screen == Screen.SETTINGS && currentSettings != null -> {
             BackHandler { screen = Screen.MAIN }
-            var mockPreferred by remember { mutableStateOf(viewModel.mockCorePreferred) }
             SettingsScreen(
                 settings = currentSettings,
                 deviceIdFormatted = deviceId,
@@ -151,15 +149,6 @@ private fun AppRoot(viewModel: MainViewModel) {
                 onDisplayNameChange = viewModel::setDisplayName,
                 onVisibilityChange = viewModel::setVisibility,
                 onBack = { screen = Screen.MAIN },
-                usingMockCore = viewModel.usingMockCore,
-                mockCorePreferred = mockPreferred,
-                onMockCorePreferredChange = {
-                    mockPreferred = it
-                    viewModel.setMockCorePreferred(it)
-                },
-                onDebugSimulateOffer = viewModel::debugSimulateOffer,
-                onDebugSimulateSas = viewModel::debugSimulateSas,
-                onDebugSimulateKeyChanged = viewModel::debugSimulateKeyChanged,
             )
         }
 
@@ -203,12 +192,11 @@ private fun AppRoot(viewModel: MainViewModel) {
         }
     }
 
-    // Overlays — rendered above whichever screen is active.
     pendingOffer?.let { offer ->
         IncomingOfferSheet(
             offer = offer,
-            // `trusted` on the offer is the core's own answer; the trust list is a
-            // second look at the same fact, keyed by DeviceID.
+            // `trusted` is the core's own answer; the trust list is the same fact seen
+            // again, keyed by DeviceID.
             senderIsPaired = offer.from.paired ||
                 pairedDevices.any { it.deviceId == offer.from.id },
             onAccept = {
@@ -225,8 +213,7 @@ private fun AppRoot(viewModel: MainViewModel) {
         )
     }
 
-    // Pairing is never assumed to be fast: this covers the whole window from "scanned"
-    // to "outcome known", on whichever screen the user happens to be on.
+    // Covers the whole window from "scanned" to "outcome known", on any screen.
     pairingAttempt?.let { attempt ->
         PairingProgressDialog(
             attempt = attempt,

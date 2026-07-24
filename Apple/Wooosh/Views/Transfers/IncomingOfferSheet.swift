@@ -100,9 +100,9 @@ struct IncomingOfferSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
-                // The sender now shows exactly this phrase while it waits for
-                // this decision (see `TransferProgressView`), so the
-                // comparison the copy above asks for is actually performable.
+                // The sender displays this same phrase while it waits (see
+                // `TransferProgressView`), so the comparison the copy asks for
+                // is actually performable.
                 Text(offer.peer.fingerprint)
                     .font(.system(.body, design: .monospaced, weight: .semibold))
                     .multilineTextAlignment(.center)

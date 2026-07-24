@@ -7,18 +7,12 @@ import UniformTypeIdentifiers
 /// A photo or video imported from `PhotosPicker`, carried as a *file* rather
 /// than as raw bytes so the asset's original filename survives.
 ///
-/// `loadTransferable(type: Data.self)` hands over bytes only: the caller has to
-/// invent a name, which is how picked media used to arrive at the receiver as
-/// "Media 1.jpg" instead of "IMG_4021.HEIC". `FileRepresentation` instead
-/// yields a `ReceivedTransferredFile` whose `file.lastPathComponent` is the
-/// name Photos itself reports, with the extension that actually matches the
-/// bytes we were handed — nothing is transcoded or renamed. This is the same
-/// mechanism the share extension already relies on
-/// (`NSItemProvider.loadFileRepresentation`).
-///
-/// It needs no extra entitlement. The `PHAsset.originalFilename` route would
-/// also work, but it requires escalating Photos access from add-only to full
-/// read — too high a price for a filename.
+/// `loadTransferable(type: Data.self)` hands over bytes only, forcing the caller
+/// to invent a name ("Media 1.jpg" instead of "IMG_4021.HEIC").
+/// `FileRepresentation` yields a `ReceivedTransferredFile` carrying the name
+/// Photos itself reports, and needs no extra entitlement — the
+/// `PHAsset.originalFilename` route would require escalating Photos access from
+/// add-only to full read, too high a price for a filename.
 struct PickedMediaFile: Transferable {
     /// Our own copy of the item. The URL handed to the import closure is only
     /// valid for the duration of that closure, so the bytes are copied out

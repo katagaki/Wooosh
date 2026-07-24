@@ -148,13 +148,4 @@ final class PeerRegistry {
         guard let index = peers.firstIndex(where: { $0.rid == rid }) else { return }
         peers[index].isStale = true
     }
-
-    #if DEBUG
-    /// Grays a row out immediately, for the offline UI demo. Real staleness
-    /// always goes through `lost(rid:)` and its 10 s grace — this bypasses
-    /// only the timer, not the "gray in place, never remove" rule.
-    func debugMarkStale(rid: String) {
-        markStale(rid: rid)
-    }
-    #endif
 }

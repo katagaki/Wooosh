@@ -19,16 +19,12 @@ import uniffi.wooosh_core.KeyStore as CoreKeyStore
  *
  * The core owns the identity: it calls [loadIdentity] on start and, only on first launch,
  * generates an Ed25519 keypair and hands the 32-byte secret back through [storeIdentity].
- * The shell no longer derives a public key or a DeviceID of its own — `core.deviceId()`
- * and `core.fingerprintPhrase()` are the single source of truth, which removes the
- * duplicate-identity bug where the shell and the core each held their own keypair.
+ * The shell never derives a public key or a DeviceID of its own — `core.deviceId()` and
+ * `core.fingerprintPhrase()` are the single source of truth.
  *
- * Storage is unchanged from the shell-owned era, so an install that already ran the old
- * build keeps its key: Android Keystore has no Curve25519 below API 33, so the 32-byte
- * secret lives in SharedPreferences encrypted with AES-GCM under a Keystore-held AES key.
- * An Ed25519 "seed" and an ed25519-dalek `SigningKey`'s bytes are the same 32 bytes, so
- * the previously generated seed is byte-compatible and is adopted as-is; only the derived
- * DeviceID changes (SHA-256 placeholder -> BLAKE3, PROTOCOL.md §2).
+ * Android Keystore has no Curve25519 below API 33, so the 32-byte secret lives in
+ * SharedPreferences encrypted with AES-GCM under a Keystore-held AES key. This layout is
+ * load-bearing for upgrades: changing it costs every existing install its identity.
  */
 class IdentityManager(context: Context) : CoreKeyStore {
 

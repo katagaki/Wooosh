@@ -189,15 +189,15 @@ fn pair_via_qr_rejects_bad_token_and_wrong_key() {
     let r = Node::start(tmp.path(), "receiver", Visibility::Everyone);
     let s = Node::start(tmp.path(), "sender", Visibility::Everyone);
 
-    // Wrong token: single-use 32-byte token compared in constant time.
+    // Wrong token.
     let payload = r.core.begin_pairing_qr().unwrap();
     let mut qr = wooosh_core::pairing::QrPayload::parse(&payload).unwrap();
     qr.token[0] ^= 0xFF;
     let err = s.core.pair_with_qr(qr.encode()).unwrap_err();
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
-    // A shell drives its pairing sheet off events, so the failure must also
-    // arrive as one — whether the peer's PAIR_REJECT frame survived the close
-    // or only the TOKEN_INVALID close code did.
+    // Shells drive the pairing sheet off events, so the failure must also
+    // arrive as one — whether the PAIR_REJECT frame survived the close or only
+    // the TOKEN_INVALID close code did.
     expect_pairing_failure(&s, "bad token");
 
     // Wrong key: QR pk != presented cert key => QR_KEY_MISMATCH.
@@ -242,13 +242,9 @@ fn expect_pairing_failure(node: &Node, what: &str) {
 
 /// A dead hint ahead of the live one must not delay pairing.
 ///
-/// This is the field failure: the QR carried a hint the scanner could not
-/// reach, the hints were dialled one at a time, and the app sat silent for a
-/// full connect timeout per dead entry (19 s in the reported case) before the
-/// user gave up. The two black holes below are real bound UDP sockets that
-/// never answer — bound, so the OS sends no ICMP port-unreachable to end the
-/// attempt early, making each one cost the whole pairing connect timeout if it
-/// were awaited in sequence.
+/// The black holes are *bound* UDP sockets that never answer: bound, so the OS
+/// sends no ICMP port-unreachable to end the attempt early, and each one costs
+/// a whole pairing connect timeout if the hints are dialled in sequence.
 #[test]
 fn pair_via_qr_races_hints_so_a_dead_hint_first_does_not_stall() {
     let tmp = tempfile::tempdir().unwrap();
@@ -274,10 +270,9 @@ fn pair_via_qr_races_hints_so_a_dead_hint_first_does_not_stall() {
     eprintln!("[race] pair_with_qr with 2 dead hints ahead of the live one: {elapsed:?}");
 
     assert_eq!(peer_id, r.core.device_id().unwrap());
-    // Serially this would have cost two full connect timeouts (2 x 6 s today,
-    // 2 x 10 s before) before even dialling the live hint. Racing bounds it by
-    // the live handshake, which is milliseconds on loopback; 5 s is a very
-    // generous ceiling that still fails loudly if serial dialling comes back.
+    // Serially this costs two full connect timeouts before the live hint is
+    // even dialled. Racing bounds it by the live handshake, milliseconds on
+    // loopback; 5 s is generous but still fails loudly if serial comes back.
     assert!(
         elapsed < Duration::from_secs(5),
         "hints look serial again: pairing took {elapsed:?}"
@@ -321,8 +316,7 @@ fn pair_via_qr_all_hints_dead_fails_once_and_emits() {
     eprintln!("[race] pair_with_qr with 3 dead hints failed after: {elapsed:?}");
 
     assert!(matches!(err, WoooshError::Connect(_)), "got {err:?}");
-    // Three hints raced share one 6 s deadline; serially they would have been
-    // 18 s (30 s under the old 10 s budget).
+    // Three raced hints share one 6 s deadline; serially they would be 18 s.
     assert!(
         elapsed < Duration::from_secs(12),
         "dead hints look serial again: {elapsed:?}"
@@ -339,8 +333,7 @@ fn pair_via_sas_and_mitm_codes_differ() {
     let m = Node::start(tmp.path(), "mallory", Visibility::Everyone);
     let b = Node::start(tmp.path(), "bob", Visibility::Everyone);
 
-    // Session 1: alice <-> mallory (stands in for the victim's session with
-    // the MITM).
+    // Session 1: alice <-> mallory, the victim's session with the MITM.
     let pid_m = a.core.connect_peer(m.addr(), None).unwrap();
     a.core.request_sas_pairing(pid_m.clone()).unwrap();
     let code_a = wait_for(&a.rx, Duration::from_secs(10), "alice PairingSas", |e| match e {
@@ -356,9 +349,9 @@ fn pair_via_sas_and_mitm_codes_differ() {
     assert_eq!(code_a.len(), 6);
     assert!(code_a.chars().all(|c| c.is_ascii_digit()));
 
-    // Session 2: mallory <-> bob (the MITM's second, relayed session). The
-    // exporter binds each TLS transcript, so the two sessions cannot show
-    // the same code (up to the 1e-6 collision floor).
+    // Session 2: mallory <-> bob, the MITM's relayed session. The exporter
+    // binds each TLS transcript, so the two sessions cannot show the same
+    // code (up to the 1e-6 collision floor).
     let pid_b = m.core.connect_peer(b.addr(), None).unwrap();
     m.core.request_sas_pairing(pid_b.clone()).unwrap();
     let code_m2 = wait_for(&m.rx, Duration::from_secs(10), "mallory PairingSas 2", |e| match e {
@@ -399,7 +392,6 @@ fn transfer_200mib_and_500_small_files() {
     let r = Node::start(tmp.path(), "receiver", Visibility::Everyone);
     let s = Node::start(tmp.path(), "sender", Visibility::Everyone);
 
-    // Fixtures: 1 x 200 MiB + 500 x 100 KiB.
     let src = tmp.path().join("src");
     std::fs::create_dir_all(&src).unwrap();
     let big = src.join("big.bin");
@@ -411,7 +403,7 @@ fn transfer_200mib_and_500_small_files() {
         paths.push(p.to_string_lossy().to_string());
     }
 
-    // Unpaired accept-once transfer (visibility Everyone, §4.4).
+    // Unpaired accept-once transfer (visibility Everyone, PROTOCOL.md §4.4).
     let pid = s.core.connect_peer(r.addr(), None).unwrap();
     let tid = s.core.send(pid, paths).unwrap();
 
@@ -449,7 +441,6 @@ fn transfer_200mib_and_500_small_files() {
     assert!(matches!(offer_dt, Some(DeviceType::Desktop)));
     r.core.respond_to_offer(offer_tid, fids).unwrap();
 
-    // Both sides see TransferStarted with the resolved manifest.
     let n = wait_for(&s.rx, Duration::from_secs(60), "sender TransferStarted", |e| match e {
         CoreEvent::TransferStarted { direction: TransferDirection::Send, files, .. } => {
             Some(files.len())
@@ -493,14 +484,12 @@ fn transfer_200mib_and_500_small_files() {
         },
     );
     assert_eq!((ok_s, fail_s), (501, 0));
-    // The summary carries a real elapsed time, so shells stop hardcoding 0.
     assert!(dur_r > 0 && dur_s > 0, "duration_ms must be reported (r={dur_r}, s={dur_s})");
     println!(
         "transfer summary: {bytes_r} bytes in {dur_r} ms ({:.1} MB/s receiver-side)",
         bytes_r as f64 / 1e6 / (dur_r as f64 / 1000.0)
     );
 
-    // Verify hashes of the received files against the originals.
     let files_dir = r.staging().join(&tid).join("files");
     let received: Vec<_> = std::fs::read_dir(&files_dir).unwrap().collect();
     assert_eq!(received.len(), 501);
@@ -547,7 +536,6 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     });
     r1.core.stop();
 
-    // Sender notices and reports a resumable error.
     let resumable = wait_for(
         &s.rx,
         Duration::from_secs(120),
@@ -561,8 +549,7 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     );
     assert!(resumable);
 
-    // Restart the receiver from the same state dir (same identity key, trust
-    // store, staging + ledger), new port.
+    // Same state dir (identity key, trust store, staging + ledger), new port.
     let r2 = Node::start(tmp.path(), "recv", Visibility::Everyone);
     let pid2 = s.core.connect_peer(r2.addr(), Some(r_pubkey)).unwrap();
     s.core.resume_transfer(pid2, tid.clone()).unwrap();
@@ -579,7 +566,6 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     });
     assert_eq!(ok_s, 1);
 
-    // ---- byte evidence ----
     let stats = s.core.transfer_stats(&tid).expect("sender stats");
     assert!(stats.is_sender);
     assert!(
@@ -598,7 +584,6 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
         stats.resumed_from, stats.bytes_this_attempt
     );
 
-    // Receiver finished and the file verifies end-to-end.
     wait_for(&r2.rx, Duration::from_secs(120), "receiver TransferDone", |e| match e {
         CoreEvent::TransferDone { ok_files: 1, failed_files: 0, .. } => Some(()),
         _ => None,
@@ -613,10 +598,8 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
 fn untrusted_channel_restrictions() {
     let tmp = tempfile::tempdir().unwrap();
 
-    // PairedOnly: untrusted connection is closed right after HELLO with
-    // PAIRING_REQUIRED, and the close code is surfaced as a typed error so
-    // shells can say "only accepts transfers from paired devices" instead of
-    // reporting an opaque transport failure.
+    // PairedOnly closes right after HELLO with PAIRING_REQUIRED, and the close
+    // code must surface as a typed error, not an opaque transport failure.
     let r = Node::start(tmp.path(), "paired-only", Visibility::PairedOnly);
     let s = Node::start(tmp.path(), "stranger", Visibility::Everyone);
     let err = s.core.connect_peer(r.addr(), None).unwrap_err();
@@ -625,8 +608,7 @@ fn untrusted_channel_restrictions() {
     let r_pid = r.core.device_id().unwrap();
     assert!(!s.core.peer_connected(&r_pid));
 
-    // Everyone: OFFER is honored untrusted (covered elsewhere), but transfer
-    // control messages like RESUME_Q are not — connection is closed.
+    // Everyone: OFFER is honored untrusted, but RESUME_Q is not.
     let r2 = Node::start(tmp.path(), "everyone", Visibility::Everyone);
     let pid2 = s.core.connect_peer(r2.addr(), None).unwrap();
     assert!(s.core.peer_connected(&pid2));
@@ -659,7 +641,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     let b_pubkey = b.core.public_key().unwrap();
     let b_id = b.core.device_id().unwrap();
 
-    // --- pair over SAS; the caller never sees bob's key ---
+    // Pair over SAS; the caller never sees bob's key.
     let pid_b = a.core.connect_peer(b_addr.clone(), None).unwrap();
     a.core.request_sas_pairing(pid_b.clone()).unwrap();
     wait_for(&a.rx, Duration::from_secs(10), "alice PairingSas", |e| match e {
@@ -673,7 +655,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     let a_id = a.core.device_id().unwrap();
     a.core.confirm_sas(pid_b.clone(), true).unwrap();
     b.core.confirm_sas(a_id, true).unwrap();
-    // PairingResult now carries the peer's raw key, so a shell can pin/revoke.
+    // PairingResult carries the peer's raw key, so a shell can pin/revoke.
     let (paired_key, paired_fp) =
         wait_for(&a.rx, Duration::from_secs(10), "alice PairingResult", |e| match e {
             CoreEvent::PairingResult { success: true, peer_pubkey, fingerprint, .. } => {
@@ -688,7 +670,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
         _ => None,
     });
 
-    // --- reconnect with expected_pubkey = None: still pinned, still trusted ---
+    // Reconnect with expected_pubkey = None: still pinned, still trusted.
     a.drain(); // only judge events produced by the reconnect below
     let pid2 = a.core.connect_peer(b_addr.clone(), None).unwrap();
     assert_eq!(pid2, b_id);
@@ -709,7 +691,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     assert!(ev_trusted, "a pinned peer must reconnect as trusted");
     assert!(matches!(ev_dt, Some(DeviceType::Desktop)), "HELLO dt must reach the shell");
 
-    // --- an imposter takes over bob's exact address ---
+    // An imposter takes over bob's exact address.
     b.core.stop();
     drop(b);
     let imposter = Node::start_on(tmp.path(), "imposter", Visibility::Everyone, &b_addr);
@@ -771,8 +753,7 @@ fn trusted_peers_reflects_pair_and_revoke() {
     assert_eq!(p.fingerprint, fingerprint_phrase_for(r_pubkey.clone()).unwrap());
     assert!(p.paired_at > 0 && p.last_seen >= p.paired_at);
 
-    // The QR-*displaying* side gets a usable entry too (the case that had no
-    // reachable key at all before).
+    // The QR-*displaying* side gets a usable entry too.
     let r_list = r.core.trusted_peers().unwrap();
     assert_eq!(r_list.len(), 1);
     assert_eq!(r_list[0].pubkey, s.core.public_key().unwrap());
@@ -808,8 +789,8 @@ fn key_changed_on_pin_mismatch() {
     let imposter = Node::start(tmp.path(), "imposter", Visibility::Everyone);
     let s = Node::start(tmp.path(), "sender", Visibility::Everyone);
 
-    // The sender has the victim's key pinned; the "same" endpoint now
-    // presents the imposter's key -> hard KEY_CHANGED, no silent re-pin.
+    // Victim's key pinned, imposter's key presented: hard KEY_CHANGED, and
+    // never a silent re-pin.
     let victim_key = victim.core.public_key().unwrap();
     let err = s.core.connect_peer(imposter.addr(), Some(victim_key)).unwrap_err();
     assert!(matches!(err, WoooshError::KeyChanged), "got {err:?}");

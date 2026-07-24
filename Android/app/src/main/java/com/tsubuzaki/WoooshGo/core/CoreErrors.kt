@@ -6,12 +6,10 @@ import com.tsubuzaki.WoooshGo.R
 /**
  * Turns a core failure into something a person can act on.
  *
- * The Rust core reports outcomes as short internal English tokens on the event
- * stream: "cancelled", "declined by receiver", "cancelled by peer", "timed out
- * waiting for DECISION". Those were being shown to the user verbatim, which
- * breaks two rules at once: they cannot be translated, and they read like a
- * debug log rather than an explanation. They are recognised here and answered
- * with real copy; the raw text stays in the log where it is useful.
+ * The core reports outcomes as short internal English tokens ("cancelled", "declined by
+ * receiver", "timed out waiting for DECISION"). Never show those verbatim: they cannot be
+ * translated and they read like a log line. Map them to real copy; the raw text stays in
+ * the log.
  */
 fun transferErrorMessage(context: Context, raw: String?): String {
     val text = raw?.lowercase().orEmpty()

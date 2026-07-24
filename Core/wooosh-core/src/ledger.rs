@@ -1,10 +1,9 @@
 //! Persistent resume ledger (PROTOCOL.md §6).
 //!
 //! Lives at `staging/<tid_hex>/ledger.json` next to the `.part` files.
-//! `verified_off` = bytes written + flushed for that file. The BLAKE3 hasher
-//! state is NOT serialized (the crate does not expose a stable checkpoint
-//! format); on resume the `.part` prefix is re-hashed, which PROTOCOL.md
-//! explicitly allows ("recomputed over the .part prefix on cold resume").
+//! `verified_off` = bytes written + flushed for that file. Hasher state is
+//! deliberately not serialized — blake3 exposes no stable checkpoint format —
+//! so a cold resume re-hashes the `.part` prefix, which PROTOCOL.md allows.
 
 use crate::error::WoooshError;
 use serde::{Deserialize, Serialize};
@@ -53,10 +52,10 @@ impl Ledger {
 
     /// Atomic write + fsync.
     ///
-    /// The temp file name is unique per call: several slot streams persist
-    /// concurrently for one transfer, and a shared `ledger.tmp` would have
-    /// them truncate each other's partial writes (producing a corrupt
-    /// `ledger.json`) and race on the rename (the loser gets ENOENT).
+    /// The temp name must stay unique per call: several slot streams persist
+    /// concurrently for one transfer, and a shared `ledger.tmp` would let them
+    /// truncate each other's partial writes into a corrupt `ledger.json` and
+    /// race on the rename, where the loser gets ENOENT.
     pub fn save(&self, staging_tid_dir: &Path) -> Result<(), WoooshError> {
         std::fs::create_dir_all(staging_tid_dir)?;
         let p = Self::path_for(staging_tid_dir);
@@ -84,7 +83,8 @@ impl Ledger {
 }
 
 /// Re-hash the first `len` bytes of a `.part` file, returning the primed
-/// hasher (used to trust the ledger's `verified_off` on cold resume).
+/// hasher. This is what makes the ledger's `verified_off` trustworthy on a
+/// cold resume; a short `.part` is an error, never a silent truncation.
 pub fn rehash_prefix(part_path: &Path, len: u64) -> Result<blake3::Hasher, WoooshError> {
     let mut hasher = blake3::Hasher::new();
     if len == 0 {

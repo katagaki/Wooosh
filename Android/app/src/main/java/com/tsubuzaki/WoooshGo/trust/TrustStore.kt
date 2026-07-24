@@ -13,14 +13,9 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * The shell's view of the trust list (PROTOCOL.md §4.5) — a *cache* of
- * `WoooshCore.trustedPeers()`, not a second copy of the truth.
- *
- * The previous implementation mirrored pairings into DataStore with a public key that was
- * usually empty (only the QR-scanning side ever learned one) and a locally invented
- * `pairedAt`. That mirror could disagree with the core's own trust.json in both
- * directions and gave the UI no key to pin `connect_peer` with. The core now exports its
- * pinned set, so there is nothing left to mirror: this class holds the last snapshot and
- * re-reads it at launch, after every successful pairing and after every revoke.
+ * `WoooshCore.trustedPeers()`, never a second copy of the truth. Never mirror pairings
+ * into local storage: a mirror can disagree with the core's trust.json in both directions.
+ * This holds the last snapshot and re-reads at launch, after a pairing and after a revoke.
  *
  * Everything here is keyed by DeviceID ([TrustedPeerInfo.deviceId]) — the same string the
  * core puts in `peerId` on every event. Display names are labels, never identity.

@@ -1,9 +1,8 @@
 //! Pairing: QR payload + one-time tokens (PROTOCOL.md §4.2) and SAS state.
 //!
-//! QR payload format note: PROTOCOL.md §4.2 shows `?` between every parameter
-//! (`...?pk=..?tok=..`), which is not valid URI query syntax. We emit `&`
-//! separators (`wooosh-pair:1?pk=..&tok=..&hints=..&exp=..`) and accept both
-//! on parse.
+//! PROTOCOL.md §4.2 shows `?` between every parameter (`...?pk=..?tok=..`),
+//! which is not valid URI query syntax. We emit `&` and accept both on parse,
+//! so payloads from a spec-literal implementation still scan.
 
 use crate::error::WoooshError;
 use base64::Engine as _;
@@ -91,7 +90,6 @@ impl QrPayload {
         let mut dn = None;
         let mut hints = Vec::new();
         let mut exp = None;
-        // Accept both '&' and '?' as separators (spec text shows '?').
         for kv in params_str.split(['&', '?']) {
             let Some((k, v)) = kv.split_once('=') else { continue };
             match k {

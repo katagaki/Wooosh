@@ -6,20 +6,14 @@ import os
 /// `connect_peer` (DESIGN.md §4).
 ///
 /// `NWBrowser` hands back an opaque `.service` endpoint, not an address, and
-/// the core needs a literal `ip:port`. Two resolution paths are implemented:
+/// the core needs a literal `ip:port`.
 ///
-/// 1. **`NetService.resolve`** (primary). It performs the SRV/A/AAAA lookup
-///    without opening a socket, which matters because our service is
-///    advertised over `_tcp` (per PROTOCOL.md §3.1) while the actual
-///    transport is QUIC over UDP — there is nothing listening on TCP to
-///    connect to. It also works when the record's SRV port is stale, because
-///    we take the port from the TXT `p` field instead.
-/// 2. **`NWConnection`** on the `.service` endpoint (fallback), reading
-///    `currentPath?.remoteEndpoint` once the connection is ready. Used only
-///    when `NetService` yields nothing.
-///
-/// The port always comes from TXT `p` when present — that is the QUIC UDP
-/// port the peer's core actually bound; the SRV port is only a mirror of it.
+/// `NetService.resolve` is primary because it does the SRV/A/AAAA lookup
+/// without opening a socket: the service is advertised over `_tcp`
+/// (PROTOCOL.md §3.1) while the transport is QUIC over UDP, so nothing is
+/// listening on TCP to connect to. `NWConnection` is the fallback when it
+/// yields nothing. The port comes from TXT `p` whenever present — that is the
+/// UDP port the peer's core actually bound; SRV only mirrors it.
 @MainActor
 enum BonjourResolver {
     private static let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "discovery")
@@ -97,11 +91,10 @@ enum BonjourResolver {
     /// - IPv4 over IPv6 because an IPv6 link-local address needs a scope
     ///   suffix the core's `lookup_host` would have to re-parse.
     /// - Routable over loopback because a peer's `127.0.0.1` is meaningless
-    ///   from another machine, and even for a peer on *this* machine the
-    ///   host's own LAN address reaches it just as well (peers bind
-    ///   `0.0.0.0`). mDNS happily hands back `127.0.0.1` first for a service
-    ///   registered locally, and dialling it was observed to hang the QUIC
-    ///   handshake from inside the app bundle.
+    ///   from another machine, and peers bind `0.0.0.0` so the LAN address
+    ///   reaches a same-machine peer anyway. mDNS hands back `127.0.0.1` first
+    ///   for a locally registered service, and dialling it was observed to hang
+    ///   the QUIC handshake from inside the app bundle.
     private static func bestAddress(of service: NetService?) -> (address: String, port: UInt16)? {
         guard let service, let addresses = service.addresses, !addresses.isEmpty else { return nil }
         let ranked = addresses.compactMap(parse(sockaddr:)).sorted { lhs, rhs in

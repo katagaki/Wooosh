@@ -202,9 +202,8 @@ struct PairDeviceView: View {
 
     // MARK: - Phases
 
-    /// The state that used to be silent. It names the peer, explains what is
-    /// happening, and — critically — offers a way out: a user who cannot
-    /// cancel force-quits the app instead.
+    /// Must always offer a way out: a user who cannot cancel a long connect
+    /// force-quits the app instead.
     private func pairingProgress(peerName: String?) -> some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)

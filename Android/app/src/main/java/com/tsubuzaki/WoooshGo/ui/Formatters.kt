@@ -9,13 +9,9 @@ import com.tsubuzaki.WoooshGo.R
 import java.util.Locale
 
 /**
- * Sizes, rates and durations, all rendered by the platform.
- *
- * These used to be hand-built with `Locale.US`, which pinned the decimal
- * separator to a dot and the units to English abbreviations for every reader.
- * `Formatter.formatFileSize` and ICU's `MeasureFormat` follow the reader's own
- * locale instead, so a German build says "1,5 MB" and a Japanese one "1.5 MB"
- * with the spacing each expects.
+ * Sizes, rates and durations, all rendered by the platform. Never hand-build these with a
+ * fixed `Locale`: `Formatter.formatFileSize` and ICU's `MeasureFormat` follow the reader's
+ * own separators, units and spacing.
  */
 fun formatBytes(context: Context, bytes: Long): String =
     Formatter.formatFileSize(context, bytes)

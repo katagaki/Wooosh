@@ -26,10 +26,9 @@ import com.tsubuzaki.WoooshGo.pairing.PairingManager.AttemptState
 /**
  * The visible half of a pairing ceremony (PROTOCOL.md §4.2 / §4.3).
  *
- * Pairing crosses a network and can be slow or fail; the UI must never imply otherwise
- * by showing nothing. This is deliberately modal — the user has just scanned a code and
- * has nothing else to do until it resolves — and it always offers a way out, because a
- * wait with no exit is what makes people force-quit the app.
+ * Pairing crosses a network and can be slow or fail; showing nothing implies otherwise.
+ * Modal on purpose, and it must always offer a way out — a wait with no exit leaves
+ * force-quitting as the only escape.
  */
 @Composable
 fun PairingProgressDialog(

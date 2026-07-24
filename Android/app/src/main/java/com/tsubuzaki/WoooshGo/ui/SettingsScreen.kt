@@ -22,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -37,7 +36,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.TextButton
-import com.tsubuzaki.WoooshGo.BuildConfig
 import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.settings.Settings
 import com.tsubuzaki.WoooshGo.settings.Visibility
@@ -56,12 +54,6 @@ fun SettingsScreen(
     onDisplayNameChange: (String) -> Unit,
     onVisibilityChange: (Visibility) -> Unit,
     onBack: () -> Unit,
-    usingMockCore: Boolean = false,
-    mockCorePreferred: Boolean = false,
-    onMockCorePreferredChange: (Boolean) -> Unit = {},
-    onDebugSimulateOffer: (fileCount: Int) -> Unit = {},
-    onDebugSimulateSas: () -> Unit = {},
-    onDebugSimulateKeyChanged: () -> Unit = {},
 ) {
     // Local edit buffer so persistence (and the discovery re-registration debounce)
     // doesn't fight the text field cursor.
@@ -145,8 +137,8 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                // Straight from the core's trust store: DeviceID is the identity, the
-                // name is only a label, and the fingerprint is the core's own phrase.
+                // Straight from the core's trust store: DeviceID is the identity and the
+                // display name is only a label.
                 pairedDevices.forEach { device ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -200,8 +192,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(8.dp))
-            // Straight from the core — BLAKE3(pubkey)[0..16] (PROTOCOL.md §2). The shell
-            // no longer derives an identity of its own.
+            // Straight from the core — BLAKE3(pubkey)[0..16] (PROTOCOL.md §2).
             Text(
                 text = deviceIdFormatted ?: stringResource(R.string.settings_starting),
                 style = MaterialTheme.typography.bodyLarge,
@@ -231,61 +222,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            // Developer-only. This section speaks in engine internals rather
-            // than user copy, so it is compiled out of release builds instead
-            // of being shipped and translated.
-            if (BuildConfig.DEBUG) {
-                Spacer(Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = "Debug",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = if (usingMockCore) {
-                        "Running the scripted mock core."
-                    } else {
-                        "Running the real wooosh-core engine."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Use the mock core", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = "Scripted offers/pairing without a second device. " +
-                                "Applies after restarting Wooosh.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(checked = mockCorePreferred, onCheckedChange = onMockCorePreferredChange)
-                }
-
-                if (usingMockCore) {
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { onDebugSimulateOffer(3) }) {
-                        Text("Simulate incoming offer (3 files)")
-                    }
-                    TextButton(onClick = { onDebugSimulateOffer(25) }) {
-                        Text("Simulate incoming offer (25 files → dated subfolder)")
-                    }
-                    TextButton(onClick = onDebugSimulateSas) {
-                        Text("Simulate incoming SAS pairing request")
-                    }
-                    TextButton(onClick = onDebugSimulateKeyChanged) {
-                        Text("Simulate key-changed warning")
-                    }
-                }
-            }
         }
     }
 }

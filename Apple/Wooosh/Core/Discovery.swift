@@ -4,25 +4,17 @@ import os
 
 /// Bonjour advertise + browse for `_wooosh._tcp` (PROTOCOL.md §3.1).
 ///
-/// Milestone 3: the core owns the socket. Advertising is therefore a pure
-/// mDNS registration (`NetService.publish`, no listener of our own) whose TXT
-/// `p` field carries the QUIC UDP port the core actually bound
-/// (`core.listenAddr()`). The Milestone-1 placeholder `NWListener` is gone —
-/// it would have advertised a port nothing speaks the protocol on.
+/// The core owns the socket, so advertising is a pure mDNS registration with no
+/// listener of our own; TXT `p` carries the QUIC UDP port the core actually
+/// bound.
 ///
-/// **Scan cadence is not ours to set.** PROTOCOL.md §3.2/§3.3 specify a ≤ 2 s
-/// foreground announce/scan interval, but nothing in this file polls: `NWBrowser`
-/// is purely event-driven (`browseResultsChangedHandler` fires when mDNSResponder's
-/// cache changes) and `NetService.publish()` hands announce timing to
-/// mDNSResponder as well. Neither API exposes a query or announce interval, so
-/// there is no constant here to retune — the 2 s figure is met on Apple by the
-/// system responder, and by the UDP fallback on platforms that implement it
-/// (this shell does not). Restarting the browser on a timer to fake the cadence
-/// would be actively harmful: each restart re-emits the whole result set as
-/// adds/removes, which churns `PeerRegistry` and flickers rows that DESIGN.md §5
-/// requires to hold still. The one lever the shell does own is the staleness
-/// grace, and it stays at 10 s deliberately (`PeerRegistry.staleGrace`) —
-/// faster scanning is for finding devices sooner, not dropping them sooner.
+/// Scan cadence is not ours to set. PROTOCOL.md §3.2/§3.3 specify a ≤ 2 s
+/// announce/scan interval, but neither `NWBrowser` (event-driven) nor
+/// `NetService.publish()` exposes one — mDNSResponder owns the timing, so there
+/// is no constant here to retune. Do not restart the browser on a timer to fake
+/// the cadence: each restart re-emits the whole result set as adds/removes,
+/// churning `PeerRegistry` and flickering rows that DESIGN.md §5 requires to
+/// hold still. The staleness grace stays 10 s (`PeerRegistry.staleGrace`).
 @MainActor
 final class Discovery {
     static let serviceType = "_wooosh._tcp"

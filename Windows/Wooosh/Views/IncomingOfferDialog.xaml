@@ -1,0 +1,56 @@
+<ContentDialog
+    x:Class="Wooosh.Views.IncomingOfferDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:loc="using:Wooosh.Localization"
+    Title="{loc:Localize Key=OfferNavIncoming}"
+    CloseButtonText="{loc:Localize Key=ActionDecline}"
+    DefaultButton="None"
+    PrimaryButtonClick="OnPrimaryButtonClick"
+    mc:Ignorable="d">
+
+    <!--
+        DefaultButton is None on purpose. Accepting files from an unpaired device is a
+        security confirmation and must take a deliberate press: it is never bound to Enter.
+    -->
+
+    <StackPanel Spacing="12" MaxWidth="440">
+        <TextBlock
+            x:Name="OfferHeadline"
+            Style="{ThemeResource BodyStrongTextBlockStyle}"
+            TextWrapping="Wrap" />
+
+        <TextBlock
+            x:Name="OfferSummary"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Style="{ThemeResource BodyTextBlockStyle}"
+            TextWrapping="Wrap" />
+
+        <!-- Paired senders get a plain confirmation; unpaired ones get the phrase. -->
+        <TextBlock
+            x:Name="PairedLabel"
+            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+            Style="{ThemeResource BodyTextBlockStyle}"
+            Text="{loc:Localize Key=OfferPairedDevice}"
+            Visibility="Collapsed" />
+
+        <StackPanel x:Name="UnpairedBlock" Spacing="8" Visibility="Collapsed">
+            <TextBlock
+                Style="{ThemeResource BodyTextBlockStyle}"
+                Text="{loc:Localize Key=OfferUnpairedWarning}"
+                TextWrapping="Wrap" />
+            <!--
+                The sender's six-word phrase, exactly as the core derives it. Never
+                translated: it is a shared artifact that has to read identically on both
+                devices, and the sender is looking at the same words right now.
+            -->
+            <TextBlock
+                x:Name="FingerprintText"
+                IsTextSelectionEnabled="True"
+                Style="{ThemeResource BodyStrongTextBlockStyle}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

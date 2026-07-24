@@ -7,10 +7,8 @@ package com.tsubuzaki.WoooshGo.peers
  * form factor cannot tell a Pixel from an iPhone, and the receiving UI has to pick a
  * glyph. A generic icon is always acceptable; a confidently wrong one is not.
  *
- * Anything this build does not recognise maps to [UNKNOWN] and renders neutrally. That
- * covers both the pre-vocabulary values (`phone` / `tablet` / `laptop` / `desktop`) that
- * older Wooosh builds on other platforms are still advertising while they are updated,
- * and any value the spec grows later.
+ * Anything this build does not recognise maps to [UNKNOWN] and renders neutrally: the
+ * older `phone` / `tablet` / `laptop` / `desktop` values, and anything the spec grows later.
  */
 enum class DeviceType(val txtValue: String?) {
     IPHONE("iphone"),
@@ -35,12 +33,7 @@ data class Peer(
     val displayName: String,
     val deviceType: DeviceType,
     val port: Int,
-    /**
-     * Addresses mDNS resolved for this instance, IPv4 first. Milestone 1 dropped these
-     * (only rid/port were kept), which left nothing to hand `connect_peer` — they are
-     * captured now from `ServiceInfoCallback.hostAddresses` (API 34+) or the legacy
-     * `NsdServiceInfo.host`.
-     */
+    /** Addresses mDNS resolved for this instance, IPv4 first. What `connect_peer` takes. */
     val hosts: List<String> = emptyList(),
     /** SystemClock.elapsedRealtime() of the FIRST sighting — the permanent ordering key. */
     val discoveredAt: Long,
