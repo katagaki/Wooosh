@@ -13,7 +13,7 @@ export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 # first line of output. Missing NDK must skip the Android lane, not kill it.
 NDK_ROOT="${ANDROID_NDK_HOME:-$(ls -d "$HOME"/Library/Android/sdk/ndk/* 2>/dev/null | sort -V | tail -1 || true)}"
 
-APPLE_TARGETS=(aarch64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios)
+APPLE_TARGETS=(aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios)
 echo "==> rust targets"
 for t in "${APPLE_TARGETS[@]}"; do
     rustup target add "$t" >/dev/null
@@ -32,13 +32,28 @@ cargo run --release -p uniffi-bindgen -- generate \
     --language kotlin --out-dir bindings/kotlin
 
 echo "==> apple static libs"
-cargo build --release -p wooosh-core --target aarch64-apple-darwin
+# Matching the app's floor keeps the linker from warning that these objects were
+# built for a newer macOS than the one being linked against.
+MACOSX_DEPLOYMENT_TARGET=26.0 cargo build --release -p wooosh-core --target aarch64-apple-darwin
+# Intel macOS: an Archive builds the standard macOS architectures, so a Mac app
+# links arm64 *and* x86_64. Without this slice CI fails with undefined symbols
+# for x86_64 while a local arm64-only Debug build succeeds.
+MACOSX_DEPLOYMENT_TARGET=26.0 cargo build --release -p wooosh-core --target x86_64-apple-darwin
 IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --release -p wooosh-core --target aarch64-apple-ios
 IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --release -p wooosh-core --target aarch64-apple-ios-sim
 # Intel simulator slice: without it `-destination generic/platform=iOS Simulator`
 # fails to link on Intel Macs (and forces an EXCLUDED_ARCHS workaround in the
 # Xcode project). x86_64-apple-ios *is* the Intel simulator target.
 IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --release -p wooosh-core --target x86_64-apple-ios
+
+echo "==> fat macOS lib (arm64 + x86_64)"
+MACFAT=$(mktemp -d)/macos
+mkdir -p "$MACFAT"
+lipo -create \
+    target/aarch64-apple-darwin/release/libwooosh_core.a \
+    target/x86_64-apple-darwin/release/libwooosh_core.a \
+    -output "$MACFAT/libwooosh_core.a"
+lipo -info "$MACFAT/libwooosh_core.a"
 
 echo "==> fat simulator lib (arm64 + x86_64)"
 # One xcframework slice must carry both simulator archs; two separate
@@ -60,7 +75,7 @@ cp bindings/swift/wooosh_coreFFI.modulemap "$HDRS/module.modulemap"
 rm -rf dist/WoooshCore.xcframework
 mkdir -p dist
 xcodebuild -create-xcframework \
-    -library target/aarch64-apple-darwin/release/libwooosh_core.a -headers "$HDRS" \
+    -library "$MACFAT/libwooosh_core.a" -headers "$HDRS" \
     -library target/aarch64-apple-ios/release/libwooosh_core.a -headers "$HDRS" \
     -library "$SIMFAT/libwooosh_core.a" -headers "$HDRS" \
     -output dist/WoooshCore.xcframework
