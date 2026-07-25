@@ -522,9 +522,9 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
- * Event sink implemented by the host. Called on a dedicated thread —
- * implementations may block briefly, but must not call back into the core
- * re-entrantly from the callback if they want strict event ordering.
+ * Event sink implemented by the host. Called on the core's dedicated event
+ * thread; implementations may block briefly, but calling back into the core
+ * re-entrantly from the callback forfeits strict event ordering.
  */
 public protocol CoreEventListener: AnyObject, Sendable {
     
@@ -532,9 +532,9 @@ public protocol CoreEventListener: AnyObject, Sendable {
     
 }
 /**
- * Event sink implemented by the host. Called on a dedicated thread —
- * implementations may block briefly, but must not call back into the core
- * re-entrantly from the callback if they want strict event ordering.
+ * Event sink implemented by the host. Called on the core's dedicated event
+ * thread; implementations may block briefly, but calling back into the core
+ * re-entrantly from the callback forfeits strict event ordering.
  */
 open class CoreEventListenerImpl: CoreEventListener, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -833,12 +833,10 @@ public func FfiConverterTypeFileKeyStore_lower(_ value: FileKeyStore) -> UnsafeM
 
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- * The CLI uses a file-based implementation.
  *
  * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it. An implementation MAY
- * block (Keychain / Keystore access does), which is exactly why `start` must
- * not be called on a UI thread — see the note on `start`.
+ * `WoooshCore.start`, on whichever thread called it, and may block — which is
+ * why `start` must never be called on a UI thread.
  */
 public protocol KeyStore: AnyObject, Sendable {
     
@@ -855,12 +853,10 @@ public protocol KeyStore: AnyObject, Sendable {
 }
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- * The CLI uses a file-based implementation.
  *
  * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it. An implementation MAY
- * block (Keychain / Keystore access does), which is exactly why `start` must
- * not be called on a UI thread — see the note on `start`.
+ * `WoooshCore.start`, on whichever thread called it, and may block — which is
+ * why `start` must never be called on a UI thread.
  */
 open class KeyStoreImpl: KeyStore, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -1084,24 +1080,22 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
     func confirmSas(peerId: String, accepted: Bool) throws 
     
     /**
-     * Connect to a peer address discovered by the native shell (replaces
-     * core-side discovery). Returns the peer_id.
+     * Connect to a peer address discovered by the native shell. Returns the
+     * peer_id.
      *
-     * `expected_pubkey`, when given (32 raw bytes, e.g. from
-     * `TrustedPeer.pubkey` or any event's `peer_pubkey`), pins the TLS
-     * handshake — a different key fails hard with `KeyChanged` and the
-     * connection is never established.
+     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
+     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
+     * hard with `KeyChanged` and no connection is established.
      *
-     * Passing `None` does **not** opt out of pinning: the core consults its
-     * own trust store and re-applies the pin itself whenever it can resolve
-     * the identity behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4) — a peer
-     * paired via SAS or by displaying a QR is therefore protected even if the
-     * shell forgets to pass its key. Passing the key explicitly is still
-     * preferred: it pins the very first reconnect, before the core has ever
-     * seen that address.
+     * Passing `None` does **not** opt out of pinning — the core re-applies
+     * the pin from its own trust store whenever it can resolve the identity
+     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
+     * protected even if the shell forgets the key. Passing it explicitly is
+     * still preferred: it also pins the very first reconnect, before the core
+     * has ever seen that address.
      *
-     * **BLOCKING — never call this on a UI thread.** Runs the QUIC handshake
-     * and HELLO exchange inline; up to ~10 s on an unreachable address.
+     * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
+     * unreachable address.
      */
     func connectPeer(addr: String, expectedPubkey: Data?) throws  -> String
     
@@ -1119,17 +1113,15 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
      * Sender side of QR pairing: parse payload, connect (pinned to the QR
      * key), redeem the token. Returns the paired peer_id.
      *
-     * All of the QR's address hints are dialled **concurrently** and the
-     * first connection to come up wins, so a stale hint costs nothing beyond
-     * its own timeout instead of delaying the ones behind it.
+     * The QR's address hints are dialled concurrently; the first connection
+     * to come up wins, so a stale hint never delays the ones behind it.
      *
-     * Every outcome — success, rejection, bad/expired QR, nothing reachable —
-     * also arrives as a `PairingResult` event, so a shell can drive its
-     * pairing UI entirely off events and never wedge on a silent failure.
+     * Every outcome — success, rejection, bad or expired QR, nothing
+     * reachable — also arrives as a `PairingResult` event, so a shell can
+     * drive its pairing UI entirely off events and never wedge.
      *
-     * **BLOCKING — never call this on a UI thread.** It drives a full QUIC
-     * handshake and waits for the peer's PAIR_ACCEPT: worst case ≈ 6 s
-     * connect timeout (total, not per hint) plus a 20 s reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
+     * timeout (total, not per hint) plus a 20 s reply timeout.
      */
     func pairWithQr(payload: String) throws  -> String
     
@@ -1148,7 +1140,7 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
     
     /**
      * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A §5) — verified bytes are never re-sent.
+     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
      *
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
@@ -1165,43 +1157,38 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** The transfer itself runs in the
-     * background, but the call blocks on the core's runtime to register it,
-     * so it must not sit on the main thread; hashing and streaming are then
-     * reported through events.
+     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
+     * background and report through events, but registering the transfer
+     * blocks on the core's runtime.
      */
     func send(peerId: String, files: [String]) throws  -> String
     
     func setVisibility(mode: Visibility) throws 
     
     /**
-     * Boot the engine: load/create the identity through the KeyStore
+     * Boot the engine: load or create the identity through the KeyStore
      * adapter, bind the QUIC endpoint, start the event pump.
      *
-     * **BLOCKING — never call this on a UI thread.** The call runs entirely
-     * on the calling thread and only returns once the identity has been
-     * loaded and the endpoint is bound. In particular it invokes
-     * `KeyStore.load_identity` / `store_identity` *synchronously*, and those
-     * host implementations block on Keychain / Keystore / DPAPI, which can
-     * take arbitrarily long (first unlock, biometric prompt, user
-     * interaction). Dispatch it to a background thread/executor and hop back
-     * to the UI thread with the result.
+     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
+     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
+     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
+     * (first unlock, biometric prompt). Dispatch to a background executor.
      */
     func start(config: Config, keyStore: KeyStore, listener: CoreEventListener) throws 
     
     /**
      * Shut down: closes the endpoint and stops the event pump.
      *
-     * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime to
-     * wind down and then joins the event-callback thread, so it can also
-     * block behind an in-flight `CoreEventListener.on_event` call.
+     * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
+     * then joins the event thread, so it can also block behind an in-flight
+     * `CoreEventListener.on_event` call.
      */
     func stop() 
     
     /**
      * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` instead of from a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read it after every
+     * straight from `trust.json` rather than a local mirror that drifts.
+     * Ordered by `paired_at`, then device id. Re-read after every
      * `PairingResult { success: true }` and after `revoke_peer`.
      */
     func trustedPeers() throws  -> [TrustedPeer]
@@ -1300,24 +1287,22 @@ open func confirmSas(peerId: String, accepted: Bool)throws   {try rustCallWithEr
 }
     
     /**
-     * Connect to a peer address discovered by the native shell (replaces
-     * core-side discovery). Returns the peer_id.
+     * Connect to a peer address discovered by the native shell. Returns the
+     * peer_id.
      *
-     * `expected_pubkey`, when given (32 raw bytes, e.g. from
-     * `TrustedPeer.pubkey` or any event's `peer_pubkey`), pins the TLS
-     * handshake — a different key fails hard with `KeyChanged` and the
-     * connection is never established.
+     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
+     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
+     * hard with `KeyChanged` and no connection is established.
      *
-     * Passing `None` does **not** opt out of pinning: the core consults its
-     * own trust store and re-applies the pin itself whenever it can resolve
-     * the identity behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4) — a peer
-     * paired via SAS or by displaying a QR is therefore protected even if the
-     * shell forgets to pass its key. Passing the key explicitly is still
-     * preferred: it pins the very first reconnect, before the core has ever
-     * seen that address.
+     * Passing `None` does **not** opt out of pinning — the core re-applies
+     * the pin from its own trust store whenever it can resolve the identity
+     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
+     * protected even if the shell forgets the key. Passing it explicitly is
+     * still preferred: it also pins the very first reconnect, before the core
+     * has ever seen that address.
      *
-     * **BLOCKING — never call this on a UI thread.** Runs the QUIC handshake
-     * and HELLO exchange inline; up to ~10 s on an unreachable address.
+     * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
+     * unreachable address.
      */
 open func connectPeer(addr: String, expectedPubkey: Data?)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1357,17 +1342,15 @@ open func listenAddr()throws  -> String  {
      * Sender side of QR pairing: parse payload, connect (pinned to the QR
      * key), redeem the token. Returns the paired peer_id.
      *
-     * All of the QR's address hints are dialled **concurrently** and the
-     * first connection to come up wins, so a stale hint costs nothing beyond
-     * its own timeout instead of delaying the ones behind it.
+     * The QR's address hints are dialled concurrently; the first connection
+     * to come up wins, so a stale hint never delays the ones behind it.
      *
-     * Every outcome — success, rejection, bad/expired QR, nothing reachable —
-     * also arrives as a `PairingResult` event, so a shell can drive its
-     * pairing UI entirely off events and never wedge on a silent failure.
+     * Every outcome — success, rejection, bad or expired QR, nothing
+     * reachable — also arrives as a `PairingResult` event, so a shell can
+     * drive its pairing UI entirely off events and never wedge.
      *
-     * **BLOCKING — never call this on a UI thread.** It drives a full QUIC
-     * handshake and waits for the peer's PAIR_ACCEPT: worst case ≈ 6 s
-     * connect timeout (total, not per hint) plus a 20 s reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
+     * timeout (total, not per hint) plus a 20 s reply timeout.
      */
 open func pairWithQr(payload: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1408,7 +1391,7 @@ open func respondToOffer(transferId: String, acceptedFileIds: [UInt32])throws   
     
     /**
      * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A §5) — verified bytes are never re-sent.
+     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
      *
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
@@ -1437,10 +1420,9 @@ open func revokePeer(pubkey: Data)throws  -> Bool  {
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** The transfer itself runs in the
-     * background, but the call blocks on the core's runtime to register it,
-     * so it must not sit on the main thread; hashing and streaming are then
-     * reported through events.
+     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
+     * background and report through events, but registering the transfer
+     * blocks on the core's runtime.
      */
 open func send(peerId: String, files: [String])throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1459,17 +1441,13 @@ open func setVisibility(mode: Visibility)throws   {try rustCallWithError(FfiConv
 }
     
     /**
-     * Boot the engine: load/create the identity through the KeyStore
+     * Boot the engine: load or create the identity through the KeyStore
      * adapter, bind the QUIC endpoint, start the event pump.
      *
-     * **BLOCKING — never call this on a UI thread.** The call runs entirely
-     * on the calling thread and only returns once the identity has been
-     * loaded and the endpoint is bound. In particular it invokes
-     * `KeyStore.load_identity` / `store_identity` *synchronously*, and those
-     * host implementations block on Keychain / Keystore / DPAPI, which can
-     * take arbitrarily long (first unlock, biometric prompt, user
-     * interaction). Dispatch it to a background thread/executor and hop back
-     * to the UI thread with the result.
+     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
+     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
+     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
+     * (first unlock, biometric prompt). Dispatch to a background executor.
      */
 open func start(config: Config, keyStore: KeyStore, listener: CoreEventListener)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_start(self.uniffiClonePointer(),
@@ -1483,9 +1461,9 @@ open func start(config: Config, keyStore: KeyStore, listener: CoreEventListener)
     /**
      * Shut down: closes the endpoint and stops the event pump.
      *
-     * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime to
-     * wind down and then joins the event-callback thread, so it can also
-     * block behind an in-flight `CoreEventListener.on_event` call.
+     * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
+     * then joins the event thread, so it can also block behind an in-flight
+     * `CoreEventListener.on_event` call.
      */
 open func stop()  {try! rustCall() {
     uniffi_wooosh_core_fn_method_woooshcore_stop(self.uniffiClonePointer(),$0
@@ -1495,8 +1473,8 @@ open func stop()  {try! rustCall() {
     
     /**
      * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` instead of from a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read it after every
+     * straight from `trust.json` rather than a local mirror that drifts.
+     * Ordered by `paired_at`, then device id. Re-read after every
      * `PairingResult { success: true }` and after `revoke_peer`.
      */
 open func trustedPeers()throws  -> [TrustedPeer]  {
@@ -2059,10 +2037,9 @@ public enum CoreEvent {
     
     /**
      * A control channel is up. `peer_pubkey` is the peer's raw 32-byte
-     * Ed25519 identity key, taken from the certificate it proved possession
-     * of in the TLS handshake — pass it back to `connect_peer` /
-     * `revoke_peer`. `device_type` is the peer's HELLO `dt` (None when it
-     * sent an unknown value).
+     * Ed25519 key, taken from the certificate it proved possession of in the
+     * TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
+     * `device_type` is the peer's HELLO `dt` (None if unrecognized).
      */
     case peerConnected(peerId: String, peerPubkey: Data, deviceName: String, deviceType: DeviceType?, fingerprint: String, trusted: Bool
     )
@@ -2071,17 +2048,17 @@ public enum CoreEvent {
     case pairingSas(peerId: String, code: String
     )
     /**
-     * Emitted when pairing concludes (QR or SAS; success or failure/timeout).
-     * On success `message` carries the peer's device name; on failure the
-     * reason. `peer_pubkey` is the key that was (or would have been) pinned.
+     * Pairing concluded (QR or SAS; success, failure or timeout). `message`
+     * is the peer's device name on success, the reason on failure.
+     * `peer_pubkey` is the key that was (or would have been) pinned.
      */
     case pairingResult(peerId: String, peerPubkey: Data, fingerprint: String, success: Bool, message: String?
     )
     case incomingOffer(transferId: String, peerId: String, peerPubkey: Data, fromName: String, deviceType: DeviceType?, trusted: Bool, fingerprint: String, files: [OfferedFile], totalBytes: UInt64
     )
     /**
-     * A transfer actually began (outgoing: DECISION accepted; incoming:
-     * offer accepted). Carries the resolved manifest for progress UI.
+     * Bytes can now flow (outgoing: DECISION accepted; incoming: offer
+     * accepted). Carries the resolved manifest for progress UI.
      */
     case transferStarted(transferId: String, peerId: String, direction: TransferDirection, files: [OfferedFile], totalBytes: UInt64
     )
@@ -2090,19 +2067,18 @@ public enum CoreEvent {
     case fileReady(transferId: String, fileId: UInt32, stagedPath: String, kind: FileKind
     )
     /**
-     * `duration_ms` is the wall-clock time of *this attempt* (a resumed
-     * transfer restarts the clock when `resume_transfer` is called), measured
-     * from the moment bytes could start flowing — sender: DECISION received;
-     * receiver: offer accepted — to the last DONE. Divide `bytes_transferred`
-     * by it for the attempt's average rate.
+     * `duration_ms` covers *this attempt only* — `resume_transfer` restarts
+     * the clock — measured from when bytes could start flowing (sender:
+     * DECISION received; receiver: offer accepted) to the last DONE.
+     * `bytes_transferred / duration_ms` is the attempt's average rate.
      */
     case transferDone(transferId: String, okFiles: UInt32, failedFiles: UInt32, bytesTransferred: UInt64, durationMs: UInt64
     )
     case transferError(transferId: String, error: String, resumable: Bool
     )
     /**
-     * A pinned peer presented a different key (PROTOCOL.md §4.5) — surfaced
-     * prominently, never silently re-pinned. `peer_id` is the DeviceID of the
+     * A pinned peer presented a different key (PROTOCOL.md §4.5). Surface it
+     * prominently; never silently re-pin. `peer_id` is the DeviceID of the
      * *pinned* identity we expected; `presented_pubkey` is the key actually
      * offered, when the handshake got far enough to observe it.
      */
@@ -2618,16 +2594,13 @@ public enum WoooshError: Swift.Error {
     case QrKeyMismatch(message: String)
     
     /**
-     * The peer closed the connection with `PAIRING_REQUIRED` (§4.1): it is in
-     * PairedOnly visibility and we are not a paired device. Shells should say
-     * "this device only accepts transfers from paired devices" and offer to
-     * pair, rather than reporting a generic failure.
+     * Peer is in PairedOnly visibility and we are not paired (§4.1). Shells
+     * should offer to pair rather than report a generic failure.
      */
     case PairingRequired(message: String)
     
     /**
-     * The peer closed the connection with `VERSION_MISMATCH` (§4.1/§8): no
-     * common protocol version.
+     * No common protocol version (§4.1/§8).
      */
     case VersionMismatch(message: String)
     
@@ -2999,8 +2972,8 @@ fileprivate struct FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer {
 }
 /**
  * Rendered DeviceID (`Q7KM-3PXA-…`) for a peer public key — the same string
- * used as `peer_id` in events. Lets a shell key its UI off a pubkey it
- * obtained from `trusted_peers()` without connecting first.
+ * events carry as `peer_id`, so a shell can key its UI off a `trusted_peers()`
+ * pubkey without connecting first.
  *
  * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
  */
@@ -3012,11 +2985,9 @@ public func deviceIdFor(pubkey: Data)throws  -> String  {
 })
 }
 /**
- * 6-word fingerprint phrase for any peer public key (PROTOCOL.md §2) —
- * the verification phrase shown on consent and trust-list screens.
- *
- * Exported so shells never reimplement the wordlist: pass the `peer_pubkey`
- * from any event, or a `TrustedPeer.pubkey`.
+ * 6-word verification phrase for a peer public key (PROTOCOL.md §2), shown on
+ * consent and trust-list screens. Pass any event's `peer_pubkey` or a
+ * `TrustedPeer.pubkey`; shells must never reimplement the wordlist.
  *
  * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
  */
@@ -3054,10 +3025,10 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_device_id_for() != 54871) {
+    if (uniffi_wooosh_core_checksum_func_device_id_for() != 36541) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 37830) {
+    if (uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 27344) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786) {
@@ -3081,7 +3052,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_wooosh_core_checksum_method_woooshcore_confirm_sas() != 38886) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 27021) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 62813) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_device_id() != 33009) {
@@ -3093,7 +3064,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_wooosh_core_checksum_method_woooshcore_listen_addr() != 27414) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 32330) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 55764) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_public_key() != 35774) {
@@ -3105,25 +3076,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_wooosh_core_checksum_method_woooshcore_respond_to_offer() != 14534) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 53577) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 7341) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer() != 48542) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_send() != 60906) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_send() != 57342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_set_visibility() != 28146) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_start() != 64985) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_start() != 17455) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_stop() != 33142) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_stop() != 22717) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 20881) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 22956) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_constructor_filekeystore_new() != 46253) {

@@ -24,7 +24,7 @@ cargo test --lib --release && cargo test --release --test integration -- --test-
 xcodebuild build -project Wooosh.xcodeproj -scheme Wooosh -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
 ```
-After changing `Core/src`, run `Core/build-bindings.sh` and copy the Kotlin bindings + `jniLibs` into `Android/`.
+After changing `Core/src`, run `Core/build-bindings.sh`. Apple references `Core/` in place and updates itself; **Android copies**, so re-copy the Kotlin bindings and `jniLibs` into `Android/app/src/main/` or the app silently keeps running an old core.
 
 ## Rules
 
