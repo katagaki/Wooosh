@@ -6,21 +6,22 @@
 
      Placed by opacity-weighted area centroid, not bounding box: the nose is a
      thin point and the wing carries the mass, so centring the box leaves the
-     glyph looking shifted up and to the right. -->
+     glyph looking shifted up and to the right. No further optical nudge: an
+     extra shift left was tried and looked worse. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="1124"
-    android:viewportHeight="124">
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
     <path
-        android:pathData="M 737.6,290.9 L 427.6,652.9 Q 488.3,696.3 566.5,745.9 Z"
+        android:pathData="M 701.2,326.5 L 441.2,630.2 Q 492.2,666.6 557.7,708.2 Z"
         android:fillColor="#FFFFFF"
         android:fillAlpha="0.55" />
     <path
-        android:pathData="M 737.6,290.9 L 427.6,652.9 L 446.2,754.6 Q 449.9,767.0 459.8,755.9 Z"
+        android:pathData="M 701.2,326.5 L 441.2,630.2 L 456.8,715.5 Q 459.9,725.9 468.2,716.5 Z"
         android:fillColor="#FFFFFF"
         android:fillAlpha="0.78" />
     <path
-        android:pathData="M 737.6,290.9 L 276.3,473.1 Q 268.9,479.3 277.5,484.3 L 427.6,652.9 Z"
+        android:pathData="M 701.2,326.5 L 314.3,479.4 Q 308.1,484.6 315.4,488.8 L 441.2,630.2 Z"
         android:fillColor="#FFFFFF" />
 </vector>

@@ -2,39 +2,40 @@
 <meta charset="utf-8">
 <title>Wooosh Icon Preview</title>
 <style>
-  body { margin:0; background:#f2f2f7; font:13px -apple-system,Helvetica,Arial,sans-serif; padding:18px; }
-  .row { display:flex; align-items:flex-end; gap:18px; margin-bottom:14px; flex-wrap:wrap; }
+  body { margin:0; background:#f2f2f7; font:13px -apple-system,Helvetica,Arial,sans-serif; padding:16px; }
+  .row { display:flex; align-items:flex-end; gap:16px; margin-bottom:12px; flex-wrap:wrap; }
   .tile { overflow:hidden; background:linear-gradient(180deg,#00c2ff 0%,#0a58ff 100%); box-shadow:0 5px 14px rgba(0,0,0,.18); position:relative; }
   .tile svg { position:absolute; inset:0; width:100%; height:100%; }
-  .circ { border-radius:50%; } .sqr { border-radius:28%; } .sq { border-radius:22.37%; }
-  .s170 { width:170px; height:170px; } .s56 { width:56px; height:56px; }
+  .circ { border-radius:50%; } .sqr { border-radius:28%; }
+  .s160 { width:160px; height:160px; } .s52 { width:52px; height:52px; }
   label { display:block; color:#666; font-size:10px; margin-top:5px; text-align:center; }
-  h3 { font-size:11px; color:#888; margin:8px 0 6px; font-weight:700; letter-spacing:.05em; }
+  h3 { font-size:11px; color:#888; margin:6px 0 6px; font-weight:700; letter-spacing:.05em; }
 </style>
-<h3>ANDROID — old (bbox centred) vs new (visual centre), crosshair = true centre</h3>
+<h3>ANDROID — centroid-centred vs optically nudged left (dashed = 72dp safe zone)</h3>
 <div class="row" id="cmp"></div>
 <h3>ANDROID — new, under launcher masks</h3>
 <div class="row" id="masks"></div>
 <script>
-const OLD = { far:'M 746.4,273.9 L 436.4,636.0 Q 497.1,679.4 575.2,729.0 Z',
-              keel:'M 746.4,273.9 L 436.4,636.0 L 455.0,737.7 Q 458.7,750.1 468.6,738.9 Z',
-              near:'M 746.4,273.9 L 285.1,456.2 Q 277.6,462.4 286.3,467.4 L 436.4,636.0 Z' };
-const NEW = { far:'M 737.6,290.9 L 427.6,652.9 Q 488.3,696.3 566.5,745.9 Z',
-              keel:'M 737.6,290.9 L 427.6,652.9 L 446.2,754.6 Q 449.9,767.0 459.8,755.9 Z',
-              near:'M 737.6,290.9 L 276.3,473.1 Q 268.9,479.3 277.5,484.3 L 427.6,652.9 Z' };
-function svg(p, cross){
-  const c = cross ? `<line x1="512" y1="0" x2="512" y2="1024" stroke="#ff2d55" stroke-width="3" opacity=".9"/>
-                     <line x1="0" y1="512" x2="1024" y2="512" stroke="#ff2d55" stroke-width="3" opacity=".9"/>` : '';
+const BIG = { far:'M 701.2,326.5 L 441.2,630.2 Q 492.2,666.6 557.7,708.2 Z',
+              keel:'M 701.2,326.5 L 441.2,630.2 L 456.8,715.5 Q 459.9,725.9 468.2,716.5 Z',
+              near:'M 701.2,326.5 L 314.3,479.4 Q 308.1,484.6 315.4,488.8 L 441.2,630.2 Z' };
+const NEW = { far:'M 679.2,326.5 L 419.2,630.2 Q 470.2,666.6 535.7,708.2 Z',
+              keel:'M 679.2,326.5 L 419.2,630.2 L 434.8,715.5 Q 437.9,725.9 446.2,716.5 Z',
+              near:'M 679.2,326.5 L 292.3,479.4 Q 286.1,484.6 293.4,488.8 L 419.2,630.2 Z' };
+// 72dp of 108dp, centred on the 1024 viewport.
+const SZ = 1024*72/108, SO = (1024-SZ)/2;
+function svg(p, guide){
+  const g = guide ? `<rect x="${SO}" y="${SO}" width="${SZ}" height="${SZ}" fill="none"
+     stroke="#ff2d55" stroke-width="4" stroke-dasharray="18 14" opacity=".85"/>` : '';
   return `<svg viewBox="0 0 1024 1024">
     <path d="${p.far}" fill="#fff" fill-opacity=".55"/>
     <path d="${p.keel}" fill="#fff" fill-opacity=".78"/>
-    <path d="${p.near}" fill="#fff"/>${c}</svg>`;
+    <path d="${p.near}" fill="#fff"/>${g}</svg>`;
 }
-function tile(p,shape,size,cap,cross){
-  return `<div><div class="tile ${shape} ${size}">${svg(p,cross)}</div><label>${cap}</label></div>`; }
+const t=(p,s,z,c,g)=>`<div><div class="tile ${s} ${z}">${svg(p,g)}</div><label>${c}</label></div>`;
 document.getElementById('cmp').innerHTML =
-  tile(OLD,'sqr','s170','OLD bbox',true) + tile(NEW,'sqr','s170','NEW visual',true);
+  t(BIG,'sqr','s160','centred',true) + t(NEW,'sqr','s160','nudged left',true);
 document.getElementById('masks').innerHTML =
-  tile(NEW,'circ','s170','circle') + tile(NEW,'sqr','s170','squircle') +
-  tile(NEW,'circ','s56','56') + tile(NEW,'sq','s56','square');
+  t(NEW,'circ','s160','circle') + t(NEW,'sqr','s160','squircle') +
+  t(NEW,'circ','s52','52') + t(NEW,'sqr','s52','52');
 </script>
