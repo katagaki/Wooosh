@@ -7,7 +7,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
-NDK_ROOT="${ANDROID_NDK_HOME:-$(ls -d "$HOME"/Library/Android/sdk/ndk/* 2>/dev/null | sort -V | tail -1)}"
+# `|| true` is load-bearing: with `set -e` + `pipefail`, a machine without an
+# Android NDK (every CI runner) makes this pipeline fail, and the failure of a
+# command substitution inside an assignment aborts the whole script before the
+# first line of output. Missing NDK must skip the Android lane, not kill it.
+NDK_ROOT="${ANDROID_NDK_HOME:-$(ls -d "$HOME"/Library/Android/sdk/ndk/* 2>/dev/null | sort -V | tail -1 || true)}"
 
 APPLE_TARGETS=(aarch64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios)
 echo "==> rust targets"
