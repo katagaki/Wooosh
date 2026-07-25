@@ -76,6 +76,15 @@ pub struct Config {
     pub trust_store_path: String,
     /// UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
     pub listen_addr: Option<String>,
+    /// Relay servers for the internet path (DESIGN.md §9.1).
+    ///
+    /// `null` (the default) uses n0's free public relays — nothing to deploy,
+    /// and nothing is contacted until the user asks for a ticket. An empty
+    /// list disables relays and address lookup entirely, so the internet path
+    /// only ever makes direct connections. A non-empty list points at chosen
+    /// or self-hosted relays.
+    #[uniffi(default = None)]
+    pub relay_urls: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -104,6 +113,36 @@ pub struct QrInfo {
     pub hints: Vec<String>,
     pub expires_unix: u64,
     pub expired: bool,
+}
+
+/// Parsed internet ticket (PROTOCOL.md §9.2), so a shell can label the
+/// "Receive from internet" UI before calling `redeem_ticket`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TicketInfo {
+    /// Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
+    /// store pins, so `trusted_peers()` matching works without connecting.
+    pub node_id: Vec<u8>,
+    /// Rendered DeviceID — the same string events carry as `peer_id`.
+    pub device_id: String,
+    /// Display-name hint from the ticket (unauthenticated, label only).
+    pub device_name: Option<String>,
+    pub relay: Option<String>,
+    pub expires_unix: u64,
+    pub expired: bool,
+}
+
+/// Parse a `wooosh-net:1?...` ticket without redeeming it.
+#[uniffi::export]
+pub fn parse_internet_ticket(ticket: String) -> Result<TicketInfo, WoooshError> {
+    let t = crate::inet::NetTicket::parse(&ticket)?;
+    Ok(TicketInfo {
+        node_id: t.node_id.to_vec(),
+        device_id: crate::identity::device_id_string_for(&t.node_id),
+        device_name: t.dn.clone(),
+        relay: t.relay.clone(),
+        expires_unix: t.expires_unix,
+        expired: t.is_expired(),
+    })
 }
 
 /// One pinned peer as stored in the trust store (PROTOCOL.md §4.5).
@@ -407,6 +446,7 @@ impl WoooshCore {
             device_name: config.device_name.clone(),
             device_type: config.device_type.as_wire().to_string(),
             visibility: config.visibility.clone(),
+            relay_urls: config.relay_urls.clone(),
         };
         let engine = {
             let _entered = runtime.enter();
@@ -502,6 +542,42 @@ impl WoooshCore {
 
     pub fn confirm_sas(&self, peer_id: String, accepted: bool) -> Result<(), WoooshError> {
         self.with_engine(|_, e| e.confirm_sas(&peer_id, accepted))?
+    }
+
+    // ----- internet path (DESIGN.md §9.1, PROTOCOL.md §9) -----
+
+    /// Receiver side of the internet path: publish this device on iroh and
+    /// return a `wooosh-net:1?...` ticket to show as text or a QR code. The
+    /// sender redeems it with `redeem_ticket` and then offers files, so the
+    /// roles match the LAN path exactly (connector = sender).
+    ///
+    /// The ticket carries this device's identity key, a single-use pairing
+    /// token and a 120 s expiry. It is a capability: anyone holding an
+    /// unexpired one can connect and pair. Call `end_internet_ticket` as soon
+    /// as the user leaves the screen.
+    ///
+    /// **BLOCKING — never call this on a UI thread.** The first call binds the
+    /// iroh endpoint and waits up to ~15 s for a home relay; it is also the
+    /// first moment Wooosh contacts any relay at all.
+    pub fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
+        self.with_engine(|rt, e| rt.block_on(e.begin_internet_ticket()))?
+    }
+
+    /// Invalidate the outstanding ticket immediately.
+    pub fn end_internet_ticket(&self) -> Result<(), WoooshError> {
+        self.with_engine(|_, e| e.end_internet_ticket())
+    }
+
+    /// Sender side of the internet path: dial the ticket's node over iroh,
+    /// pair with its token, and return the peer_id to pass to `send`.
+    ///
+    /// Every outcome also arrives as a `PairingResult` event, exactly as with
+    /// `pair_with_qr`, so a shell can drive its UI purely off events.
+    ///
+    /// **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
+    /// punching plus a 20 s pairing-reply timeout.
+    pub fn redeem_ticket(&self, ticket: String) -> Result<String, WoooshError> {
+        self.with_engine(|rt, e| rt.block_on(e.redeem_ticket(&ticket)))?
     }
 
     // ----- connections -----

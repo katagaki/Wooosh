@@ -178,3 +178,72 @@ Out of scope v1: metadata privacy against the local network operator (they can s
 - `v` in TXT is advisory (pre-filter); real negotiation is in HELLO over the encrypted channel.
 - Unknown CBOR map keys MUST be ignored (forward compat); unknown `t` on the control stream → `ERR_UNSUPPORTED {t}` response, connection stays up.
 - `caps` in HELLO gates optional features (e.g. future `zstd` compression, `dir` structured folders) — both sides must advertise a capability to use it.
+
+## 9. Internet path (off-LAN, iroh)
+
+Everything above describes packets on a LAN. §9 defines the second path they can take: an [iroh](https://iroh.computer) QUIC session that hole-punches between networks and falls back to relaying through n0's free public relays (DESIGN.md §9.1). **Only the path changes.** HELLO, OFFER/DECISION, the file streams, the resume ledger, the close codes and the trust model are the ones defined in §4–§6, byte for byte, and implementations MUST NOT fork them per transport.
+
+### 9.1 Identity is the same key
+
+An iroh endpoint's identity is an Ed25519 keypair. Implementations MUST bind the iroh endpoint with the **existing Wooosh identity secret** (§2). Consequences, all normative:
+
+- The iroh `EndpointId` (historically `NodeId`) **is** the peer's Wooosh public key, so it indexes the trust store directly.
+- `DeviceID = BLAKE3(pubkey)[0..16]` and the 6-word fingerprint phrase are identical whichever path a peer arrived over. A device MUST NOT present as two identities depending on the path.
+- A peer paired on the LAN is already pinned over the internet, and vice versa. No second pairing ceremony exists.
+
+The endpoint SHOULD be bound lazily, on the first ticket operation. Binding it at startup makes every install contact a relay on launch, which contradicts the "no servers" posture for users who only ever share on a LAN.
+
+Relay selection is configuration, not protocol: the default is n0's public relays; an empty relay set means direct/hole-punched connections only; an explicit set may point anywhere, including a self-hosted relay.
+
+### 9.2 Ticket format
+
+A **ticket** is the out-of-band capability that starts an internet transfer. One line, chat- and QR-safe:
+
+```
+wooosh-net:1?nid=<pubkey b64url>&tok=<32B token b64url>&dn=<display name>&relay=<url>&addrs=<ip:port,…>&exp=<unix>
+```
+
+| Field | Meaning |
+|---|---|
+| `nid` | publisher's Ed25519 identity key = iroh EndpointId (**required**) |
+| `tok` | 32-byte single-use pairing token, same rules as the QR token (§4.2 step 3) (**required**) |
+| `dn` | display-name hint, unauthenticated, UI label only |
+| `relay` | publisher's home relay URL, so the redeemer can reach it before any hole punch |
+| `addrs` | directly reachable `ip:port` candidates, best-effort |
+| `exp` | expiry, unix seconds (**required**) |
+
+Values are base64url (no padding) or percent-encoded; unknown keys MUST be ignored (§8). Rules:
+
+- The publisher is the **receiver**; the redeemer is the **sender** and originates `OFFER`. This matches the LAN, where the connector is always the sender, and lets both paths share one transfer engine.
+- A ticket is a capability. TTL is **120 s** (same as a QR token), redemption is **single-use**, and the token is compared in constant time. Publishers MUST be able to withdraw an outstanding ticket immediately.
+- A token issued for one transport MUST NOT be redeemable on the other. A QR is shown in the room; a ticket travels through a chat app, and letting them substitute would widen the capability beyond what the user authorized.
+- `nid` carries the publisher's key **out of band**, exactly as `pk` does in a pairing QR (§4.2). That is what makes the internet path MITM-proof: there is no first-contact window in which an attacker can substitute a key.
+
+### 9.3 Connection establishment and trust
+
+1. Receiver publishes a ticket (§9.2) and starts accepting on its iroh endpoint. Visibility applies unchanged: `Off` refuses, `PairedOnly` closes an untrusted peer with `PAIRING_REQUIRED` after its HELLO, `Everyone` accepts.
+2. Sender parses the ticket, rejects it if expired, and dials `nid` over iroh using ALPN `wooosh/1`.
+3. iroh's TLS handshake authenticates the remote to exactly the dialled `EndpointId`. The implementation MUST additionally assert that the authenticated key equals `nid` and hard-fail `KEY_CHANGED` otherwise — pinning is never delegated to a dependency's internals (§4.5).
+4. HELLO runs exactly as in §4.1, client-first, including the §4.1.1 identity-binding check (`device_id == BLAKE3(authenticated key)[0..16]`, where the authenticated key is the `EndpointId`). A peer claiming a pinned DeviceID with a different key closes `KEY_CHANGED`.
+5. Sender presents `PAIR_REQUEST { token }`; receiver redeems it single-use and both sides pin (§4.2 step 4).
+6. Transfers proceed under §5 and §6 with no changes.
+
+Two deliberate differences from the LAN path:
+
+- **No `last_addr`.** An iroh session may be relayed and may migrate paths, so there is no stable `ip:port` to record as the §4.5 address pin. Implementations MUST NOT write one; a relayed address stored there would mis-resolve a later LAN dial. The `nid`-in-ticket and HELLO identity binding cover the same ground.
+- **Rejections still travel as close codes** (§4.1.2). Nothing about relaying changes that.
+
+### 9.4 SAS over the internet path
+
+An iroh connection is TLS 1.3, and exposes the same RFC 8446 §7.5 exporter. The §4.3 derivation is therefore used **verbatim**:
+
+`SAS = BE_u32(export_keying_material("EXPORTER-wooosh-sas", "", 32)[0..4]) mod 1_000_000`
+
+Both ends of one iroh session derive the same six digits, and a relay — which forwards opaque QUIC ciphertext and terminates nothing — cannot make two sessions agree. The MITM property of §4.3 is unchanged, and the camera-less pairing ceremony works off-LAN.
+
+### 9.5 Threat notes specific to the relay
+
+- Relays forward encrypted QUIC payloads. They see traffic volume and timing between two endpoint ids; they cannot read file data, impersonate a peer, or forge a pairing.
+- A hostile or unavailable relay can **drop** traffic. That is a denial of service, surfaced as a connect failure, never a downgrade.
+- Publishing a ticket reveals the publisher's public key to whoever receives the ticket. That is intended: it is the same disclosure a pairing QR makes, and it is what authenticates the session.
+- `addrs` also discloses the publisher's LAN and externally-mapped IP addresses to whoever holds the ticket. That is what makes a direct connection possible, and it is why a ticket is short-lived and single-use rather than a durable address book entry. Users who do not want to disclose addresses can run with an empty relay set only on networks where that is acceptable, or accept the relayed path.

@@ -36,8 +36,9 @@ pub fn ed25519_spki_from_cert(cert: &CertificateDer<'_>) -> Result<[u8; 32], Woo
     key.try_into().map_err(|_| WoooshError::Crypto("bad Ed25519 SPKI length".into()))
 }
 
-/// Extract the peer's Ed25519 key from an established QUIC connection.
-pub fn peer_pubkey(conn: &quinn::Connection) -> Result<[u8; 32], WoooshError> {
+/// Extract the peer's Ed25519 key from an established LAN QUIC connection.
+/// The transport-blind entry point is `conn::Conn::peer_pubkey`.
+pub fn quic_peer_pubkey(conn: &quinn::Connection) -> Result<[u8; 32], WoooshError> {
     let identity = conn
         .peer_identity()
         .ok_or_else(|| WoooshError::Crypto("peer presented no certificate".into()))?;
@@ -267,10 +268,14 @@ pub fn client_config(
 ///
 /// export_keying_material(label="EXPORTER-wooosh-sas", context=empty, 32 bytes),
 /// first 4 bytes as big-endian u32, mod 1_000_000.
-pub fn derive_sas(conn: &quinn::Connection) -> Result<u32, WoooshError> {
+///
+/// Identical on the internet path: iroh's QUIC connection is TLS 1.3 too and
+/// exposes the same exporter, so both ends of an iroh session derive the same
+/// code from the same transcript and a relay in the middle cannot make two
+/// sessions agree (PROTOCOL.md §9.4).
+pub fn derive_sas(conn: &crate::conn::Conn) -> Result<u32, WoooshError> {
     let mut out = [0u8; 32];
-    conn.export_keying_material(&mut out, b"EXPORTER-wooosh-sas", b"")
-        .map_err(|_| WoooshError::Crypto("exporter unavailable".into()))?;
+    conn.export_keying_material(&mut out, b"EXPORTER-wooosh-sas", b"")?;
     let n = u32::from_be_bytes([out[0], out[1], out[2], out[3]]);
     Ok(n % 1_000_000)
 }

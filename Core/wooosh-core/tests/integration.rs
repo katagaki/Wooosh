@@ -5,7 +5,8 @@
 //! restart receiver + resume without re-sending verified bytes, (e)
 //! untrusted-channel message restrictions, (f) KEY_CHANGED on pin mismatch,
 //! (g) core-side pinning of a SAS-paired peer when the caller passes no key,
-//! (h) the `trusted_peers()` trust list across pair + revoke.
+//! (h) the `trusted_peers()` trust list across pair + revoke, (i) the internet
+//! path (iroh tickets, PROTOCOL.md §9) end to end without any relay.
 
 use rand::{RngCore, SeedableRng};
 use std::path::{Path, PathBuf};
@@ -35,12 +36,28 @@ struct Node {
 
 impl Node {
     fn start(base: &Path, name: &str, vis: Visibility) -> Node {
-        Node::start_on(base, name, vis, "127.0.0.1:0")
+        Node::start_with(base, name, vis, "127.0.0.1:0", None)
+    }
+
+    /// Start a node whose internet path uses no relay and no address lookup,
+    /// so the whole iroh flow runs on loopback with nothing leaving the host.
+    fn start_offline_internet(base: &Path, name: &str, vis: Visibility) -> Node {
+        Node::start_with(base, name, vis, "127.0.0.1:0", Some(Vec::new()))
     }
 
     /// Start a node on a specific address. Used to let a second identity take
     /// over the exact `ip:port` a paired peer used to occupy.
     fn start_on(base: &Path, name: &str, vis: Visibility, listen: &str) -> Node {
+        Node::start_with(base, name, vis, listen, None)
+    }
+
+    fn start_with(
+        base: &Path,
+        name: &str,
+        vis: Visibility,
+        listen: &str,
+        relay_urls: Option<Vec<String>>,
+    ) -> Node {
         let dir = base.join(name);
         std::fs::create_dir_all(&dir).unwrap();
         let ks_path = dir.join("id.key").to_string_lossy().to_string();
@@ -51,6 +68,7 @@ impl Node {
             staging_dir: dir.join("staging").to_string_lossy().to_string(),
             trust_store_path: dir.join("trust.json").to_string_lossy().to_string(),
             listen_addr: Some(listen.to_string()),
+            relay_urls,
         };
         // Re-binding a port a just-stopped node released can lose a race with
         // the OS reclaiming the socket; retry briefly.
@@ -802,4 +820,255 @@ fn key_changed_on_pin_mismatch() {
     // Sanity: connecting with the right expectation still works.
     let ok_pid = s.core.connect_peer(victim.addr(), Some(victim.core.public_key().unwrap()));
     assert!(ok_pid.is_ok());
+}
+
+// ------------------------------------------- (i) internet path (PROTOCOL.md §9)
+
+/// Ticket → connect → pair → transfer, over iroh, entirely on loopback.
+///
+/// Both nodes run with relays and address lookup disabled, so the ticket's
+/// direct candidates are the only way in and the test needs no network at all.
+/// That keeps it hermetic in CI while still exercising the real iroh stack,
+/// the real ticket format and the *same* engine the LAN path uses.
+#[test]
+fn internet_ticket_transfer_end_to_end() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "net-receiver", Visibility::Everyone);
+    let s = Node::start_offline_internet(tmp.path(), "net-sender", Visibility::Everyone);
+
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    assert!(ticket.starts_with("wooosh-net:1?nid="), "got {ticket}");
+
+    // The shell-facing parse helper labels the UI before redeeming, and the
+    // node id in the ticket is the receiver's ordinary Wooosh identity.
+    let info = wooosh_core::parse_internet_ticket(ticket.clone()).unwrap();
+    assert_eq!(info.device_name.as_deref(), Some("net-receiver"));
+    assert_eq!(info.device_id, r.core.device_id().unwrap());
+    assert_eq!(info.node_id, r.core.public_key().unwrap());
+    assert!(!info.expired);
+
+    let peer_id = s.core.redeem_ticket(ticket).unwrap();
+    // Same DeviceID as on the LAN: a device must not appear as two identities
+    // depending on the path it arrived over.
+    assert_eq!(peer_id, r.core.device_id().unwrap());
+    assert_eq!(
+        wooosh_core::device_id_for(r.core.public_key().unwrap()).unwrap(),
+        peer_id
+    );
+    assert_eq!(
+        wooosh_core::fingerprint_phrase_for(r.core.public_key().unwrap()).unwrap(),
+        fingerprint_phrase_for(r.core.public_key().unwrap()).unwrap()
+    );
+
+    // Redeeming pins both ways, exactly like QR pairing.
+    let ok = wait_for(&s.rx, Duration::from_secs(20), "sender PairingResult", |e| match e {
+        CoreEvent::PairingResult { success, .. } => Some(*success),
+        _ => None,
+    });
+    assert!(ok);
+    let ok = wait_for(&r.rx, Duration::from_secs(20), "receiver PairingResult", |e| match e {
+        CoreEvent::PairingResult { success, .. } => Some(*success),
+        _ => None,
+    });
+    assert!(ok);
+    assert!(s
+        .core
+        .trusted_peers()
+        .unwrap()
+        .iter()
+        .any(|p| p.pubkey == r.core.public_key().unwrap()));
+    assert!(r
+        .core
+        .trusted_peers()
+        .unwrap()
+        .iter()
+        .any(|p| p.pubkey == s.core.public_key().unwrap()));
+
+    // …and then the ordinary transfer engine runs over it, unchanged.
+    let src = tmp.path().join("net-payload.bin");
+    write_random_file(&src, 3 * MIB, 0xBEEF);
+    let want = b3_of(&src);
+
+    let tid = s
+        .core
+        .send(peer_id, vec![src.to_string_lossy().to_string()])
+        .unwrap();
+
+    let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(30), "IncomingOffer", |e| match e {
+        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
+        }
+        _ => None,
+    });
+    assert_eq!(rtid, tid);
+    r.core.respond_to_offer(rtid.clone(), fids).unwrap();
+
+    let staged = wait_for(&r.rx, Duration::from_secs(60), "FileReady", |e| match e {
+        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+        _ => None,
+    });
+    assert_eq!(b3_of(Path::new(&staged)), want);
+
+    let (ok_files, failed, bytes) =
+        wait_for(&r.rx, Duration::from_secs(30), "TransferDone", |e| match e {
+            CoreEvent::TransferDone { ok_files, failed_files, bytes_transferred, .. } => {
+                Some((*ok_files, *failed_files, *bytes_transferred))
+            }
+            _ => None,
+        });
+    assert_eq!((ok_files, failed), (1, 0));
+    assert_eq!(bytes, 3 * MIB);
+
+    // Direction is reported on the sending side too, from the same event set
+    // a shell already handles.
+    let dir = wait_for(&s.rx, Duration::from_secs(30), "TransferStarted", |e| match e {
+        CoreEvent::TransferStarted { direction, .. } => Some(matches!(direction, TransferDirection::Send)),
+        _ => None,
+    });
+    assert!(dir);
+}
+
+/// A ticket is a capability: single-use, and dead once the publisher ends it.
+#[test]
+fn internet_ticket_is_single_use_and_revocable() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "cap-receiver", Visibility::Everyone);
+    let s1 = Node::start_offline_internet(tmp.path(), "cap-sender-1", Visibility::Everyone);
+    let s2 = Node::start_offline_internet(tmp.path(), "cap-sender-2", Visibility::Everyone);
+
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    assert_eq!(s1.core.redeem_ticket(ticket.clone()).unwrap(), r.core.device_id().unwrap());
+
+    // Second redemption of the same token is refused; s2 never gets pinned.
+    let err = s2.core.redeem_ticket(ticket).unwrap_err();
+    assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
+    expect_pairing_failure(&s2, "reused ticket");
+    assert!(!r
+        .core
+        .trusted_peers()
+        .unwrap()
+        .iter()
+        .any(|p| p.pubkey == s2.core.public_key().unwrap()));
+
+    // A ticket the user withdrew stops working immediately.
+    let ticket2 = r.core.begin_internet_ticket().unwrap();
+    r.core.end_internet_ticket().unwrap();
+    let err = s2.core.redeem_ticket(ticket2).unwrap_err();
+    assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
+    expect_pairing_failure(&s2, "withdrawn ticket");
+}
+
+/// Malformed, expired and foreign tickets fail before any dial, and every
+/// outcome still reaches the host as a `PairingResult` (DESIGN.md §4).
+#[test]
+fn internet_ticket_rejects_bad_payloads() {
+    let tmp = tempfile::tempdir().unwrap();
+    let s = Node::start_offline_internet(tmp.path(), "bad-ticket-sender", Visibility::Everyone);
+
+    let err = s.core.redeem_ticket("not-a-ticket".into()).unwrap_err();
+    assert!(matches!(err, WoooshError::InvalidQrPayload(_)), "got {err:?}");
+    expect_pairing_failure(&s, "garbage ticket");
+
+    // A pairing QR is not a ticket.
+    let err = s
+        .core
+        .redeem_ticket(s.core.begin_pairing_qr().unwrap())
+        .unwrap_err();
+    assert!(matches!(err, WoooshError::InvalidQrPayload(_)), "got {err:?}");
+    expect_pairing_failure(&s, "QR payload as ticket");
+
+    let expired = wooosh_core::inet::NetTicket {
+        version: 1,
+        node_id: [7u8; 32],
+        token: [8u8; 32],
+        dn: None,
+        relay: None,
+        direct: vec![],
+        expires_unix: 1,
+    };
+    let err = s.core.redeem_ticket(expired.encode()).unwrap_err();
+    assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
+    expect_pairing_failure(&s, "expired ticket");
+}
+
+/// PairedOnly rejects an unpaired internet peer exactly as it does on the LAN
+/// (PROTOCOL.md §4.1): the restriction is a property of the channel, not of
+/// the transport.
+#[test]
+fn internet_paired_only_rejects_unpaired() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "strict-receiver", Visibility::Everyone);
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    r.core.set_visibility(Visibility::PairedOnly).unwrap();
+
+    let s = Node::start_offline_internet(tmp.path(), "strict-sender", Visibility::Everyone);
+    let err = s.core.redeem_ticket(ticket).unwrap_err();
+    assert!(matches!(err, WoooshError::PairingRequired), "got {err:?}");
+}
+
+/// SAS over the internet path (PROTOCOL.md §4.3 + §9.4): iroh's connection is
+/// TLS 1.3 too, so both ends derive the same transcript-bound six digits and
+/// the camera-less pairing ceremony works unchanged off-LAN.
+#[test]
+fn internet_sas_codes_agree() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "sas-net-receiver", Visibility::Everyone);
+    let s = Node::start_offline_internet(tmp.path(), "sas-net-sender", Visibility::Everyone);
+
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    let peer_id = s.core.redeem_ticket(ticket).unwrap();
+    let s_id = s.core.device_id().unwrap();
+
+    s.core.request_sas_pairing(peer_id.clone()).unwrap();
+    let a = wait_for(&s.rx, Duration::from_secs(10), "sender SAS", |e| match e {
+        CoreEvent::PairingSas { code, .. } => Some(code.clone()),
+        _ => None,
+    });
+    let b = wait_for(&r.rx, Duration::from_secs(10), "receiver SAS", |e| match e {
+        CoreEvent::PairingSas { peer_id, code } if *peer_id == s_id => Some(code.clone()),
+        _ => None,
+    });
+    assert_eq!(a, b, "SAS must agree across an iroh session");
+    assert_eq!(a.len(), 6);
+}
+
+/// The full internet path through n0's **public relays**, which needs real
+/// network access and is therefore not part of CI.
+///
+/// Run it explicitly with:
+///   cargo test --release --test integration -- --ignored --test-threads=1 internet_ticket_via_public_relays
+#[test]
+#[ignore = "requires internet access and n0's public relay infrastructure"]
+fn internet_ticket_via_public_relays() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start(tmp.path(), "relay-receiver", Visibility::Everyone);
+    let s = Node::start(tmp.path(), "relay-sender", Visibility::Everyone);
+
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    let info = wooosh_core::parse_internet_ticket(ticket.clone()).unwrap();
+    assert!(info.relay.is_some(), "a default-configured ticket must carry a home relay");
+
+    let peer_id = s.core.redeem_ticket(ticket).unwrap();
+    assert_eq!(peer_id, r.core.device_id().unwrap());
+
+    let src = tmp.path().join("relay-payload.bin");
+    write_random_file(&src, MIB, 0xF00D);
+    let want = b3_of(&src);
+    let tid = s
+        .core
+        .send(peer_id, vec![src.to_string_lossy().to_string()])
+        .unwrap();
+    let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(60), "IncomingOffer", |e| match e {
+        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
+        }
+        _ => None,
+    });
+    assert_eq!(rtid, tid);
+    r.core.respond_to_offer(rtid, fids).unwrap();
+    let staged = wait_for(&r.rx, Duration::from_secs(120), "FileReady", |e| match e {
+        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+        _ => None,
+    });
+    assert_eq!(b3_of(Path::new(&staged)), want);
 }

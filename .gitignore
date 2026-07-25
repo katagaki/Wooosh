@@ -10,7 +10,7 @@ xcuserdata/
 *.xccheckout
 
 # Xcode Cloud
-.xcodecloud/
+xcodecloud/
 
 # Xcode build output
 DerivedData/

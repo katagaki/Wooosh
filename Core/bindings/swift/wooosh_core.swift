@@ -1067,6 +1067,23 @@ public func FfiConverterTypeKeyStore_lower(_ value: KeyStore) -> UnsafeMutableRa
 public protocol WoooshCoreProtocol: AnyObject, Sendable {
     
     /**
+     * Receiver side of the internet path: publish this device on iroh and
+     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
+     * sender redeems it with `redeem_ticket` and then offers files, so the
+     * roles match the LAN path exactly (connector = sender).
+     *
+     * The ticket carries this device's identity key, a single-use pairing
+     * token and a 120 s expiry. It is a capability: anyone holding an
+     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
+     * as the user leaves the screen.
+     *
+     * **BLOCKING — never call this on a UI thread.** The first call binds the
+     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
+     * first moment Wooosh contacts any relay at all.
+     */
+    func beginInternetTicket() throws  -> String
+    
+    /**
      * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
      * to render as a QR code. Single-use token, 120 s expiry.
      */
@@ -1101,6 +1118,11 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
     
     func deviceId() throws  -> String
     
+    /**
+     * Invalidate the outstanding ticket immediately.
+     */
+    func endInternetTicket() throws 
+    
     func fingerprintPhrase() throws  -> String
     
     /**
@@ -1126,6 +1148,18 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
     func pairWithQr(payload: String) throws  -> String
     
     func publicKey() throws  -> Data
+    
+    /**
+     * Sender side of the internet path: dial the ticket's node over iroh,
+     * pair with its token, and return the peer_id to pass to `send`.
+     *
+     * Every outcome also arrives as a `PairingResult` event, exactly as with
+     * `pair_with_qr`, so a shell can drive its UI purely off events.
+     *
+     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
+     * punching plus a 20 s pairing-reply timeout.
+     */
+    func redeemTicket(ticket: String) throws  -> String
     
     /**
      * Start SAS pairing with a connected (untrusted) peer. Both sides then
@@ -1257,6 +1291,28 @@ public convenience init() {
 
     
     /**
+     * Receiver side of the internet path: publish this device on iroh and
+     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
+     * sender redeems it with `redeem_ticket` and then offers files, so the
+     * roles match the LAN path exactly (connector = sender).
+     *
+     * The ticket carries this device's identity key, a single-use pairing
+     * token and a 120 s expiry. It is a capability: anyone holding an
+     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
+     * as the user leaves the screen.
+     *
+     * **BLOCKING — never call this on a UI thread.** The first call binds the
+     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
+     * first moment Wooosh contacts any relay at all.
+     */
+open func beginInternetTicket()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_begin_internet_ticket(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
      * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
      * to render as a QR code. Single-use token, 120 s expiry.
      */
@@ -1320,6 +1376,15 @@ open func deviceId()throws  -> String  {
 })
 }
     
+    /**
+     * Invalidate the outstanding ticket immediately.
+     */
+open func endInternetTicket()throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_end_internet_ticket(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
 open func fingerprintPhrase()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_fingerprint_phrase(self.uniffiClonePointer(),$0
@@ -1363,6 +1428,24 @@ open func pairWithQr(payload: String)throws  -> String  {
 open func publicKey()throws  -> Data  {
     return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_public_key(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Sender side of the internet path: dial the ticket's node over iroh,
+     * pair with its token, and return the peer_id to pass to `send`.
+     *
+     * Every outcome also arrives as a `PairingResult` event, exactly as with
+     * `pair_with_qr`, so a shell can drive its UI purely off events.
+     *
+     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
+     * punching plus a 20 s pairing-reply timeout.
+     */
+open func redeemTicket(ticket: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_redeem_ticket(self.uniffiClonePointer(),
+        FfiConverterString.lower(ticket),$0
     )
 })
 }
@@ -1556,6 +1639,16 @@ public struct Config {
      * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
      */
     public var listenAddr: String?
+    /**
+     * Relay servers for the internet path (DESIGN.md §9.1).
+     *
+     * `null` (the default) uses n0's free public relays — nothing to deploy,
+     * and nothing is contacted until the user asks for a ticket. An empty
+     * list disables relays and address lookup entirely, so the internet path
+     * only ever makes direct connections. A non-empty list points at chosen
+     * or self-hosted relays.
+     */
+    public var relayUrls: [String]?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -1568,13 +1661,23 @@ public struct Config {
          */trustStorePath: String, 
         /**
          * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
-         */listenAddr: String?) {
+         */listenAddr: String?, 
+        /**
+         * Relay servers for the internet path (DESIGN.md §9.1).
+         *
+         * `null` (the default) uses n0's free public relays — nothing to deploy,
+         * and nothing is contacted until the user asks for a ticket. An empty
+         * list disables relays and address lookup entirely, so the internet path
+         * only ever makes direct connections. A non-empty list points at chosen
+         * or self-hosted relays.
+         */relayUrls: [String]? = nil) {
         self.deviceName = deviceName
         self.deviceType = deviceType
         self.visibility = visibility
         self.stagingDir = stagingDir
         self.trustStorePath = trustStorePath
         self.listenAddr = listenAddr
+        self.relayUrls = relayUrls
     }
 }
 
@@ -1603,6 +1706,9 @@ extension Config: Equatable, Hashable {
         if lhs.listenAddr != rhs.listenAddr {
             return false
         }
+        if lhs.relayUrls != rhs.relayUrls {
+            return false
+        }
         return true
     }
 
@@ -1613,6 +1719,7 @@ extension Config: Equatable, Hashable {
         hasher.combine(stagingDir)
         hasher.combine(trustStorePath)
         hasher.combine(listenAddr)
+        hasher.combine(relayUrls)
     }
 }
 
@@ -1630,7 +1737,8 @@ public struct FfiConverterTypeConfig: FfiConverterRustBuffer {
                 visibility: FfiConverterTypeVisibility.read(from: &buf), 
                 stagingDir: FfiConverterString.read(from: &buf), 
                 trustStorePath: FfiConverterString.read(from: &buf), 
-                listenAddr: FfiConverterOptionString.read(from: &buf)
+                listenAddr: FfiConverterOptionString.read(from: &buf), 
+                relayUrls: FfiConverterOptionSequenceString.read(from: &buf)
         )
     }
 
@@ -1641,6 +1749,7 @@ public struct FfiConverterTypeConfig: FfiConverterRustBuffer {
         FfiConverterString.write(value.stagingDir, into: &buf)
         FfiConverterString.write(value.trustStorePath, into: &buf)
         FfiConverterOptionString.write(value.listenAddr, into: &buf)
+        FfiConverterOptionSequenceString.write(value.relayUrls, into: &buf)
     }
 }
 
@@ -1863,6 +1972,132 @@ public func FfiConverterTypeQrInfo_lift(_ buf: RustBuffer) throws -> QrInfo {
 #endif
 public func FfiConverterTypeQrInfo_lower(_ value: QrInfo) -> RustBuffer {
     return FfiConverterTypeQrInfo.lower(value)
+}
+
+
+/**
+ * Parsed internet ticket (PROTOCOL.md §9.2), so a shell can label the
+ * "Receive from internet" UI before calling `redeem_ticket`.
+ */
+public struct TicketInfo {
+    /**
+     * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
+     * store pins, so `trusted_peers()` matching works without connecting.
+     */
+    public var nodeId: Data
+    /**
+     * Rendered DeviceID — the same string events carry as `peer_id`.
+     */
+    public var deviceId: String
+    /**
+     * Display-name hint from the ticket (unauthenticated, label only).
+     */
+    public var deviceName: String?
+    public var relay: String?
+    public var expiresUnix: UInt64
+    public var expired: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
+         * store pins, so `trusted_peers()` matching works without connecting.
+         */nodeId: Data, 
+        /**
+         * Rendered DeviceID — the same string events carry as `peer_id`.
+         */deviceId: String, 
+        /**
+         * Display-name hint from the ticket (unauthenticated, label only).
+         */deviceName: String?, relay: String?, expiresUnix: UInt64, expired: Bool) {
+        self.nodeId = nodeId
+        self.deviceId = deviceId
+        self.deviceName = deviceName
+        self.relay = relay
+        self.expiresUnix = expiresUnix
+        self.expired = expired
+    }
+}
+
+#if compiler(>=6)
+extension TicketInfo: Sendable {}
+#endif
+
+
+extension TicketInfo: Equatable, Hashable {
+    public static func ==(lhs: TicketInfo, rhs: TicketInfo) -> Bool {
+        if lhs.nodeId != rhs.nodeId {
+            return false
+        }
+        if lhs.deviceId != rhs.deviceId {
+            return false
+        }
+        if lhs.deviceName != rhs.deviceName {
+            return false
+        }
+        if lhs.relay != rhs.relay {
+            return false
+        }
+        if lhs.expiresUnix != rhs.expiresUnix {
+            return false
+        }
+        if lhs.expired != rhs.expired {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(nodeId)
+        hasher.combine(deviceId)
+        hasher.combine(deviceName)
+        hasher.combine(relay)
+        hasher.combine(expiresUnix)
+        hasher.combine(expired)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTicketInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TicketInfo {
+        return
+            try TicketInfo(
+                nodeId: FfiConverterData.read(from: &buf), 
+                deviceId: FfiConverterString.read(from: &buf), 
+                deviceName: FfiConverterOptionString.read(from: &buf), 
+                relay: FfiConverterOptionString.read(from: &buf), 
+                expiresUnix: FfiConverterUInt64.read(from: &buf), 
+                expired: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TicketInfo, into buf: inout [UInt8]) {
+        FfiConverterData.write(value.nodeId, into: &buf)
+        FfiConverterString.write(value.deviceId, into: &buf)
+        FfiConverterOptionString.write(value.deviceName, into: &buf)
+        FfiConverterOptionString.write(value.relay, into: &buf)
+        FfiConverterUInt64.write(value.expiresUnix, into: &buf)
+        FfiConverterBool.write(value.expired, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTicketInfo_lift(_ buf: RustBuffer) throws -> TicketInfo {
+    return try FfiConverterTypeTicketInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTicketInfo_lower(_ value: TicketInfo) -> RustBuffer {
+    return FfiConverterTypeTicketInfo.lower(value)
 }
 
 
@@ -2874,6 +3109,30 @@ fileprivate struct FfiConverterOptionTypeDeviceType: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
@@ -2999,6 +3258,16 @@ public func fingerprintPhraseFor(pubkey: Data)throws  -> String  {
 })
 }
 /**
+ * Parse a `wooosh-net:1?...` ticket without redeeming it.
+ */
+public func parseInternetTicket(ticket: String)throws  -> TicketInfo  {
+    return try  FfiConverterTypeTicketInfo_lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_func_parse_internet_ticket(
+        FfiConverterString.lower(ticket),$0
+    )
+})
+}
+/**
  * Parse a scanned `wooosh-pair:1?...` payload so the shell can label the
  * pairing UI before calling `pair_with_qr`.
  */
@@ -3031,6 +3300,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 27344) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 39476) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3041,6 +3313,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_keystore_store_identity() != 36430) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 1781) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 55726) {
@@ -3058,6 +3333,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_wooosh_core_checksum_method_woooshcore_device_id() != 33009) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 36115) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase() != 42848) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3068,6 +3346,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_public_key() != 35774) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 1946) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 29085) {

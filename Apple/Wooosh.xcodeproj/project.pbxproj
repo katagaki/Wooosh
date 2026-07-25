@@ -7,47 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		02D14E975B94C4A30CD14105 /* TrustStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E52A8BC93151910461858E0 /* TrustStore.swift */; };
-		0D08DA50297F290A4BD965F4 /* WoooshApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180C9E1CBB52D6D823474EA /* WoooshApp.swift */; };
-		2E7AE5777D5C580D590268BA /* Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93AA2ADB799AD31A45F5A16 /* Localized.swift */; };
-		38842E52730B91FAD14435F1 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A969DEB26192DCEEC2D2BC7 /* DeviceListView.swift */; };
-		400E95D491FFB60131DD0064 /* TransferCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493FB43A86002ACD35100778 /* TransferCenter.swift */; };
-		437F6929230697F4BAA55C91 /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB181D26E1FC2742AF5D39B /* QRCodeView.swift */; };
-		45F4C62B4490842C51A9B2FF /* SheetActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1CFDAB0B4DDDE6BED07ADF8 /* SheetActions.swift */; };
-		4B8A087356D28181777F6B7A /* SendTransferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED19256BA8D26996B2FDC33 /* SendTransferSheet.swift */; };
-		4D1B8603DE271FA18089A287 /* KeychainKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F76B2EE31F9EC310514FC3 /* KeychainKeyStore.swift */; };
-		4DF1948403C4A31D9237DE7B /* PickedMediaFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9587EA8C2AEEDEFDB6C03802 /* PickedMediaFile.swift */; };
-		523A1292A6761F06EA1DB13C /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C652A8F96C8E78D382C28AEA /* Discovery.swift */; };
-		5A7C94B96C63346743CB2984 /* Identity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255341F2DA8B5B5E7596AA66 /* Identity.swift */; };
-		5C91BD32F601D58F30FDEBD0 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20AB868BB8607AF6FFEB0B5F /* AppModel.swift */; };
-		6245497D3DBD939205AF5FD4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0692B4B57CC114E1A3D092AF /* Localizable.xcstrings */; };
-		64518AF3840ECB7A0D2CE953 /* IncomingOfferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ACDC82EE4836D6A581ACAAD /* IncomingOfferSheet.swift */; };
-		6B1B161E9C6F8CF55AC29DE5 /* Peer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4018FF35FDECB8111AC0911B /* Peer.swift */; };
-		6C8448E0647D5156BFF31C3F /* PeerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DF5DC8852259CE59E16996 /* PeerRegistry.swift */; };
-		6CCB617A03582AE975556416 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CEE508B19A07D7B6D09B5746 /* InfoPlist.xcstrings */; };
-		76D2834035CF067CE244A9DC /* PairingProgressOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCCF52C14CF8DDD2FC13873 /* PairingProgressOverlay.swift */; };
-		770DAFE59D96A824FA707710 /* TransferProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F187C0FF367BC151146E9663 /* TransferProgressView.swift */; };
-		7781C9C7F71CB5FBB7D32BC6 /* WoooshCoreProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F89FA837ACCEB40ECD2EACE /* WoooshCoreProtocol.swift */; };
-		80434637D2DB53D5DF248225 /* RealCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0536FD9AE6A17BAD0ED3A1 /* RealCore.swift */; };
 		8126B11D3D830C5E36964C7D /* WoooshCoreFFI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 081D1F9FAF40238650522892 /* WoooshCoreFFI.framework */; };
-		8C698988749FB58ABE2A184E /* StorageRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB9BE893BC3F89935D31F77 /* StorageRouter.swift */; };
 		969687D3C5F1350731159EEC /* WoooshShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 692E606ACBD407A941A647D0 /* WoooshShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9C7C1764937CEB3C0A1C4476 /* WoooshCoreFFI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 081D1F9FAF40238650522892 /* WoooshCoreFFI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		A12FD982F43E54FAA3FF1E84 /* FingerprintCallout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4603BD42E1BC94769A90731D /* FingerprintCallout.swift */; };
-		A7889BA0BFD0C3A81DEE925C /* BonjourResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 875AA275D27F2945990C3AFC /* BonjourResolver.swift */; };
-		A9C342401176A3F12215E841 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D0335FC45384802DEC938A /* SettingsView.swift */; };
-		BCA922AA56AE32169CB3426A /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D784F7CC96F84AB4BCD7E656 /* AppGroup.swift */; };
-		C4A65DA98AB9979F34CE446B /* Visibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CDA12A3374BB7349F79AA50 /* Visibility.swift */; };
-		D156100155454916963EB794 /* SASSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A363377428AA687B69F474C /* SASSheet.swift */; };
-		D48E1E3C838E7EB3B7A66013 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D784F7CC96F84AB4BCD7E656 /* AppGroup.swift */; };
-		D7B0AB29C59CDBD63D5269CA /* PairDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29D69084C563475A3D77C60 /* PairDeviceView.swift */; };
-		E4FF890644CB6CB4CE74CB91 /* DeviceKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73296D6634CDFCF3D93A8DFA /* DeviceKind.swift */; };
 		E6EE9508CEB36C0D5C307E11 /* wooosh_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA211C7A377E1D92E06FB5E6 /* wooosh_core.swift */; };
-		EC44682904B425E2BB08A4CA /* KeepAwake.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0918DD777132CC218B955CE /* KeepAwake.swift */; };
-		EE3573832FB9A0A4234D9136 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDCEC068B06365425ADD7DE /* ShareViewController.swift */; };
-		F3D790EF3BC739116570D5F7 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8C045123683B71464BBF3E30 /* Localizable.xcstrings */; };
 		F49D1B47A6ED1AD77A7B2971 /* WoooshCore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5EC2E626FF0A4DD73D9180B0 /* WoooshCore.xcframework */; };
-		FB917BAF30353A6D4C0248FA /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239D54B25113612F19B0CED2 /* QRScannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,53 +57,57 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0692B4B57CC114E1A3D092AF /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		081D1F9FAF40238650522892 /* WoooshCoreFFI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = WoooshCoreFFI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		0F89FA837ACCEB40ECD2EACE /* WoooshCoreProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WoooshCoreProtocol.swift; sourceTree = "<group>"; };
-		1A969DEB26192DCEEC2D2BC7 /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
-		20AB868BB8607AF6FFEB0B5F /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
-		239D54B25113612F19B0CED2 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
-		255341F2DA8B5B5E7596AA66 /* Identity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identity.swift; sourceTree = "<group>"; };
-		2DB181D26E1FC2742AF5D39B /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeView.swift; sourceTree = "<group>"; };
-		2DE963D475EB8E9753A5DC66 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		3A363377428AA687B69F474C /* SASSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SASSheet.swift; sourceTree = "<group>"; };
-		3ACDC82EE4836D6A581ACAAD /* IncomingOfferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingOfferSheet.swift; sourceTree = "<group>"; };
-		3FCCF52C14CF8DDD2FC13873 /* PairingProgressOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingProgressOverlay.swift; sourceTree = "<group>"; };
-		4018FF35FDECB8111AC0911B /* Peer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Peer.swift; sourceTree = "<group>"; };
-		4603BD42E1BC94769A90731D /* FingerprintCallout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FingerprintCallout.swift; sourceTree = "<group>"; };
-		493FB43A86002ACD35100778 /* TransferCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferCenter.swift; sourceTree = "<group>"; };
-		4C71BD36083F7D4D2B5F8EF6 /* Wooosh-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Wooosh-iOS.entitlements"; sourceTree = "<group>"; };
-		4CE6286CAFAEC4975365536C /* ShareExtension-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "ShareExtension-macOS.entitlements"; sourceTree = "<group>"; };
-		5E52A8BC93151910461858E0 /* TrustStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustStore.swift; sourceTree = "<group>"; };
 		5EC2E626FF0A4DD73D9180B0 /* WoooshCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = WoooshCore.xcframework; path = ../Core/dist/WoooshCore.xcframework; sourceTree = "<group>"; };
-		641F2C06F5928FA77AC115CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		692E606ACBD407A941A647D0 /* WoooshShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WoooshShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		6CDA12A3374BB7349F79AA50 /* Visibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visibility.swift; sourceTree = "<group>"; };
-		6E0536FD9AE6A17BAD0ED3A1 /* RealCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealCore.swift; sourceTree = "<group>"; };
-		73296D6634CDFCF3D93A8DFA /* DeviceKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceKind.swift; sourceTree = "<group>"; };
-		736ABA55CCD69B828F587418 /* ShareExtension-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "ShareExtension-iOS.entitlements"; sourceTree = "<group>"; };
-		7BDCEC068B06365425ADD7DE /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
-		7ED19256BA8D26996B2FDC33 /* SendTransferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendTransferSheet.swift; sourceTree = "<group>"; };
-		875AA275D27F2945990C3AFC /* BonjourResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourResolver.swift; sourceTree = "<group>"; };
-		8C045123683B71464BBF3E30 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		8F4308E826FC2E6257C310A1 /* Wooosh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wooosh.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9587EA8C2AEEDEFDB6C03802 /* PickedMediaFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickedMediaFile.swift; sourceTree = "<group>"; };
-		A0918DD777132CC218B955CE /* KeepAwake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAwake.swift; sourceTree = "<group>"; };
-		A1CFDAB0B4DDDE6BED07ADF8 /* SheetActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetActions.swift; sourceTree = "<group>"; };
-		A29D69084C563475A3D77C60 /* PairDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairDeviceView.swift; sourceTree = "<group>"; };
-		B180C9E1CBB52D6D823474EA /* WoooshApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WoooshApp.swift; sourceTree = "<group>"; };
-		B3DF5DC8852259CE59E16996 /* PeerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerRegistry.swift; sourceTree = "<group>"; };
-		C652A8F96C8E78D382C28AEA /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
-		C93AA2ADB799AD31A45F5A16 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localized.swift; sourceTree = "<group>"; };
 		CA211C7A377E1D92E06FB5E6 /* wooosh_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = wooosh_core.swift; path = ../Core/bindings/swift/wooosh_core.swift; sourceTree = "<group>"; };
-		CC3CDB9DB060EB4A5015594E /* Wooosh.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wooosh.entitlements; sourceTree = "<group>"; };
-		CEE508B19A07D7B6D09B5746 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
-		D784F7CC96F84AB4BCD7E656 /* AppGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroup.swift; sourceTree = "<group>"; };
-		D8D0335FC45384802DEC938A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		E8F76B2EE31F9EC310514FC3 /* KeychainKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainKeyStore.swift; sourceTree = "<group>"; };
-		EDB9BE893BC3F89935D31F77 /* StorageRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageRouter.swift; sourceTree = "<group>"; };
-		F187C0FF367BC151146E9663 /* TransferProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferProgressView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E438B56C3014423E00CCEC08 /* Exceptions for "ShareExtension" folder in "WoooshShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Localizable.xcstrings,
+				ShareViewController.swift,
+			);
+			target = 388A26885D44B6ED9DDB56E7 /* WoooshShareExtension */;
+		};
+		E438B56D3014423E00CCEC08 /* Exceptions for "Wooosh" folder in "Wooosh" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8FE70D42ECD1DC75DAEDBB39 /* Wooosh */;
+		};
+		E438B56E3014423E00CCEC08 /* Exceptions for "Wooosh" folder in "WoooshShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Shared/AppGroup.swift,
+			);
+			target = 388A26885D44B6ED9DDB56E7 /* WoooshShareExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		E438B5403014423C00CCEC08 /* Wooosh */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E438B56D3014423E00CCEC08 /* Exceptions for "Wooosh" folder in "Wooosh" target */,
+				E438B56E3014423E00CCEC08 /* Exceptions for "Wooosh" folder in "WoooshShareExtension" target */,
+			);
+			path = Wooosh;
+			sourceTree = "<group>";
+		};
+		E438B5693014423E00CCEC08 /* ShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E438B56C3014423E00CCEC08 /* Exceptions for "ShareExtension" folder in "WoooshShareExtension" target */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		7299663CC101BFEE61115DAF /* Frameworks */ = {
@@ -161,41 +129,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0BB0DA756981250CE01D667D /* Pairing */ = {
-			isa = PBXGroup;
-			children = (
-				A29D69084C563475A3D77C60 /* PairDeviceView.swift */,
-				2DB181D26E1FC2742AF5D39B /* QRCodeView.swift */,
-				239D54B25113612F19B0CED2 /* QRScannerView.swift */,
-				3A363377428AA687B69F474C /* SASSheet.swift */,
-			);
-			path = Pairing;
-			sourceTree = "<group>";
-		};
 		1ADA960B28F6577FCF9DECF3 /* WoooshCoreFFI */ = {
 			isa = PBXGroup;
 			children = (
 				CA211C7A377E1D92E06FB5E6 /* wooosh_core.swift */,
 			);
 			name = WoooshCoreFFI;
-			sourceTree = "<group>";
-		};
-		1B69E2A3F8312125C0D7C383 /* Wooosh */ = {
-			isa = PBXGroup;
-			children = (
-				641F2C06F5928FA77AC115CB /* Info.plist */,
-				CEE508B19A07D7B6D09B5746 /* InfoPlist.xcstrings */,
-				0692B4B57CC114E1A3D092AF /* Localizable.xcstrings */,
-				4C71BD36083F7D4D2B5F8EF6 /* Wooosh-iOS.entitlements */,
-				CC3CDB9DB060EB4A5015594E /* Wooosh.entitlements */,
-				B180C9E1CBB52D6D823474EA /* WoooshApp.swift */,
-				DB9240E0C6CB773538CD143D /* Core */,
-				95DBA26333D614F75507C896 /* CoreAPI */,
-				B262DF61B1FCC0A82E689B06 /* Models */,
-				939AD7EAD9D11CCCF76A19AB /* Shared */,
-				ECC60EE1A47D86CF294465C2 /* Views */,
-			);
-			path = Wooosh;
 			sourceTree = "<group>";
 		};
 		21D114EF564BB40491717D06 /* Frameworks */ = {
@@ -209,94 +148,12 @@
 		386BC18E278E65486C99C423 = {
 			isa = PBXGroup;
 			children = (
-				BB46BD98124036CFE4FFD999 /* ShareExtension */,
-				1B69E2A3F8312125C0D7C383 /* Wooosh */,
+				E438B5693014423E00CCEC08 /* ShareExtension */,
+				E438B5403014423C00CCEC08 /* Wooosh */,
 				1ADA960B28F6577FCF9DECF3 /* WoooshCoreFFI */,
 				21D114EF564BB40491717D06 /* Frameworks */,
 				F006CAA4588ED7D3F84632F2 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		576AC534F02159C3791B7BB3 /* Transfers */ = {
-			isa = PBXGroup;
-			children = (
-				3ACDC82EE4836D6A581ACAAD /* IncomingOfferSheet.swift */,
-				7ED19256BA8D26996B2FDC33 /* SendTransferSheet.swift */,
-				F187C0FF367BC151146E9663 /* TransferProgressView.swift */,
-			);
-			path = Transfers;
-			sourceTree = "<group>";
-		};
-		939AD7EAD9D11CCCF76A19AB /* Shared */ = {
-			isa = PBXGroup;
-			children = (
-				D784F7CC96F84AB4BCD7E656 /* AppGroup.swift */,
-				C93AA2ADB799AD31A45F5A16 /* Localized.swift */,
-			);
-			path = Shared;
-			sourceTree = "<group>";
-		};
-		95DBA26333D614F75507C896 /* CoreAPI */ = {
-			isa = PBXGroup;
-			children = (
-				E8F76B2EE31F9EC310514FC3 /* KeychainKeyStore.swift */,
-				6E0536FD9AE6A17BAD0ED3A1 /* RealCore.swift */,
-				0F89FA837ACCEB40ECD2EACE /* WoooshCoreProtocol.swift */,
-			);
-			path = CoreAPI;
-			sourceTree = "<group>";
-		};
-		B262DF61B1FCC0A82E689B06 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				73296D6634CDFCF3D93A8DFA /* DeviceKind.swift */,
-				4018FF35FDECB8111AC0911B /* Peer.swift */,
-				6CDA12A3374BB7349F79AA50 /* Visibility.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		BB46BD98124036CFE4FFD999 /* ShareExtension */ = {
-			isa = PBXGroup;
-			children = (
-				2DE963D475EB8E9753A5DC66 /* Info.plist */,
-				8C045123683B71464BBF3E30 /* Localizable.xcstrings */,
-				736ABA55CCD69B828F587418 /* ShareExtension-iOS.entitlements */,
-				4CE6286CAFAEC4975365536C /* ShareExtension-macOS.entitlements */,
-				7BDCEC068B06365425ADD7DE /* ShareViewController.swift */,
-			);
-			path = ShareExtension;
-			sourceTree = "<group>";
-		};
-		DB9240E0C6CB773538CD143D /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				20AB868BB8607AF6FFEB0B5F /* AppModel.swift */,
-				875AA275D27F2945990C3AFC /* BonjourResolver.swift */,
-				C652A8F96C8E78D382C28AEA /* Discovery.swift */,
-				255341F2DA8B5B5E7596AA66 /* Identity.swift */,
-				A0918DD777132CC218B955CE /* KeepAwake.swift */,
-				B3DF5DC8852259CE59E16996 /* PeerRegistry.swift */,
-				9587EA8C2AEEDEFDB6C03802 /* PickedMediaFile.swift */,
-				EDB9BE893BC3F89935D31F77 /* StorageRouter.swift */,
-				493FB43A86002ACD35100778 /* TransferCenter.swift */,
-				5E52A8BC93151910461858E0 /* TrustStore.swift */,
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
-		ECC60EE1A47D86CF294465C2 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				1A969DEB26192DCEEC2D2BC7 /* DeviceListView.swift */,
-				4603BD42E1BC94769A90731D /* FingerprintCallout.swift */,
-				3FCCF52C14CF8DDD2FC13873 /* PairingProgressOverlay.swift */,
-				D8D0335FC45384802DEC938A /* SettingsView.swift */,
-				A1CFDAB0B4DDDE6BED07ADF8 /* SheetActions.swift */,
-				0BB0DA756981250CE01D667D /* Pairing */,
-				576AC534F02159C3791B7BB3 /* Transfers */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		F006CAA4588ED7D3F84632F2 /* Products */ = {
@@ -345,6 +202,9 @@
 			dependencies = (
 				2D356C09DC9CDFA96F4F7C7A /* PBXTargetDependency */,
 				CB855AE6CE104BCF5893768C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E438B5403014423C00CCEC08 /* Wooosh */,
 			);
 			name = Wooosh;
 			packageProductDependencies = (
@@ -433,7 +293,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F3D790EF3BC739116570D5F7 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -441,8 +300,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6CCB617A03582AE975556416 /* InfoPlist.xcstrings in Resources */,
-				6245497D3DBD939205AF5FD4 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -461,8 +318,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BCA922AA56AE32169CB3426A /* AppGroup.swift in Sources */,
-				EE3573832FB9A0A4234D9136 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -470,37 +325,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D48E1E3C838E7EB3B7A66013 /* AppGroup.swift in Sources */,
-				5C91BD32F601D58F30FDEBD0 /* AppModel.swift in Sources */,
-				A7889BA0BFD0C3A81DEE925C /* BonjourResolver.swift in Sources */,
-				E4FF890644CB6CB4CE74CB91 /* DeviceKind.swift in Sources */,
-				38842E52730B91FAD14435F1 /* DeviceListView.swift in Sources */,
-				523A1292A6761F06EA1DB13C /* Discovery.swift in Sources */,
-				A12FD982F43E54FAA3FF1E84 /* FingerprintCallout.swift in Sources */,
-				5A7C94B96C63346743CB2984 /* Identity.swift in Sources */,
-				64518AF3840ECB7A0D2CE953 /* IncomingOfferSheet.swift in Sources */,
-				EC44682904B425E2BB08A4CA /* KeepAwake.swift in Sources */,
-				4D1B8603DE271FA18089A287 /* KeychainKeyStore.swift in Sources */,
-				2E7AE5777D5C580D590268BA /* Localized.swift in Sources */,
-				D7B0AB29C59CDBD63D5269CA /* PairDeviceView.swift in Sources */,
-				76D2834035CF067CE244A9DC /* PairingProgressOverlay.swift in Sources */,
-				6B1B161E9C6F8CF55AC29DE5 /* Peer.swift in Sources */,
-				6C8448E0647D5156BFF31C3F /* PeerRegistry.swift in Sources */,
-				4DF1948403C4A31D9237DE7B /* PickedMediaFile.swift in Sources */,
-				437F6929230697F4BAA55C91 /* QRCodeView.swift in Sources */,
-				FB917BAF30353A6D4C0248FA /* QRScannerView.swift in Sources */,
-				80434637D2DB53D5DF248225 /* RealCore.swift in Sources */,
-				D156100155454916963EB794 /* SASSheet.swift in Sources */,
-				4B8A087356D28181777F6B7A /* SendTransferSheet.swift in Sources */,
-				A9C342401176A3F12215E841 /* SettingsView.swift in Sources */,
-				45F4C62B4490842C51A9B2FF /* SheetActions.swift in Sources */,
-				8C698988749FB58ABE2A184E /* StorageRouter.swift in Sources */,
-				400E95D491FFB60131DD0064 /* TransferCenter.swift in Sources */,
-				770DAFE59D96A824FA707710 /* TransferProgressView.swift in Sources */,
-				02D14E975B94C4A30CD14105 /* TrustStore.swift in Sources */,
-				C4A65DA98AB9979F34CE446B /* Visibility.swift in Sources */,
-				0D08DA50297F290A4BD965F4 /* WoooshApp.swift in Sources */,
-				7781C9C7F71CB5FBB7D32BC6 /* WoooshCoreProtocol.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -671,6 +495,13 @@
 					"@executable_path/Frameworks",
 				);
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					SystemConfiguration,
+					"-framework",
+					Network,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tsubuzaki.WoooshCoreFFI;
 				PRODUCT_NAME = WoooshCoreFFI;
 				SDKROOT = auto;
@@ -708,6 +539,13 @@
 					"@executable_path/Frameworks",
 				);
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					SystemConfiguration,
+					"-framework",
+					Network,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tsubuzaki.WoooshCoreFFI;
 				PRODUCT_NAME = WoooshCoreFFI;
 				SDKROOT = auto;

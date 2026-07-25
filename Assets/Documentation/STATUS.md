@@ -6,7 +6,7 @@ Last updated: 2026-07-25. Specs: [DESIGN.md](DESIGN.md), [PROTOCOL.md](PROTOCOL.
 
 | Component | Builds | Runtime verified | Notes |
 |---|---|---|---|
-| `Core/` (Rust) | ✅ | ✅ 25/25 unit, 11/11 integration | QUIC + pairing + transfers + resume |
+| `Core/` (Rust) | ✅ | ✅ 30/30 unit, 16/16 integration (+1 `#[ignore]`d) | QUIC + pairing + transfers + resume; internet path over iroh tickets (PROTOCOL.md §9) |
 | `Apple/` macOS | ✅ | ✅ transfers to iOS and to Android, both directions with the CLI | unsandboxed run only |
 | `Apple/` iOS | ✅ | ✅ on device: transfers, Photos routing, camera QR scanning | share extension with a real App Group unverified |
 | `Android/` | ✅ | ✅ physical Pixel 7a: discovery, send and receive, pairing, revoke, KEY_CHANGED | — |

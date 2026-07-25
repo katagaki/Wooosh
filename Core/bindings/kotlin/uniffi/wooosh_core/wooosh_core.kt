@@ -818,6 +818,14 @@ internal open class UniffiVTableCallbackInterfaceKeyStore(
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -837,6 +845,8 @@ internal interface IntegrityCheckingUniffiLib : Library {
 ): Short
 fun uniffi_wooosh_core_checksum_func_fingerprint_phrase_for(
 ): Short
+fun uniffi_wooosh_core_checksum_func_parse_internet_ticket(
+): Short
 fun uniffi_wooosh_core_checksum_func_parse_pairing_qr(
 ): Short
 fun uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(
@@ -844,6 +854,8 @@ fun uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(
 fun uniffi_wooosh_core_checksum_method_keystore_load_identity(
 ): Short
 fun uniffi_wooosh_core_checksum_method_keystore_store_identity(
+): Short
+fun uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr(
 ): Short
@@ -855,6 +867,8 @@ fun uniffi_wooosh_core_checksum_method_woooshcore_connect_peer(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_device_id(
 ): Short
+fun uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket(
+): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_listen_addr(
@@ -862,6 +876,8 @@ fun uniffi_wooosh_core_checksum_method_woooshcore_listen_addr(
 fun uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_public_key(
+): Short
+fun uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing(
 ): Short
@@ -966,6 +982,8 @@ fun uniffi_wooosh_core_fn_free_woooshcore(`ptr`: Pointer,uniffi_out_err: UniffiR
 ): Unit
 fun uniffi_wooosh_core_fn_constructor_woooshcore_new(uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
+fun uniffi_wooosh_core_fn_method_woooshcore_begin_internet_ticket(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_begin_pairing_qr(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_cancel(`ptr`: Pointer,`transferId`: RustBuffer.ByValue,`fileId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -976,6 +994,8 @@ fun uniffi_wooosh_core_fn_method_woooshcore_connect_peer(`ptr`: Pointer,`addr`: 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_device_id(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_woooshcore_end_internet_ticket(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_wooosh_core_fn_method_woooshcore_fingerprint_phrase(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_listen_addr(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -983,6 +1003,8 @@ fun uniffi_wooosh_core_fn_method_woooshcore_listen_addr(`ptr`: Pointer,uniffi_ou
 fun uniffi_wooosh_core_fn_method_woooshcore_pair_with_qr(`ptr`: Pointer,`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_public_key(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_woooshcore_redeem_ticket(`ptr`: Pointer,`ticket`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_method_woooshcore_request_sas_pairing(`ptr`: Pointer,`peerId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1005,6 +1027,8 @@ fun uniffi_wooosh_core_fn_method_woooshcore_trusted_peers(`ptr`: Pointer,uniffi_
 fun uniffi_wooosh_core_fn_func_device_id_for(`pubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_func_fingerprint_phrase_for(`pubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_func_parse_internet_ticket(`ticket`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_func_parse_pairing_qr(`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1140,6 +1164,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 27344.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 39476.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1150,6 +1177,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_keystore_store_identity() != 36430.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 1781.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 55726.toShort()) {
@@ -1167,6 +1197,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_device_id() != 33009.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 36115.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase() != 42848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1177,6 +1210,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_public_key() != 35774.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 1946.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 29085.toShort()) {
@@ -2473,6 +2509,23 @@ public object FfiConverterTypeKeyStore: FfiConverter<KeyStore, Pointer> {
 public interface WoooshCoreInterface {
     
     /**
+     * Receiver side of the internet path: publish this device on iroh and
+     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
+     * sender redeems it with `redeem_ticket` and then offers files, so the
+     * roles match the LAN path exactly (connector = sender).
+     *
+     * The ticket carries this device's identity key, a single-use pairing
+     * token and a 120 s expiry. It is a capability: anyone holding an
+     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
+     * as the user leaves the screen.
+     *
+     * **BLOCKING — never call this on a UI thread.** The first call binds the
+     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
+     * first moment Wooosh contacts any relay at all.
+     */
+    fun `beginInternetTicket`(): kotlin.String
+    
+    /**
      * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
      * to render as a QR code. Single-use token, 120 s expiry.
      */
@@ -2507,6 +2560,11 @@ public interface WoooshCoreInterface {
     
     fun `deviceId`(): kotlin.String
     
+    /**
+     * Invalidate the outstanding ticket immediately.
+     */
+    fun `endInternetTicket`()
+    
     fun `fingerprintPhrase`(): kotlin.String
     
     /**
@@ -2532,6 +2590,18 @@ public interface WoooshCoreInterface {
     fun `pairWithQr`(`payload`: kotlin.String): kotlin.String
     
     fun `publicKey`(): kotlin.ByteArray
+    
+    /**
+     * Sender side of the internet path: dial the ticket's node over iroh,
+     * pair with its token, and return the peer_id to pass to `send`.
+     *
+     * Every outcome also arrives as a `PairingResult` event, exactly as with
+     * `pair_with_qr`, so a shell can drive its UI purely off events.
+     *
+     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
+     * punching plus a 20 s pairing-reply timeout.
+     */
+    fun `redeemTicket`(`ticket`: kotlin.String): kotlin.String
     
     /**
      * Start SAS pairing with a connected (untrusted) peer. Both sides then
@@ -2696,6 +2766,34 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
+     * Receiver side of the internet path: publish this device on iroh and
+     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
+     * sender redeems it with `redeem_ticket` and then offers files, so the
+     * roles match the LAN path exactly (connector = sender).
+     *
+     * The ticket carries this device's identity key, a single-use pairing
+     * token and a 120 s expiry. It is a capability: anyone holding an
+     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
+     * as the user leaves the screen.
+     *
+     * **BLOCKING — never call this on a UI thread.** The first call binds the
+     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
+     * first moment Wooosh contacts any relay at all.
+     */
+    @Throws(WoooshException::class)override fun `beginInternetTicket`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_begin_internet_ticket(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
      * to render as a QR code. Single-use token, 120 s expiry.
      */
@@ -2783,6 +2881,21 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
     
 
     
+    /**
+     * Invalidate the outstanding ticket immediately.
+     */
+    @Throws(WoooshException::class)override fun `endInternetTicket`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_end_internet_ticket(
+        it, _status)
+}
+    }
+    
+    
+
+    
     @Throws(WoooshException::class)override fun `fingerprintPhrase`(): kotlin.String {
             return FfiConverterString.lift(
     callWithPointer {
@@ -2846,6 +2959,29 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
     uniffiRustCallWithError(WoooshException) { _status ->
     UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_public_key(
         it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Sender side of the internet path: dial the ticket's node over iroh,
+     * pair with its token, and return the peer_id to pass to `send`.
+     *
+     * Every outcome also arrives as a `PairingResult` event, exactly as with
+     * `pair_with_qr`, so a shell can drive its UI purely off events.
+     *
+     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
+     * punching plus a 20 s pairing-reply timeout.
+     */
+    @Throws(WoooshException::class)override fun `redeemTicket`(`ticket`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_redeem_ticket(
+        it, FfiConverterString.lower(`ticket`),_status)
 }
     }
     )
@@ -3063,7 +3199,17 @@ data class Config (
     /**
      * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
      */
-    var `listenAddr`: kotlin.String?
+    var `listenAddr`: kotlin.String?, 
+    /**
+     * Relay servers for the internet path (DESIGN.md §9.1).
+     *
+     * `null` (the default) uses n0's free public relays — nothing to deploy,
+     * and nothing is contacted until the user asks for a ticket. An empty
+     * list disables relays and address lookup entirely, so the internet path
+     * only ever makes direct connections. A non-empty list points at chosen
+     * or self-hosted relays.
+     */
+    var `relayUrls`: List<kotlin.String>? = null
 ) {
     
     companion object
@@ -3081,6 +3227,7 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalSequenceString.read(buf),
         )
     }
 
@@ -3090,7 +3237,8 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterTypeVisibility.allocationSize(value.`visibility`) +
             FfiConverterString.allocationSize(value.`stagingDir`) +
             FfiConverterString.allocationSize(value.`trustStorePath`) +
-            FfiConverterOptionalString.allocationSize(value.`listenAddr`)
+            FfiConverterOptionalString.allocationSize(value.`listenAddr`) +
+            FfiConverterOptionalSequenceString.allocationSize(value.`relayUrls`)
     )
 
     override fun write(value: Config, buf: ByteBuffer) {
@@ -3100,6 +3248,7 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterString.write(value.`stagingDir`, buf)
             FfiConverterString.write(value.`trustStorePath`, buf)
             FfiConverterOptionalString.write(value.`listenAddr`, buf)
+            FfiConverterOptionalSequenceString.write(value.`relayUrls`, buf)
     }
 }
 
@@ -3197,6 +3346,68 @@ public object FfiConverterTypeQrInfo: FfiConverterRustBuffer<QrInfo> {
             FfiConverterString.write(value.`deviceId`, buf)
             FfiConverterOptionalString.write(value.`deviceName`, buf)
             FfiConverterSequenceString.write(value.`hints`, buf)
+            FfiConverterULong.write(value.`expiresUnix`, buf)
+            FfiConverterBoolean.write(value.`expired`, buf)
+    }
+}
+
+
+
+/**
+ * Parsed internet ticket (PROTOCOL.md §9.2), so a shell can label the
+ * "Receive from internet" UI before calling `redeem_ticket`.
+ */
+data class TicketInfo (
+    /**
+     * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
+     * store pins, so `trusted_peers()` matching works without connecting.
+     */
+    var `nodeId`: kotlin.ByteArray, 
+    /**
+     * Rendered DeviceID — the same string events carry as `peer_id`.
+     */
+    var `deviceId`: kotlin.String, 
+    /**
+     * Display-name hint from the ticket (unauthenticated, label only).
+     */
+    var `deviceName`: kotlin.String?, 
+    var `relay`: kotlin.String?, 
+    var `expiresUnix`: kotlin.ULong, 
+    var `expired`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTicketInfo: FfiConverterRustBuffer<TicketInfo> {
+    override fun read(buf: ByteBuffer): TicketInfo {
+        return TicketInfo(
+            FfiConverterByteArray.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TicketInfo) = (
+            FfiConverterByteArray.allocationSize(value.`nodeId`) +
+            FfiConverterString.allocationSize(value.`deviceId`) +
+            FfiConverterOptionalString.allocationSize(value.`deviceName`) +
+            FfiConverterOptionalString.allocationSize(value.`relay`) +
+            FfiConverterULong.allocationSize(value.`expiresUnix`) +
+            FfiConverterBoolean.allocationSize(value.`expired`)
+    )
+
+    override fun write(value: TicketInfo, buf: ByteBuffer) {
+            FfiConverterByteArray.write(value.`nodeId`, buf)
+            FfiConverterString.write(value.`deviceId`, buf)
+            FfiConverterOptionalString.write(value.`deviceName`, buf)
+            FfiConverterOptionalString.write(value.`relay`, buf)
             FfiConverterULong.write(value.`expiresUnix`, buf)
             FfiConverterBoolean.write(value.`expired`, buf)
     }
@@ -4129,6 +4340,38 @@ public object FfiConverterOptionalTypeDeviceType: FfiConverterRustBuffer<DeviceT
 /**
  * @suppress
  */
+public object FfiConverterOptionalSequenceString: FfiConverterRustBuffer<List<kotlin.String>?> {
+    override fun read(buf: ByteBuffer): List<kotlin.String>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceString.read(buf)
+    }
+
+    override fun allocationSize(value: List<kotlin.String>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<kotlin.String>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -4263,6 +4506,19 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     uniffiRustCallWithError(WoooshException) { _status ->
     UniffiLib.INSTANCE.uniffi_wooosh_core_fn_func_fingerprint_phrase_for(
         FfiConverterByteArray.lower(`pubkey`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Parse a `wooosh-net:1?...` ticket without redeeming it.
+         */
+    @Throws(WoooshException::class) fun `parseInternetTicket`(`ticket`: kotlin.String): TicketInfo {
+            return FfiConverterTypeTicketInfo.lift(
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_func_parse_internet_ticket(
+        FfiConverterString.lower(`ticket`),_status)
 }
     )
     }

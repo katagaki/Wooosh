@@ -8,9 +8,11 @@
 use crate::api::{
     CoreEvent, DeviceType, FileKind, OfferedFile, TransferDirection, TrustedPeer, Visibility,
 };
+use crate::conn::{Conn, ConnErr, ReadErr, RecvStream, SendStream};
 use crate::control::{FileMeta, Msg, ResumeHave, StreamHeader, MAX_FRAME, PROTOCOL_VERSION};
 use crate::error::{close_codes, WoooshError};
 use crate::identity::{self, Identity};
+use crate::inet::{self, NetTicket, TicketPending};
 use crate::ledger::{rehash_prefix, Ledger, LedgerFile};
 use crate::pairing::{self, QrPayload, QrPending};
 use crate::sanitize;
@@ -35,6 +37,14 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const PAIR_CONNECT_TIMEOUT: Duration = Duration::from_secs(6);
 const DECISION_TIMEOUT: Duration = Duration::from_secs(120);
 const PAIR_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
+/// Internet dial budget (PROTOCOL.md §9.3). Longer than the LAN's 10 s: an
+/// iroh dial may have to reach the home relay, exchange candidates and try a
+/// hole punch before any packet flows.
+const NET_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+/// How long `begin_internet_ticket` waits for a home relay before publishing.
+/// Exceeding it is not fatal — the ticket still carries direct candidates —
+/// but a ticket with neither relay nor reachable candidate is useless.
+const RELAY_READY_TIMEOUT: Duration = Duration::from_secs(15);
 const SMALL_FILE_LIMIT: u64 = 1024 * 1024; // <1 MiB => pipelined
 const MAX_SLOTS: usize = 4;
 const CHUNK: usize = 1024 * 1024;
@@ -43,6 +53,8 @@ const PROGRESS_INTERVAL: u64 = 8 * 1024 * 1024;
 
 pub struct EngineConfig {
     pub bind_addr: SocketAddr,
+    /// Internet-path relay selection; see `inet::bind_endpoint`.
+    pub relay_urls: Option<Vec<String>>,
     pub staging_dir: PathBuf,
     pub trust_store_path: PathBuf,
     pub device_name: String,
@@ -64,7 +76,7 @@ struct RuntimeCfg {
 }
 
 pub struct Peer {
-    pub conn: quinn::Connection,
+    pub conn: Conn,
     pub pubkey: [u8; 32],
     pub device_id: String,
     pub trusted: AtomicBool,
@@ -153,6 +165,16 @@ pub struct Engine {
 struct Inner {
     identity: Identity,
     endpoint: quinn::Endpoint,
+    /// The runtime the engine was built on, so the synchronous `shutdown`
+    /// can still drive iroh's asynchronous close.
+    rt: tokio::runtime::Handle,
+    relay_urls: Option<Vec<String>>,
+    /// Internet path (PROTOCOL.md §9). Bound lazily on the first ticket
+    /// operation so a LAN-only install never talks to a relay. The async
+    /// mutex is deliberate: binding awaits, and two concurrent ticket calls
+    /// must not bind two endpoints on the same key.
+    iroh: tokio::sync::Mutex<Option<iroh::Endpoint>>,
+    ticket_pending: Mutex<Option<TicketPending>>,
     local_addr: SocketAddr,
     cfg: Mutex<RuntimeCfg>,
     trust: TrustStore,
@@ -218,15 +240,12 @@ fn kind_for_mime(mime: &str) -> FileKind {
 /// would often be lost. Translating the code gives shells the real reason
 /// instead of a generic "connection lost". `None` when the connection is still
 /// open, closed at the transport level, or carries an unknown code.
-fn close_reason_error(conn: &quinn::Connection) -> Option<WoooshError> {
+fn close_reason_error(conn: &Conn) -> Option<WoooshError> {
     app_close_error(&conn.close_reason()?)
 }
 
-fn app_close_error(err: &quinn::ConnectionError) -> Option<WoooshError> {
-    let quinn::ConnectionError::ApplicationClosed(app) = err else {
-        return None;
-    };
-    Some(match u32::try_from(app.error_code.into_inner()).ok()? {
+fn app_close_error(err: &ConnErr) -> Option<WoooshError> {
+    Some(match err.app_code? {
         close_codes::PAIRING_REQUIRED => WoooshError::PairingRequired,
         close_codes::VERSION_MISMATCH => WoooshError::VersionMismatch,
         close_codes::QR_KEY_MISMATCH => WoooshError::QrKeyMismatch,
@@ -336,6 +355,10 @@ impl Engine {
             staging: cfg.staging_dir,
             events,
             peers: Mutex::new(HashMap::new()),
+            rt: tokio::runtime::Handle::current(),
+            relay_urls: cfg.relay_urls,
+            iroh: tokio::sync::Mutex::new(None),
+            ticket_pending: Mutex::new(None),
             qr_pending: Mutex::new(None),
             qr_waiters: Mutex::new(HashMap::new()),
             sas: Mutex::new(HashMap::new()),
@@ -361,6 +384,21 @@ impl Engine {
 
     pub fn shutdown(&self) {
         self.inner.endpoint.close(close_codes::BYE.into(), b"bye");
+        // Invalidate any outstanding ticket, then close the iroh endpoint.
+        // Merely dropping it makes iroh log an error and abort its socket, so
+        // the close is driven to completion (bounded) on the engine's runtime.
+        *self.inner.ticket_pending.lock().unwrap() = None;
+        let ep = self.inner.iroh.try_lock().ok().and_then(|mut g| g.take());
+        if let Some(ep) = ep {
+            if tokio::runtime::Handle::try_current().is_err() {
+                self.inner.rt.block_on(async {
+                    let _ = tokio::time::timeout(Duration::from_secs(2), ep.close()).await;
+                });
+            } else {
+                // block_on inside a runtime thread panics; settle for a spawn.
+                self.inner.rt.spawn(async move { ep.close().await });
+            }
+        }
     }
 
     /// The pinned set, for the shell's trust list (PROTOCOL.md §4.5).
@@ -452,13 +490,28 @@ impl Engine {
             .await
             .map_err(|e| PairFailure::new(e, Some(key)))?;
 
+        self.redeem_pair_token(peer, qr.token, key).await
+    }
+
+    /// Present a single-use pairing token on an established connection and
+    /// wait for `PAIR_ACCEPT` (PROTOCOL.md §4.2 steps 3–4).
+    ///
+    /// Shared verbatim by QR pairing on the LAN and ticket redemption over the
+    /// internet: the ceremony is identical once a channel exists, and the two
+    /// paths must never drift apart.
+    async fn redeem_pair_token(
+        &self,
+        peer: Arc<Peer>,
+        token: [u8; 32],
+        key: [u8; 32],
+    ) -> Result<String, PairFailure> {
         let (tx, rx) = oneshot::channel();
         self.inner
             .qr_waiters
             .lock()
             .unwrap()
             .insert(peer.device_id.clone(), tx);
-        peer.send_msg(Msg::PairRequest { token: Some(qr.token.to_vec()) });
+        peer.send_msg(Msg::PairRequest { token: Some(token.to_vec()) });
         // A rejecting peer sends PAIR_REJECT *and* closes with TOKEN_INVALID,
         // and `close()` discards buffered stream data, so the frame is often
         // lost. Race the reply against the close, otherwise a rejection reads
@@ -497,6 +550,114 @@ impl Engine {
                 Some(key),
             )),
         }
+    }
+
+    // ---------- internet path (PROTOCOL.md §9) ----------
+
+    /// Publish this device on iroh and mint a redeemable ticket.
+    ///
+    /// **The publisher is the receiver.** DESIGN.md §9.1 originally described
+    /// the sender minting the ticket, which inverts the LAN roles (the
+    /// connector is the sender and originates `OFFER`) and would have required
+    /// a second, reversed transfer path. Publishing from the receiver makes
+    /// the internet path the QR pairing flow with a relay instead of a camera:
+    /// receiver displays a capability, sender redeems it, connects, offers.
+    pub async fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
+        let ep = self.inner.iroh_endpoint().await?;
+        // A freshly bound endpoint knows neither its home relay nor its local
+        // interface addresses yet, and a ticket carrying neither cannot be
+        // dialled at all. Poll until there is something usable to publish,
+        // bounded so a network-less device still gets a (useless but honest)
+        // ticket rather than a hang. Which address counts depends on the mode:
+        // with relays on, the home relay is the one that works from anywhere;
+        // with relays off, only direct candidates can ever work.
+        let relays_off = self.inner.relay_urls.as_deref().is_some_and(|r| r.is_empty());
+        let deadline = Instant::now() + RELAY_READY_TIMEOUT;
+        let addr = loop {
+            let a = ep.addr();
+            let usable = if relays_off {
+                a.ip_addrs().any(|s| !s.ip().is_unspecified())
+            } else {
+                a.relay_urls().next().is_some()
+            };
+            if usable || Instant::now() >= deadline {
+                break a;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        };
+        let (pending, token) = TicketPending::new();
+        *self.inner.ticket_pending.lock().unwrap() = Some(pending);
+        let ticket = NetTicket {
+            version: 1,
+            node_id: self.inner.identity.public_key_bytes(),
+            token,
+            dn: Some(self.inner.cfg.lock().unwrap().device_name.clone()),
+            relay: addr.relay_urls().next().map(|u| u.to_string()),
+            // A wildcard address is not somewhere a peer can dial.
+            direct: addr
+                .ip_addrs()
+                .filter(|s| !s.ip().is_unspecified())
+                .map(|a| a.to_string())
+                .collect(),
+            expires_unix: inet::new_expiry_unix(),
+        };
+        Ok(ticket.encode())
+    }
+
+    /// Invalidate the outstanding ticket. A ticket the user has stopped
+    /// expecting must stop working immediately, not in two minutes.
+    pub fn end_internet_ticket(&self) {
+        *self.inner.ticket_pending.lock().unwrap() = None;
+    }
+
+    /// Redeem a ticket: dial its node over iroh, run the standard HELLO
+    /// exchange, then present the token to pair. Returns the peer_id, which
+    /// the caller passes straight to `send`.
+    pub async fn redeem_ticket(&self, ticket: &str) -> Result<String, WoooshError> {
+        match self.redeem_ticket_inner(ticket).await {
+            Ok(peer_id) => Ok(peer_id),
+            Err(f) => {
+                if !f.reported {
+                    self.inner.emit_pairing_failure(f.pubkey, f.err.to_string());
+                }
+                Err(f.err)
+            }
+        }
+    }
+
+    async fn redeem_ticket_inner(&self, ticket: &str) -> Result<String, PairFailure> {
+        let t = NetTicket::parse(ticket).map_err(|e| PairFailure::new(e, None))?;
+        let key = t.node_id;
+        if t.is_expired() {
+            return Err(PairFailure::new(
+                WoooshError::Pairing("ticket expired".into()),
+                Some(key),
+            ));
+        }
+        let fail = |e: WoooshError| PairFailure::new(e, Some(key));
+        let ep = self.inner.iroh_endpoint().await.map_err(fail)?;
+        let addr = t.endpoint_addr().map_err(fail)?;
+        let conn = tokio::time::timeout(NET_CONNECT_TIMEOUT, ep.connect(addr, transport::ALPN))
+            .await
+            .map_err(|_| fail(WoooshError::Connect("ticket connect timed out".into())))?
+            .map_err(|e| fail(WoooshError::Connect(format!("iroh connect: {e}"))))?;
+        let conn = Conn::Net(conn);
+        // iroh's handshake already authenticates the remote to exactly the
+        // EndpointId we dialled, so the ticket's node id *is* the pin. Assert
+        // it anyway: pinning must never be implicit in someone else's library
+        // (PROTOCOL.md §4.5, §9.3).
+        let presented = conn.peer_pubkey().map_err(fail)?;
+        if presented != key {
+            conn.close(close_codes::KEY_CHANGED, b"KEY_CHANGED");
+            self.inner.emit(CoreEvent::KeyChanged {
+                peer_id: identity::device_id_string_for(&key),
+                expected_pubkey: key.to_vec(),
+                presented_pubkey: Some(presented.to_vec()),
+            });
+            return Err(PairFailure::new(WoooshError::KeyChanged, Some(key)));
+        }
+        let peer = self.inner.clone().run_connection(conn, true).await.map_err(fail)?;
+        self.redeem_pair_token(peer, t.token, key).await
     }
 
     pub async fn connect_peer(
@@ -702,6 +863,48 @@ impl Inner {
             .ok_or_else(|| WoooshError::UnknownPeer(peer_id.to_string()))
     }
 
+    // ---------- internet endpoint ----------
+
+    /// The iroh endpoint, bound on first use (see `inet.rs` for why it is
+    /// lazy). Holding the async mutex across the bind is what keeps two
+    /// concurrent ticket calls from binding two endpoints on one key.
+    async fn iroh_endpoint(self: &Arc<Self>) -> Result<iroh::Endpoint, WoooshError> {
+        let mut guard = self.iroh.lock().await;
+        if let Some(ep) = guard.as_ref() {
+            return Ok(ep.clone());
+        }
+        let ep = inet::bind_endpoint(&self.identity, self.relay_urls.as_deref()).await?;
+        let inner = self.clone();
+        let accept_ep = ep.clone();
+        tokio::spawn(async move { inner.iroh_accept_loop(accept_ep).await });
+        *guard = Some(ep.clone());
+        Ok(ep)
+    }
+
+    /// Incoming iroh connections join the *same* connection lifecycle as LAN
+    /// ones: HELLO, visibility checks, trust, transfers. Nothing below this
+    /// line knows which transport it is on.
+    async fn iroh_accept_loop(self: Arc<Self>, ep: iroh::Endpoint) {
+        while let Some(incoming) = ep.accept().await {
+            let inner = self.clone();
+            tokio::spawn(async move {
+                let vis = inner.cfg.lock().unwrap().visibility.clone();
+                if matches!(vis, Visibility::Off) {
+                    incoming.ignore();
+                    return;
+                }
+                match incoming.await {
+                    Ok(conn) => {
+                        if let Err(e) = inner.clone().run_connection(Conn::Net(conn), false).await {
+                            log::debug!("incoming internet connection ended: {e}");
+                        }
+                    }
+                    Err(e) => log::debug!("iroh handshake failed: {e}"),
+                }
+            });
+        }
+    }
+
     // ---------- connections ----------
 
     async fn accept_loop(self: Arc<Self>) {
@@ -715,7 +918,7 @@ impl Inner {
                 }
                 match incoming.await {
                     Ok(conn) => {
-                        if let Err(e) = inner.clone().run_connection(conn, false).await {
+                        if let Err(e) = inner.clone().run_connection(Conn::Lan(conn), false).await {
                             log::debug!("incoming connection ended: {e}");
                         }
                     }
@@ -752,7 +955,7 @@ impl Inner {
         self: &Arc<Self>,
         hints: &[String],
         expected_pubkey: [u8; 32],
-    ) -> Result<quinn::Connection, WoooshError> {
+    ) -> Result<Conn, WoooshError> {
         let no_hints = || WoooshError::Connect("no hints in QR payload".into());
         if hints.is_empty() {
             return Err(no_hints());
@@ -768,7 +971,7 @@ impl Inner {
                 (idx, r)
             });
         }
-        let mut winner: Option<quinn::Connection> = None;
+        let mut winner: Option<Conn> = None;
         let mut best: Option<(usize, WoooshError)> = None;
         while let Some(joined) = set.join_next().await {
             match joined {
@@ -799,7 +1002,7 @@ impl Inner {
         set.abort_all();
         while let Some(joined) = set.join_next().await {
             if let Ok((_, Ok(conn))) = joined {
-                conn.close(close_codes::BYE.into(), b"bye");
+                conn.close(close_codes::BYE, b"bye");
             }
         }
         match winner {
@@ -817,7 +1020,7 @@ impl Inner {
         expected_pubkey: Option<[u8; 32]>,
         qr_context: bool,
         connect_timeout: Duration,
-    ) -> Result<quinn::Connection, WoooshError> {
+    ) -> Result<Conn, WoooshError> {
         let sockaddr: SocketAddr = tokio::net::lookup_host(addr)
             .await
             .map_err(|e| WoooshError::Connect(format!("resolve {addr}: {e}")))?
@@ -863,20 +1066,20 @@ impl Inner {
                     });
                     return Err(WoooshError::KeyChanged);
                 }
-                return Err(app_close_error(&e).unwrap_or(WoooshError::Connect(msg)));
+                return Err(app_close_error(&ConnErr::from(e)).unwrap_or(WoooshError::Connect(msg)));
             }
         };
-        Ok(conn)
+        Ok(Conn::Lan(conn))
     }
 
     /// Handshake bookkeeping + HELLO exchange, then spawn the long-lived
     /// reader / writer / uni-stream tasks. Returns the registered peer.
     async fn run_connection(
         self: Arc<Self>,
-        conn: quinn::Connection,
+        conn: Conn,
         is_client: bool,
     ) -> Result<Arc<Peer>, WoooshError> {
-        let pubkey = transport::peer_pubkey(&conn)?;
+        let pubkey = conn.peer_pubkey()?;
         let device_id = identity::device_id_string_for(&pubkey);
         let trusted = self.trust.contains(&pubkey);
 
@@ -923,12 +1126,12 @@ impl Inner {
                 (dn.clone(), dt.clone(), *v, device_id.clone())
             }
             _ => {
-                conn.close(close_codes::VERSION_MISMATCH.into(), b"expected HELLO");
+                conn.close(close_codes::VERSION_MISMATCH, b"expected HELLO");
                 return Err(WoooshError::Protocol("first message was not HELLO".into()));
             }
         };
         if peer_v < 1 {
-            conn.close(close_codes::VERSION_MISMATCH.into(), b"no common version");
+            conn.close(close_codes::VERSION_MISMATCH, b"no common version");
             return Err(WoooshError::VersionMismatch);
         }
         // Identity binding (PROTOCOL.md §4.1.1): the DeviceID announced in
@@ -941,7 +1144,7 @@ impl Inner {
             let claimed = <[u8; 16]>::try_from(claimed_device_id.as_slice())
                 .map(|id| identity::render_device_id(&id))
                 .unwrap_or_default();
-            conn.close(close_codes::KEY_CHANGED.into(), b"KEY_CHANGED");
+            conn.close(close_codes::KEY_CHANGED, b"KEY_CHANGED");
             if let Some(pinned) = self.trust.pinned_key_for_device_id(&claimed) {
                 self.emit(CoreEvent::KeyChanged {
                     peer_id: claimed,
@@ -959,7 +1162,7 @@ impl Inner {
         if !is_client && !trusted {
             let vis = self.cfg.lock().unwrap().visibility.clone();
             if matches!(vis, Visibility::PairedOnly) {
-                conn.close(close_codes::PAIRING_REQUIRED.into(), b"PAIRING_REQUIRED");
+                conn.close(close_codes::PAIRING_REQUIRED, b"PAIRING_REQUIRED");
                 return Err(WoooshError::PairingRequired);
             }
         }
@@ -970,7 +1173,11 @@ impl Inner {
         if trusted {
             // Remember where this pinned peer authenticated so a later
             // connect_peer(addr, None) can re-apply the pin itself (§4.5).
-            self.trust.note_addr(&pubkey, &conn.remote_address().to_string());
+            // Internet connections have no stable `ip:port` to record, and a
+            // relayed address recorded here would mis-pin a LAN dial later.
+            if let Some(addr) = conn.remote_address() {
+                self.trust.note_addr(&pubkey, &addr.to_string());
+            }
         }
 
         let (out_tx, out_rx) = mpsc::unbounded_channel();
@@ -1032,7 +1239,7 @@ impl Inner {
     async fn control_read_loop(
         self: Arc<Self>,
         peer: Arc<Peer>,
-        mut recv: quinn::RecvStream,
+        mut recv: RecvStream,
     ) -> Result<(), WoooshError> {
         loop {
             let Some(msg) = read_frame(&mut recv).await? else {
@@ -1045,14 +1252,14 @@ impl Inner {
     fn untrusted_violation(&self, peer: &Peer, what: &str) {
         log::warn!("untrusted peer {} sent {what}; closing", peer.device_id);
         peer.conn
-            .close(close_codes::UNTRUSTED_MSG.into(), b"message not allowed on untrusted channel");
+            .close(close_codes::UNTRUSTED_MSG, b"message not allowed on untrusted channel");
     }
 
     async fn dispatch(self: &Arc<Self>, peer: &Arc<Peer>, msg: Msg) -> Result<(), WoooshError> {
         let trusted = peer.trusted.load(Ordering::SeqCst);
         match msg {
             Msg::Hello { .. } => {} // late HELLO: ignore
-            Msg::Bye => peer.conn.close(close_codes::BYE.into(), b"bye"),
+            Msg::Bye => peer.conn.close(close_codes::BYE, b"bye"),
             Msg::Unknown { t } => peer.send_msg(Msg::ErrUnsupported { t }),
             Msg::ErrUnsupported { t } => {
                 log::warn!("peer {} does not support message t={t}", peer.device_id)
@@ -1060,15 +1267,26 @@ impl Inner {
 
             // ----- pairing -----
             Msg::PairRequest { token: Some(token) } => {
-                let ok = {
-                    let mut pending = self.qr_pending.lock().unwrap();
-                    match pending.as_mut() {
-                        Some(p) => p.redeem(&token),
-                        None => false,
+                // A token only redeems on the transport it was issued for. A
+                // QR is shown in the room; a ticket travels through a chat
+                // app. Letting either stand in for the other would widen the
+                // capability well beyond what the user authorized.
+                let ok = if peer.conn.is_internet() {
+                    let mut pending = self.ticket_pending.lock().unwrap();
+                    let ok = pending.as_mut().map(|p| p.redeem(&token)).unwrap_or(false);
+                    if ok {
+                        *pending = None;
                     }
+                    ok
+                } else {
+                    let mut pending = self.qr_pending.lock().unwrap();
+                    let ok = pending.as_mut().map(|p| p.redeem(&token)).unwrap_or(false);
+                    if ok {
+                        *pending = None;
+                    }
+                    ok
                 };
                 if ok {
-                    *self.qr_pending.lock().unwrap() = None;
                     let dn = self.pin_peer(peer)?;
                     peer.send_msg(Msg::PairAccept);
                     self.emit(CoreEvent::PairingResult {
@@ -1080,7 +1298,7 @@ impl Inner {
                     });
                 } else {
                     peer.send_msg(Msg::PairReject);
-                    peer.conn.close(close_codes::TOKEN_INVALID.into(), b"TOKEN_INVALID");
+                    peer.conn.close(close_codes::TOKEN_INVALID, b"TOKEN_INVALID");
                 }
             }
             Msg::PairRequest { token: None } => {
@@ -1133,7 +1351,7 @@ impl Inner {
             Msg::Offer { tid, files, total, note } => {
                 let vis = self.cfg.lock().unwrap().visibility.clone();
                 if !trusted && !matches!(vis, Visibility::Everyone) {
-                    peer.conn.close(close_codes::PAIRING_REQUIRED.into(), b"PAIRING_REQUIRED");
+                    peer.conn.close(close_codes::PAIRING_REQUIRED, b"PAIRING_REQUIRED");
                     return Ok(());
                 }
                 self.handle_offer(peer, tid, files, total, note)?;
@@ -1266,12 +1484,13 @@ impl Inner {
     fn pin_peer(&self, peer: &Arc<Peer>) -> Result<String, WoooshError> {
         let dn = peer.dn.lock().unwrap().clone();
         let dt = peer.dt.lock().unwrap().clone();
-        let addr = peer.conn.remote_address().to_string();
+        // §4.5 `last_addr` is a LAN-only hint; see the note in run_connection.
+        let addr = peer.conn.remote_address().map(|a| a.to_string());
         self.trust.insert(
             &peer.pubkey,
             &dn,
             if dt.is_empty() { None } else { Some(dt.as_str()) },
-            Some(addr.as_str()),
+            addr.as_deref(),
         )?;
         peer.trusted.store(true, Ordering::SeqCst);
         Ok(dn)
@@ -1677,7 +1896,7 @@ impl Inner {
     async fn handle_file_stream(
         self: &Arc<Self>,
         peer: Arc<Peer>,
-        mut stream: quinn::RecvStream,
+        mut stream: RecvStream,
     ) -> Result<(), WoooshError> {
         loop {
             let Some(hlen) = read_u32_or_eof(&mut stream).await? else {
@@ -1695,11 +1914,11 @@ impl Inner {
 
             let rt = self.recvs.lock().unwrap().get(&header.tid).cloned();
             let Some(rt) = rt else {
-                let _ = stream.stop(quinn::VarInt::from_u32(close_codes::UNTRUSTED_MSG));
+                stream.stop(close_codes::UNTRUSTED_MSG);
                 return Err(WoooshError::Protocol("stream for unknown transfer".into()));
             };
             if rt.peer_pubkey != peer.pubkey {
-                let _ = stream.stop(quinn::VarInt::from_u32(close_codes::UNTRUSTED_MSG));
+                stream.stop(close_codes::UNTRUSTED_MSG);
                 return Err(WoooshError::Protocol("stream from wrong sender".into()));
             }
             let accepted = {
@@ -1709,7 +1928,7 @@ impl Inner {
             if !accepted {
                 // Sender must not open file streams before DECISION
                 // (PROTOCOL.md §5).
-                let _ = stream.stop(quinn::VarInt::from_u32(close_codes::UNTRUSTED_MSG));
+                stream.stop(close_codes::UNTRUSTED_MSG);
                 return Err(WoooshError::Protocol("stream for unaccepted file".into()));
             }
             self.receive_one_file(&peer, &rt, &header, &mut stream).await?;
@@ -1724,7 +1943,7 @@ impl Inner {
         peer: &Arc<Peer>,
         rt: &Arc<RecvTransfer>,
         header: &StreamHeader,
-        stream: &mut quinn::RecvStream,
+        stream: &mut RecvStream,
     ) -> Result<(), WoooshError> {
         let fid = header.fid;
         let (size, expected_b3, mut hasher, verified_off, mime) = {
@@ -2192,7 +2411,7 @@ impl Inner {
                         let off = offsets.get(&fid).copied().unwrap_or(0);
                         inner.send_one_file(&st, &peer, fid, off, Some(&mut stream)).await?;
                     }
-                    let _ = stream.finish();
+                    stream.finish();
                 }
                 Ok::<(), WoooshError>(())
             }));
@@ -2249,10 +2468,10 @@ impl Inner {
         peer: &Arc<Peer>,
         fid: u32,
         off: u64,
-        shared: Option<&mut quinn::SendStream>,
+        shared: Option<&mut SendStream>,
     ) -> Result<(), WoooshError> {
         let mut own_stream = None;
-        let stream: &mut quinn::SendStream = match shared {
+        let stream: &mut SendStream = match shared {
             Some(s) => s,
             None => {
                 own_stream = Some(
@@ -2321,7 +2540,7 @@ impl Inner {
             }
         }
         if let Some(mut s) = own_stream {
-            let _ = s.finish();
+            s.finish();
         }
         Ok(())
     }
@@ -2329,16 +2548,16 @@ impl Inner {
 
 // ---------- stream framing helpers ----------
 
-async fn read_u32_or_eof(stream: &mut quinn::RecvStream) -> Result<Option<u32>, WoooshError> {
+async fn read_u32_or_eof(stream: &mut RecvStream) -> Result<Option<u32>, WoooshError> {
     let mut b = [0u8; 4];
     match stream.read_exact(&mut b).await {
         Ok(()) => Ok(Some(u32::from_be_bytes(b))),
-        Err(quinn::ReadExactError::FinishedEarly(0)) => Ok(None),
+        Err(ReadErr::FinishedEarly(0)) => Ok(None),
         Err(e) => Err(WoooshError::Protocol(format!("frame length: {e}"))),
     }
 }
 
-async fn read_frame(recv: &mut quinn::RecvStream) -> Result<Option<Msg>, WoooshError> {
+async fn read_frame(recv: &mut RecvStream) -> Result<Option<Msg>, WoooshError> {
     let Some(len) = read_u32_or_eof(recv).await? else {
         return Ok(None);
     };
@@ -2352,7 +2571,7 @@ async fn read_frame(recv: &mut quinn::RecvStream) -> Result<Option<Msg>, WoooshE
     Msg::decode(&body).map(Some).map_err(WoooshError::Protocol)
 }
 
-async fn write_frame(send: &mut quinn::SendStream, msg: &Msg) -> Result<(), WoooshError> {
+async fn write_frame(send: &mut SendStream, msg: &Msg) -> Result<(), WoooshError> {
     let body = msg.encode();
     send.write_all(&(body.len() as u32).to_be_bytes())
         .await
@@ -2363,13 +2582,13 @@ async fn write_frame(send: &mut quinn::SendStream, msg: &Msg) -> Result<(), Wooo
     Ok(())
 }
 
-async fn write_loop(mut send: quinn::SendStream, mut rx: mpsc::UnboundedReceiver<Msg>) {
+async fn write_loop(mut send: SendStream, mut rx: mpsc::UnboundedReceiver<Msg>) {
     while let Some(msg) = rx.recv().await {
         if write_frame(&mut send, &msg).await.is_err() {
             return;
         }
     }
-    let _ = send.finish();
+    send.finish();
 }
 
 #[cfg(test)]

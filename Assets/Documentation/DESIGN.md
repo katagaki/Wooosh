@@ -133,7 +133,10 @@ trusted_peers() -> [TrustedPeer]         // the pinned set, read from the trust 
 revoke_peer(pubkey) -> bool              // un-pin; next contact is untrusted again
 fingerprint_phrase_for(pubkey) -> String // 6-word verification phrase; shells never reimplement the wordlist
 device_id_for(pubkey) -> String          // rendered DeviceID == the peer_id used in events
-redeem_ticket(ticket: String)            // iroh internet path, §9
+begin_internet_ticket() -> String         // receiver publishes an iroh ticket, §9.1
+end_internet_ticket()                     // withdraw it immediately
+redeem_ticket(ticket: String) -> peer_id  // sender redeems, connects, then send(), §9.1
+parse_internet_ticket(ticket) -> TicketInfo // label the UI before redeeming
 
 // Event stream (core → shell), the single source of UI truth
 PeerAppeared   { peer, discovered_at }   // core assigns the ordering timestamp
@@ -173,6 +176,8 @@ Pinning itself is *not* delegated to the shell: passing `expected_pubkey = null`
 | `start` | the host `KeyStore` (invoked **synchronously, on the calling thread**), then binding the QUIC endpoint |
 | `pair_with_qr` | full QUIC handshake + PAIR_ACCEPT — worst case ≈10 s per address hint + 20 s reply timeout |
 | `connect_peer` | QUIC handshake + HELLO exchange — up to ≈10 s on an unreachable address |
+| `begin_internet_ticket` | binding the iroh endpoint on first use, then up to ~15 s discovering a home relay — also the first moment Wooosh contacts any relay |
+| `redeem_ticket` | binding the iroh endpoint, a ≈30 s hole-punch/dial budget, then the 20 s pairing-reply timeout |
 | `send` / `resume_transfer` | the core runtime while the transfer is registered (streaming itself is asynchronous) |
 | `stop` | ≈2 s runtime shutdown, then joining the event thread |
 
@@ -267,9 +272,15 @@ Ranked; ship in this order. All of them reuse the exact same pairing trust model
 ### 9.1 Primary: iroh tickets (internet P2P, free public relays)
 [iroh](https://iroh.computer) is a Rust QUIC stack whose node identity *is* an Ed25519 key — the same shape as Wooosh's identity (PROTOCOL.md §2). It performs NAT hole punching with relay-assisted rendezvous, falling back to relaying E2E-encrypted traffic through n0's free public relay infrastructure when punching fails (symmetric NAT, CGNAT on mobile data). Nothing to deploy; traffic stays end-to-end encrypted so relays see only ciphertext.
 
-UX: sender taps **Share via internet** → app generates a **ticket** (compact string / QR encoding node ID + relay hint). Receiver pastes/scans it in **Receive from internet** → direct QUIC connection → identical OFFER/ACCEPT flow, plus SAS verification since the peers may be unpaired. Works across accounts, networks, and mobile data. The ticket is exchanged over any channel the users already share (Messages, email, in person).
+**The receiver publishes the ticket; the sender redeems it.** An earlier draft of this section had it the other way round, which inverts the LAN roles — there the connector is always the sender and originates `OFFER` — and would have forced a second, mirror-image transfer path. Publishing from the receiver makes the internet path the QR pairing flow with a relay in place of a camera, so one engine serves both. Ticket format and the full flow are normative in PROTOCOL.md §9.
 
-Trade-off: dependency on n0's public relay availability (mitigated: relay URL is a config value; users *can* point at any relay, including a self-hosted one, but never need to).
+UX: receiver taps **Receive from internet** → Wooosh publishes a **ticket** (compact string, also renderable as a QR: identity key + one-time token + relay hint + expiry). Sender pastes or scans it in **Share via internet** → QUIC connection → the same pairing and OFFER/ACCEPT flow as on the LAN. Works across accounts, networks, and mobile data. The ticket travels over any channel the users already share (Messages, email, in person).
+
+Because the ticket carries the publisher's identity key out of band, the internet path inherits the QR ceremony's MITM resistance; SAS (PROTOCOL.md §4.3) is also available over iroh, deriving from the same TLS exporter, for anyone who wants to compare digits.
+
+The iroh endpoint is bound **lazily**, on the first ticket operation. A user who only ever shares on a LAN never contacts a relay.
+
+Trade-off: dependency on n0's public relay availability (mitigated: `Config.relay_urls` selects relays — `null` = n0's public set, an empty list = direct/hole-punched only with no relay contact at all, an explicit list = chosen or self-hosted relays).
 
 ### 9.2 Power-user: Tailscale as the network
 If both users run Tailscale and share nodes across their tailnets (Tailscale's built-in cross-account node sharing invite — free tier), each device just has a stable WireGuard-encrypted IP. Wooosh needs almost nothing: listen on all interfaces (already true) and offer **Add device manually** (`add_manual_peer(host)`) accepting a Tailscale IP/MagicDNS name. mDNS doesn't cross tailnets, so discovery is manual, but pairing and transfer are unchanged — and Wooosh's E2E crypto still applies on top of WireGuard. Zero code beyond the manual-add field; document it as a recipe.

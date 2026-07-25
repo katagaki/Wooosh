@@ -71,6 +71,11 @@ if [ -n "$NDK_ROOT" ] && [ -d "$NDK_ROOT" ]; then
     export ANDROID_NDK_HOME="$NDK_ROOT"
     rm -rf dist/jniLibs
     cargo ndk -t arm64-v8a -t x86_64 -o dist/jniLibs build --release -p wooosh-core
+    # cargo-ndk copies every .so it finds, including cdylib artifacts of
+    # dependencies (iroh ships one). wooosh_core links them statically — it
+    # NEEDs only libdl/libm/libc — so shipping those would add megabytes of
+    # dead weight to every APK.
+    find dist/jniLibs -name '*.so' ! -name 'libwooosh_core.so' -delete
 else
     echo "!! no Android NDK found — skipping jniLibs" >&2
 fi

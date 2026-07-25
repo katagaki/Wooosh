@@ -10,6 +10,7 @@ Specs are authoritative and kept in sync with the code: [Assets/Documentation/DE
 | `Core/` | Rust workspace: `wooosh-core` (UniFFI) + `wooosh-cli`. Owns pairing, crypto, transfers. |
 | `Apple/` | SwiftUI, iOS + macOS, one app target plus a share extension and the FFI framework. |
 | `Android/` | Kotlin + Compose. |
+| `ci_scripts/` | Xcode Cloud hooks. `ci_post_clone.sh` installs Rust and builds the xcframework, which is gitignored and so absent from a fresh clone. Must stay executable (`100755`). |
 | `Assets/Documentation/` | All specs and generated docs. Nothing lives in a top-level `docs/`. |
 | `Assets/Screenshots/` | All screenshots, under `Apple/` and `Android/`. Never inside the platform folders. |
 | Windows | Not started. Needs a Windows machine. |
@@ -25,6 +26,8 @@ xcodebuild build -project Wooosh.xcodeproj -scheme Wooosh -destination 'platform
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
 ```
 After changing `Core/src`, run `Core/build-bindings.sh`. Apple references `Core/` in place and updates itself; **Android copies**, so re-copy the Kotlin bindings and `jniLibs` into `Android/app/src/main/` or the app silently keeps running an old core.
+
+`build-bindings.sh` succeeding does **not** mean the apps link. It builds a static library; it never links one into an app. A Rust crate's `#[link(kind = "framework")]` directives do not survive into the `.a`, so any Apple framework a dependency needs must be added to `OTHER_LDFLAGS` on the `WoooshCoreFFI` target by hand. Currently `SystemConfiguration` and `Network`, both pulled in by iroh. Always build both Apple destinations after touching `Core`.
 
 ## Rules
 

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Near wing: full width and fully opaque, so it reads as closest. -->
+  <path d="M 872 158 L 128 452 Q 116 462 130 470 L 372 742 Z" fill="#ffffff"/>
+</svg>

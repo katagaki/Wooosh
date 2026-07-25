@@ -365,6 +365,11 @@ void*_Nonnull uniffi_wooosh_core_fn_constructor_woooshcore_new(RustCallStatus *_
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_BEGIN_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_BEGIN_INTERNET_TICKET
+RustBuffer uniffi_wooosh_core_fn_method_woooshcore_begin_internet_ticket(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_BEGIN_PAIRING_QR
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_BEGIN_PAIRING_QR
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_begin_pairing_qr(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -390,6 +395,11 @@ RustBuffer uniffi_wooosh_core_fn_method_woooshcore_connect_peer(void*_Nonnull pt
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_device_id(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_END_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_END_INTERNET_TICKET
+void uniffi_wooosh_core_fn_method_woooshcore_end_internet_ticket(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_FINGERPRINT_PHRASE
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_FINGERPRINT_PHRASE
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_fingerprint_phrase(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -408,6 +418,11 @@ RustBuffer uniffi_wooosh_core_fn_method_woooshcore_pair_with_qr(void*_Nonnull pt
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_PUBLIC_KEY
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_PUBLIC_KEY
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_public_key(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_REDEEM_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_REDEEM_TICKET
+RustBuffer uniffi_wooosh_core_fn_method_woooshcore_redeem_ticket(void*_Nonnull ptr, RustBuffer ticket, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_REQUEST_SAS_PAIRING
@@ -463,6 +478,11 @@ RustBuffer uniffi_wooosh_core_fn_func_device_id_for(RustBuffer pubkey, RustCallS
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_FINGERPRINT_PHRASE_FOR
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_FINGERPRINT_PHRASE_FOR
 RustBuffer uniffi_wooosh_core_fn_func_fingerprint_phrase_for(RustBuffer pubkey, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_PARSE_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_PARSE_INTERNET_TICKET
+RustBuffer uniffi_wooosh_core_fn_func_parse_internet_ticket(RustBuffer ticket, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_PARSE_PAIRING_QR
@@ -762,6 +782,12 @@ uint16_t uniffi_wooosh_core_checksum_func_fingerprint_phrase_for(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_PARSE_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_PARSE_INTERNET_TICKET
+uint16_t uniffi_wooosh_core_checksum_func_parse_internet_ticket(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_PARSE_PAIRING_QR
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_PARSE_PAIRING_QR
 uint16_t uniffi_wooosh_core_checksum_func_parse_pairing_qr(void
@@ -783,6 +809,12 @@ uint16_t uniffi_wooosh_core_checksum_method_keystore_load_identity(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_KEYSTORE_STORE_IDENTITY
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_KEYSTORE_STORE_IDENTITY
 uint16_t uniffi_wooosh_core_checksum_method_keystore_store_identity(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_BEGIN_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_BEGIN_INTERNET_TICKET
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket(void
     
 );
 #endif
@@ -816,6 +848,12 @@ uint16_t uniffi_wooosh_core_checksum_method_woooshcore_device_id(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_END_INTERNET_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_END_INTERNET_TICKET
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_FINGERPRINT_PHRASE
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_FINGERPRINT_PHRASE
 uint16_t uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase(void
@@ -837,6 +875,12 @@ uint16_t uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_PUBLIC_KEY
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_PUBLIC_KEY
 uint16_t uniffi_wooosh_core_checksum_method_woooshcore_public_key(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_REDEEM_TICKET
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_REDEEM_TICKET
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket(void
     
 );
 #endif
