@@ -28,6 +28,7 @@ import kotlinx.coroutines.withContext
 import uniffi.wooosh_core.WoooshException
 import uniffi.wooosh_core.deviceIdFor as ffiDeviceIdFor
 import uniffi.wooosh_core.fingerprintPhraseFor as ffiFingerprintPhraseFor
+import uniffi.wooosh_core.parseInternetTicket
 import uniffi.wooosh_core.parsePairingQr
 import uniffi.wooosh_core.CoreEvent as FfiEvent
 import uniffi.wooosh_core.CoreEventListener as FfiListener
@@ -293,6 +294,84 @@ class RealCore(
         }
     }
 
+    // ---------------------------------------------------------------- internet path
+
+    override suspend fun beginInternetTicket(): String = withContext(Dispatchers.IO) {
+        // Binds the iroh endpoint and blocks on a home relay for as long as ~15 s.
+        try {
+            ffi.beginInternetTicket()
+        } catch (e: Throwable) {
+            Log.w(TAG, "beginInternetTicket failed", e)
+            throw CoreException(userMessage(e), e)
+        }
+    }
+
+    override suspend fun setRelayUrls(urls: List<String>?) = withContext(Dispatchers.IO) {
+        // Closing the bound iroh endpoint is an asynchronous shutdown the core drives
+        // with block_on, so this never belongs on the main thread.
+        try {
+            ffi.setRelayUrls(urls)
+        } catch (e: Throwable) {
+            Log.w(TAG, "setRelayUrls($urls) failed", e)
+            throw CoreException(userMessage(e), e)
+        }
+    }
+
+    override fun endInternetTicket() {
+        scope.launch(Dispatchers.IO) {
+            runCatching { ffi.endInternetTicket() }
+                .onFailure { Log.w(TAG, "endInternetTicket failed", it) }
+        }
+    }
+
+    /** Pure core function: no engine, no I/O, safe to call from anywhere. */
+    override fun parseTicket(ticket: String): TicketInfo? =
+        runCatching { parseInternetTicket(ticket.trim()) }
+            .getOrNull()
+            ?.let {
+                TicketInfo(
+                    deviceId = it.deviceId,
+                    publicKey = it.nodeId,
+                    deviceName = it.deviceName,
+                    relay = it.relay,
+                    expired = it.expired,
+                )
+            }
+
+    override fun redeemTicket(ticket: String) {
+        scope.launch(Dispatchers.IO) {
+            // Parsed only for the failure path: on success the core's own PairingResult
+            // carries the pinned key.
+            val info = parseTicket(ticket)
+            Log.i(TAG, "redeemTicket: parsed=${info != null} peer=${info?.deviceId} relay=${info?.relay}")
+            val startedAt = SystemClock.elapsedRealtime()
+            try {
+                val peerId = ffi.redeemTicket(ticket.trim())
+                Log.i(TAG, "redeemTicket: paired with $peerId after ${elapsed(startedAt)}")
+            } catch (e: Throwable) {
+                // The core emits no PairingResult when the blocking call throws, so this
+                // is the only failure signal.
+                Log.w(TAG, "redeemTicket failed after ${elapsed(startedAt)}", e)
+                _events.emit(
+                    CoreEvent.PairingResult(
+                        peerId = info?.deviceId.orEmpty(),
+                        peer = info?.let {
+                            PeerRef(
+                                id = it.deviceId,
+                                displayName = it.deviceName ?: it.deviceId,
+                                fingerprint = fingerprintPhraseFor(it.publicKey) ?: it.deviceId,
+                                paired = false,
+                                publicKey = it.publicKey,
+                            )
+                        },
+                        success = false,
+                        message = pairingMessage(e),
+                    )
+                )
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- transfers
 
     override suspend fun connectPeer(addr: String, expectedPublicKey: ByteArray?): String =
@@ -404,6 +483,18 @@ class RealCore(
         is FfiEvent.PeerDisconnected -> CoreEvent.PeerDisconnected(event.peerId)
 
         is FfiEvent.PairingSas -> CoreEvent.PairingSas(peerRef(event.peerId), event.code)
+
+        is FfiEvent.TicketRedeemed -> CoreEvent.TicketRedeemed(
+            PeerRef(
+                id = event.peerId,
+                displayName = event.deviceName.ifBlank { event.peerId },
+                fingerprint = fingerprintPhraseFor(event.peerPubkey).orEmpty(),
+                // Never pinned: the internet path does not pair (PROTOCOL.md §9.4).
+                paired = false,
+                publicKey = event.peerPubkey,
+                deviceType = peerCache[event.peerId]?.deviceType,
+            )
+        )
 
         is FfiEvent.PairingResult -> {
             val cached = peerCache[event.peerId]
@@ -580,6 +671,7 @@ class RealCore(
      * log-shaped. Every case resolves to a real sentence; `error.message` stays in the log.
      */
     private fun messageRes(error: Throwable): Int = when (error) {
+        is WoooshException.RelayFileTooLarge -> R.string.error_relay_file_too_large
         is WoooshException.PairingRequired -> R.string.error_pairing_required
         is WoooshException.VersionMismatch -> R.string.error_version_mismatch
         is WoooshException.KeyChanged -> R.string.error_key_changed

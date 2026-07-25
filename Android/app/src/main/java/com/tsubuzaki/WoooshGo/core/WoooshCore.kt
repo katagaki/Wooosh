@@ -132,6 +132,42 @@ data class PairingCodeInfo(
 )
 
 /**
+ * A parsed `wooosh-net:1?…` internet ticket (PROTOCOL.md §9.2), read *without* dialling
+ * anything.
+ *
+ * Everything here is label material except [publicKey], which is the key the handshake is
+ * pinned to. That key arriving out of band is what makes the internet path MITM-proof
+ * with no extra ceremony.
+ */
+data class TicketInfo(
+    val deviceId: String,
+    val publicKey: ByteArray,
+    val deviceName: String?,
+    /** Home relay carried by the ticket; null when it has direct addresses only. */
+    val relay: String?,
+    val expired: Boolean,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is TicketInfo) return false
+        return deviceId == other.deviceId &&
+            deviceName == other.deviceName &&
+            relay == other.relay &&
+            expired == other.expired &&
+            publicKey.contentEquals(other.publicKey)
+    }
+
+    override fun hashCode(): Int {
+        var result = deviceId.hashCode()
+        result = 31 * result + (deviceName?.hashCode() ?: 0)
+        result = 31 * result + (relay?.hashCode() ?: 0)
+        result = 31 * result + expired.hashCode()
+        result = 31 * result + publicKey.contentHashCode()
+        return result
+    }
+}
+
+/**
  * Event stream (core -> shell), the single source of UI truth (DESIGN.md §4).
  *
  * This mirrors the shape of `uniffi.wooosh_core.CoreEvent` one-for-one; [RealCore]
@@ -155,6 +191,15 @@ sealed interface CoreEvent {
         val success: Boolean,
         val message: String?,
     ) : CoreEvent
+
+    /**
+     * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
+     *
+     * **Not a pairing.** Nothing is written to the trust store and the authorisation
+     * dies with the connection. This is what the sending screen waits on before handing
+     * over the files it staged.
+     */
+    data class TicketRedeemed(val peer: PeerRef) : CoreEvent
 
     data class TransferStarted(
         val transferId: TransferId,
@@ -284,6 +329,48 @@ interface WoooshCore {
     fun requestSasPairing(peerId: String)
 
     fun confirmSas(peerId: String, accepted: Boolean)
+
+    // ---- internet path (DESIGN.md §9.1, PROTOCOL.md §9) ----
+
+    /**
+     * Publishes this device on the internet path and returns the `wooosh-net:1?…` ticket
+     * to render as a QR code.
+     *
+     * `suspend` because it is genuinely slow and genuinely consequential: the first call
+     * binds the iroh endpoint and waits up to ~15 s for a home relay, and it is the first
+     * moment Wooosh contacts a relay at all. Nothing calls it until the user asks.
+     */
+    suspend fun beginInternetTicket(): String
+
+    /**
+     * Invalidates the outstanding ticket. A ticket is a capability, so this runs when the
+     * user leaves the screen rather than waiting for the 120 s expiry.
+     */
+    fun endInternetTicket()
+
+    /**
+     * Sender-side internet path: dial the ticket's node, redeem its token, pin the key it
+     * was minted with. Returns immediately; the outcome arrives as
+     * [CoreEvent.PairingResult], exactly like [pairWithQr]. Budget for a minute: hole
+     * punching runs before the wait for PAIR_ACCEPT even starts.
+     */
+    fun redeemTicket(ticket: String)
+
+    /** Local parse, no network. Null when the payload is not a Wooosh ticket. */
+    fun parseTicket(ticket: String): TicketInfo?
+
+    /**
+     * Chooses the relays the internet path uses (DESIGN.md §9.1).
+     *
+     * - `null` — n0's free public relays.
+     * - `emptyList()` — no relay and no address lookup; nothing leaves this device
+     *   except to addresses carried in a ticket.
+     * - a list — a chosen or self-hosted relay. This device's tickets advertise it, so
+     *   a redeemer uses it without configuring anything.
+     *
+     * Throws [CoreException] on a malformed URL, leaving the working setting in place.
+     */
+    suspend fun setRelayUrls(urls: List<String>?)
 
     // ---- connections & transfers ----
 

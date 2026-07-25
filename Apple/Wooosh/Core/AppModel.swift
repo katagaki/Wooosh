@@ -82,6 +82,29 @@ final class AppModel {
     /// (PROTOCOL.md §4.5).
     var keyChangeWarning: KeyChangeWarning?
 
+    /// Set when a ticket redemption succeeds; read once via
+    /// `takeRedeemedPeerID()`.
+    private(set) var redeemedPeerID: String?
+
+    /// Peers authorised for this session by an internet ticket (PROTOCOL.md
+    /// §9.4). Session-scoped on purpose: the internet path never pairs, so this
+    /// must not outlive the process, and it is never written to disk.
+    @ObservationIgnored
+    private var ticketPeers: Set<String> = []
+
+    /// Set when someone redeems a ticket this device published, so the sending
+    /// screen knows to hand over its staged files.
+    private(set) var ticketRedeemedPeerID: String?
+
+    /// Files staged for an internet send, waiting for someone to scan the code.
+    @ObservationIgnored
+    private var internetOutbox: [URL] = []
+
+    /// Whether the in-flight attempt came from redeeming a ticket, so only
+    /// that path opens a send sheet on success.
+    @ObservationIgnored
+    private var pairingIsTicket = false
+
     /// Reason the last send attempt never produced a transfer (usually a
     /// connect failure — PAIRING_REQUIRED, unreachable, …).
     var lastSendError: String?
@@ -106,6 +129,12 @@ final class AppModel {
     /// per-hint timeouts, but the UI must never depend on them: if no event
     /// ever arrives, this is what stops the spinner from spinning forever.
     static let pairingTimeout: Duration = .seconds(30)
+
+    /// The internet path gets its own, longer ceiling. Redeeming a ticket can
+    /// spend ~30 s hole punching before the 20 s wait for PAIR_ACCEPT even
+    /// starts, so the LAN budget would report a working connection as a
+    /// failure.
+    static let ticketTimeout: Duration = .seconds(75)
     @ObservationIgnored
     private let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "app")
 
@@ -126,14 +155,51 @@ final class AppModel {
         }
     }
 
+    /// Relay selection for the internet path (DESIGN.md §9.1). Applied to the
+    /// core rather than only stored: it decides which endpoint gets bound the
+    /// next time a ticket is minted.
+    var relayPreference: RelayPreference {
+        didSet {
+            guard relayPreference != oldValue else { return }
+            UserDefaults.standard.set(relayPreference.mode.rawValue, forKey: Self.relayModeKey)
+            UserDefaults.standard.set(relayPreference.customURL, forKey: Self.relayURLKey)
+            applyRelayPreference()
+        }
+    }
+
+    /// Non-nil when the core refused the relay setting (a malformed URL). The
+    /// core keeps its previous working configuration in that case, so this is
+    /// a correction to make, not a broken state.
+    private(set) var relayError: String?
+
     private static let displayNameKey = "displayName"
     private static let visibilityKey = "visibility"
+    private static let relayModeKey = "relayMode"
+    private static let relayURLKey = "relayURL"
 
     init() {
         let defaults = UserDefaults.standard
         displayName = defaults.string(forKey: Self.displayNameKey) ?? Self.defaultDisplayName
         visibility = defaults.string(forKey: Self.visibilityKey)
             .flatMap(Visibility.init(rawValue:)) ?? .everyone
+        relayPreference = RelayPreference(
+            mode: defaults.string(forKey: Self.relayModeKey)
+                .flatMap(RelayMode.init(rawValue:)) ?? RelayPreference.default.mode,
+            customURL: defaults.string(forKey: Self.relayURLKey) ?? ""
+        )
+    }
+
+    private func applyRelayPreference() {
+        let value = relayPreference.coreValue
+        Task {
+            do {
+                try await core.setRelayURLs(value)
+                relayError = nil
+            } catch {
+                relayError = L.t("error_relay_url_invalid")
+                logger.error("setRelayURLs failed: \(coreErrorMessage(error))")
+            }
+        }
     }
 
     // MARK: - Lifecycle
@@ -184,6 +250,10 @@ final class AppModel {
         listenAddress = core.listenAddress ?? ""
         transfers.attach(core: core)
         trustStore.attach(core: core)
+        // The core starts on its own default (n0's public relays); push the
+        // stored preference before anything can mint a ticket. Free because
+        // the iroh endpoint is not bound until then.
+        applyRelayPreference()
         startEventPump()
     }
 
@@ -218,6 +288,8 @@ final class AppModel {
             pairingTimeoutTask?.cancel()
             pairingTimeoutTask = nil
             if success {
+                if pairingIsTicket { redeemedPeerID = peer.id }
+                pairingIsTicket = false
                 // Re-read the core's trust.json rather than mirroring the event
                 // shell-side. Runs even for an abandoned attempt: the pin is
                 // real either way.
@@ -234,6 +306,24 @@ final class AppModel {
                 activeSAS = nil
                 sasConfirming = false
             }
+        case .ticketRedeemed(let peer):
+            // Not a pairing: nothing is pinned, and the authorisation dies with
+            // the connection. The peer still enters the list so a transfer has
+            // somewhere to show, and is remembered for this session only so its
+            // offer can skip a consent sheet the user already gave by scanning.
+            ticketPeers.insert(peer.id)
+            registry.connected(peerID: peer.id, displayName: peer.displayName,
+                               deviceType: peer.deviceType, trusted: false)
+            ticketRedeemedPeerID = peer.id
+
+        case .incomingOffer(let tid, let from, let trusted, let manifest) where ticketPeers.contains(from.id):
+            // Scanning the code *was* the consent, so this offer does not get a
+            // second prompt. Forwarded as consented rather than as trusted:
+            // nothing about it is pinned.
+            transfers.handle(event: .incomingOffer(transferID: tid, from: from,
+                                                   trusted: true, manifest: manifest))
+            _ = trusted
+
         case .keyChanged(let peer, let expected, let presented):
             trustStore.markKeyChanged(deviceID: peer.id)
             keyChangeWarning = KeyChangeWarning(
@@ -260,6 +350,86 @@ final class AppModel {
         core.pairWithQR(payload: payload)
     }
 
+    /// One entry point for every code the user can scan or paste. Pairing
+    /// payloads and internet tickets look alike to a camera, so the scheme
+    /// decides which path runs rather than asking the user to pre-classify a
+    /// code they did not author.
+    func pairWithScannedCode(_ code: String) {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("wooosh-net:") else {
+            pairWithQR(payload: trimmed)
+            return
+        }
+        // A ticket scanned while the internet path is off: say so rather than
+        // dial. The user is holding a code that would work if they turned it
+        // on, which a generic pairing failure would not tell them.
+        guard relayPreference.internetEnabled else {
+            failPairing(L.t("error_internet_off"))
+            return
+        }
+        redeemTicket(trimmed)
+    }
+
+    /// Sender side of the internet path. Named from the ticket so the first
+    /// frame already says who is being dialled, exactly as the QR path does.
+    func redeemTicket(_ ticket: String) {
+        let name = core.peerHint(forTicket: ticket)?.displayName
+        beginPairingAttempt(peerName: name, timeout: Self.ticketTimeout)
+        pairingIsTicket = true
+        core.redeemTicket(ticket)
+    }
+
+    /// Consumes the DeviceID of a peer that just arrived by redeeming a ticket.
+    ///
+    /// Redeeming is reached by tapping a device row, so it means "I want to
+    /// send to this device". Handing the id back lets the list open the send
+    /// sheet straight away instead of making the user find the new row.
+    /// Reading it clears it, so one redemption opens one sheet.
+    func takeRedeemedPeerID() -> String? {
+        defer { redeemedPeerID = nil }
+        return redeemedPeerID
+    }
+
+    /// Mints an internet ticket for the other device to redeem.
+    ///
+    /// Throwing rather than swallowing: this is the one call that contacts a
+    /// relay, and a user who asked for an internet code and got silence has no
+    /// way to tell a slow relay from a broken one.
+    func beginInternetTicket() async throws -> String {
+        try await core.beginInternetTicket()
+    }
+
+    func endInternetTicket() {
+        core.endInternetTicket()
+        internetOutbox = []
+        ticketRedeemedPeerID = nil
+    }
+
+    /// Copies the picked files into outgoing staging and holds them until a
+    /// redeemer shows up. Returns false when nothing could be staged.
+    func stageInternetSend(urls: [URL]) -> Bool {
+        internetOutbox = stageOutgoing(urls: urls, securityScoped: true)
+        return !internetOutbox.isEmpty
+    }
+
+    /// Hands the staged files to whoever redeemed the ticket. The core refuses
+    /// this unless that peer really did redeem (PROTOCOL.md §9.4), so a stray
+    /// call cannot leak them.
+    @discardableResult
+    func completeInternetSend(to peerID: String) -> Transfer? {
+        guard !internetOutbox.isEmpty else { return nil }
+        let urls = internetOutbox
+        internetOutbox = []
+        ticketRedeemedPeerID = nil
+        let peer = PeerRef(id: peerID,
+                           displayName: registry.peer(forDeviceID: peerID)?.displayName
+                               ?? L.t("peer_unnamed"),
+                           deviceType: nil, fingerprint: "")
+        // `paired: false` is the truth here and drives the UI: an internet
+        // transfer is accept-once with nothing pinned.
+        return transfers.send(peer: peer, paired: false, urls: urls)
+    }
+
     func requestSASPairing(with peer: Peer) {
         beginPairingAttempt(peerName: peer.displayName)
         let generation = pairingGeneration
@@ -277,13 +447,14 @@ final class AppModel {
         }
     }
 
-    private func beginPairingAttempt(peerName: String?) {
+    private func beginPairingAttempt(peerName: String?, timeout: Duration = AppModel.pairingTimeout) {
+        pairingIsTicket = false
         pairingGeneration += 1
         let generation = pairingGeneration
         pairingPhase = .connecting(peerName: peerName)
         pairingTimeoutTask?.cancel()
         pairingTimeoutTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.pairingTimeout)
+            try? await Task.sleep(for: timeout)
             guard !Task.isCancelled, let self, self.pairingGeneration == generation,
                   self.pairingPhase.isConnecting
             else { return }
@@ -296,6 +467,7 @@ final class AppModel {
     /// landing afterwards is ignored instead of reopening a screen the user
     /// already left.
     func cancelPairing() {
+        pairingIsTicket = false
         pairingGeneration += 1
         pairingTimeoutTask?.cancel()
         pairingTimeoutTask = nil

@@ -32,6 +32,12 @@ class PairingManager(
     private val scope: CoroutineScope,
     private val core: WoooshCore,
     private val trustStore: TrustStore,
+    /**
+     * Whether the internet path is switched on (DESIGN.md §9.1). A lambda rather than a
+     * stored value: the setting changes while this manager lives, and reading it at the
+     * moment of use is the only way to be right.
+     */
+    private val internetEnabled: () -> Boolean = { true },
 ) {
 
     data class SasRequest(val peer: PeerRef, val code: String)
@@ -73,6 +79,23 @@ class PairingManager(
     private val _attempt = MutableStateFlow<Attempt?>(null)
     val attempt: StateFlow<Attempt?> = _attempt.asStateFlow()
 
+    /**
+     * DeviceID of a peer that just arrived by redeeming a ticket, consumed once by
+     * [takeRedeemedPeerId].
+     *
+     * Redeeming is reached by tapping a device row, so it means "I want to send to this
+     * device". Handing the id back lets the list open the send picker straight away
+     * instead of making the user find the new row.
+     */
+    private val _redeemedPeerId = MutableStateFlow<String?>(null)
+    val redeemedPeerId: StateFlow<String?> = _redeemedPeerId.asStateFlow()
+
+    fun takeRedeemedPeerId(): String? = _redeemedPeerId.value.also { _redeemedPeerId.value = null }
+
+    /** Whether the in-flight attempt came from a ticket, so only that path opens a send. */
+    @Volatile
+    private var attemptIsTicket = false
+
     /** Client-side deadline for the current attempt — the "no event ever arrives" net. */
     private var watchdog: Job? = null
 
@@ -87,6 +110,8 @@ class PairingManager(
                         _pendingSas.value = null
                         watchdog?.cancel()
                         if (event.success) {
+                            if (attemptIsTicket) _redeemedPeerId.value = event.peerId
+                            attemptIsTicket = false
                             // The core pinned it before emitting; re-read rather than guess.
                             val peers = trustStore.refreshNow()
                             val name = peers.firstOrNull { it.deviceId == event.peerId }
@@ -163,6 +188,59 @@ class PairingManager(
         }
     }
 
+    /**
+     * One entry point for every code the user can scan or paste. A pairing code and an
+     * internet ticket look identical to a camera, so the scheme decides which path runs
+     * rather than asking the user to classify a code they did not author.
+     */
+    fun pairWithScannedCode(payload: String) {
+        if (!payload.trim().startsWith(TICKET_SCHEME)) {
+            pairWithQr(payload)
+            return
+        }
+        // A ticket scanned while the internet path is off: say so rather than dial. The
+        // user is holding a code that would work if they turned it on, which a generic
+        // pairing failure would not tell them.
+        if (!internetEnabled()) {
+            failNow(
+                context.getString(R.string.peer_unnamed),
+                context.getString(R.string.error_internet_off),
+            )
+            return
+        }
+        redeemTicket(payload)
+    }
+
+    /**
+     * Internet path, sender side (PROTOCOL.md §9). Same shape as [pairWithQr]: reject a
+     * stale or malformed ticket locally, then hand the rest to the core and wait on its
+     * `PairingResult`.
+     */
+    fun redeemTicket(payload: String) {
+        val info = core.parseTicket(payload)
+        val name = info?.deviceName?.takeIf { it.isNotBlank() }
+            ?: info?.deviceId
+            ?: context.getString(R.string.peer_unnamed)
+        when {
+            info == null -> {
+                Log.w(TAG, "redeemTicket: payload is not a Wooosh internet code")
+                failNow(name, context.getString(R.string.error_pairing_not_a_code))
+            }
+
+            info.expired -> {
+                Log.w(TAG, "redeemTicket: ticket for ${info.deviceId} already expired")
+                failNow(name, context.getString(R.string.error_pairing_code_expired_detail))
+            }
+
+            else -> {
+                Log.i(TAG, "redeemTicket: dialling ${info.deviceId} relay=${info.relay}")
+                beginAttempt(name, TICKET_TIMEOUT_MS)
+                attemptIsTicket = true
+                core.redeemTicket(payload)
+            }
+        }
+    }
+
     fun confirmSas(accepted: Boolean) {
         val request = _pendingSas.value ?: return
         core.confirmSas(request.peer.id, accepted)
@@ -187,6 +265,7 @@ class PairingManager(
     fun cancelAttempt() {
         val abandoned = _attempt.value ?: return
         Log.i(TAG, "pairing attempt with ${abandoned.deviceName} cancelled by the user")
+        attemptIsTicket = false
         watchdog?.cancel()
         _attempt.value = null
     }
@@ -196,14 +275,15 @@ class PairingManager(
         if (_attempt.value?.state != AttemptState.CONNECTING) _attempt.value = null
     }
 
-    private fun beginAttempt(deviceName: String) {
+    private fun beginAttempt(deviceName: String, timeoutMs: Long = ATTEMPT_TIMEOUT_MS) {
+        attemptIsTicket = false
         watchdog?.cancel()
         _attempt.value = Attempt(deviceName, AttemptState.CONNECTING)
         watchdog = scope.launch {
-            delay(ATTEMPT_TIMEOUT_MS)
+            delay(timeoutMs)
             // Only fires when the core produced neither a result nor an error.
             if (_attempt.value?.state == AttemptState.CONNECTING) {
-                Log.w(TAG, "pairing with $deviceName timed out in the shell after ${ATTEMPT_TIMEOUT_MS}ms")
+                Log.w(TAG, "pairing with $deviceName timed out in the shell after ${timeoutMs}ms")
                 settle(
                     AttemptState.FAILED,
                     deviceName,
@@ -270,5 +350,14 @@ class PairingManager(
          * but working handshake into a false failure.
          */
         const val ATTEMPT_TIMEOUT_MS = 45_000L
+
+        /**
+         * The internet path gets its own, longer ceiling: redeeming a ticket can spend
+         * ~30 s hole punching before the 20 s wait for PAIR_ACCEPT even starts, so the
+         * LAN budget would report a working connection as a failure.
+         */
+        const val TICKET_TIMEOUT_MS = 75_000L
+
+        const val TICKET_SCHEME = "wooosh-net:"
     }
 }

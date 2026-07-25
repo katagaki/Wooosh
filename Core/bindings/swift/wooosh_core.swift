@@ -1197,6 +1197,27 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
      */
     func send(peerId: String, files: [String]) throws  -> String
     
+    /**
+     * Choose the relays the internet path uses (DESIGN.md §9.1).
+     *
+     * - `None` — n0's free public relays. Shared infrastructure with no
+     * uptime guarantee; fine because Wooosh only ever uses a relay to
+     * introduce two devices, never to carry file data.
+     * - `Some([])` — no relay and no address lookup. Nothing leaves this
+     * device except to addresses carried in a ticket.
+     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
+     * tickets advertise it, so a redeemer uses it with no configuration of
+     * their own.
+     *
+     * Takes effect on the next ticket operation, and invalidates any
+     * outstanding ticket, which advertises a relay that is no longer in use.
+     * Errors on a malformed URL without disturbing the current setting.
+     *
+     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
+     * endpoint, which is an asynchronous shutdown.
+     */
+    func setRelayUrls(urls: [String]?) throws 
+    
     func setVisibility(mode: Visibility) throws 
     
     /**
@@ -1514,6 +1535,32 @@ open func send(peerId: String, files: [String])throws  -> String  {
         FfiConverterSequenceString.lower(files),$0
     )
 })
+}
+    
+    /**
+     * Choose the relays the internet path uses (DESIGN.md §9.1).
+     *
+     * - `None` — n0's free public relays. Shared infrastructure with no
+     * uptime guarantee; fine because Wooosh only ever uses a relay to
+     * introduce two devices, never to carry file data.
+     * - `Some([])` — no relay and no address lookup. Nothing leaves this
+     * device except to addresses carried in a ticket.
+     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
+     * tickets advertise it, so a redeemer uses it with no configuration of
+     * their own.
+     *
+     * Takes effect on the next ticket operation, and invalidates any
+     * outstanding ticket, which advertises a relay that is no longer in use.
+     * Errors on a malformed URL without disturbing the current setting.
+     *
+     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
+     * endpoint, which is an asynchronous shutdown.
+     */
+open func setRelayUrls(urls: [String]?)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(self.uniffiClonePointer(),
+        FfiConverterOptionSequenceString.lower(urls),$0
+    )
+}
 }
     
 open func setVisibility(mode: Visibility)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -2286,7 +2333,15 @@ public enum CoreEvent {
      * Pairing concluded (QR or SAS; success, failure or timeout). `message`
      * is the peer's device name on success, the reason on failure.
      * `peer_pubkey` is the key that was (or would have been) pinned.
+     * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
+     *
+     * **Not a pairing.** Nothing is written to the trust store and the
+     * authorisation dies with the connection. This is the signal the sending
+     * shell waits on before handing over the files it staged when it showed
+     * the code.
      */
+    case ticketRedeemed(peerId: String, peerPubkey: Data, deviceName: String
+    )
     case pairingResult(peerId: String, peerPubkey: Data, fingerprint: String, success: Bool, message: String?
     )
     case incomingOffer(transferId: String, peerId: String, peerPubkey: Data, fromName: String, deviceType: DeviceType?, trusted: Bool, fingerprint: String, files: [OfferedFile], totalBytes: UInt64
@@ -2345,28 +2400,31 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
         case 3: return .pairingSas(peerId: try FfiConverterString.read(from: &buf), code: try FfiConverterString.read(from: &buf)
         )
         
-        case 4: return .pairingResult(peerId: try FfiConverterString.read(from: &buf), peerPubkey: try FfiConverterData.read(from: &buf), fingerprint: try FfiConverterString.read(from: &buf), success: try FfiConverterBool.read(from: &buf), message: try FfiConverterOptionString.read(from: &buf)
+        case 4: return .ticketRedeemed(peerId: try FfiConverterString.read(from: &buf), peerPubkey: try FfiConverterData.read(from: &buf), deviceName: try FfiConverterString.read(from: &buf)
         )
         
-        case 5: return .incomingOffer(transferId: try FfiConverterString.read(from: &buf), peerId: try FfiConverterString.read(from: &buf), peerPubkey: try FfiConverterData.read(from: &buf), fromName: try FfiConverterString.read(from: &buf), deviceType: try FfiConverterOptionTypeDeviceType.read(from: &buf), trusted: try FfiConverterBool.read(from: &buf), fingerprint: try FfiConverterString.read(from: &buf), files: try FfiConverterSequenceTypeOfferedFile.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf)
+        case 5: return .pairingResult(peerId: try FfiConverterString.read(from: &buf), peerPubkey: try FfiConverterData.read(from: &buf), fingerprint: try FfiConverterString.read(from: &buf), success: try FfiConverterBool.read(from: &buf), message: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 6: return .transferStarted(transferId: try FfiConverterString.read(from: &buf), peerId: try FfiConverterString.read(from: &buf), direction: try FfiConverterTypeTransferDirection.read(from: &buf), files: try FfiConverterSequenceTypeOfferedFile.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf)
+        case 6: return .incomingOffer(transferId: try FfiConverterString.read(from: &buf), peerId: try FfiConverterString.read(from: &buf), peerPubkey: try FfiConverterData.read(from: &buf), fromName: try FfiConverterString.read(from: &buf), deviceType: try FfiConverterOptionTypeDeviceType.read(from: &buf), trusted: try FfiConverterBool.read(from: &buf), fingerprint: try FfiConverterString.read(from: &buf), files: try FfiConverterSequenceTypeOfferedFile.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 7: return .progress(transferId: try FfiConverterString.read(from: &buf), fileId: try FfiConverterUInt32.read(from: &buf), bytesDone: try FfiConverterUInt64.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf), rateBps: try FfiConverterUInt64.read(from: &buf), etaSecs: try FfiConverterUInt64.read(from: &buf)
+        case 7: return .transferStarted(transferId: try FfiConverterString.read(from: &buf), peerId: try FfiConverterString.read(from: &buf), direction: try FfiConverterTypeTransferDirection.read(from: &buf), files: try FfiConverterSequenceTypeOfferedFile.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 8: return .fileReady(transferId: try FfiConverterString.read(from: &buf), fileId: try FfiConverterUInt32.read(from: &buf), stagedPath: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeFileKind.read(from: &buf)
+        case 8: return .progress(transferId: try FfiConverterString.read(from: &buf), fileId: try FfiConverterUInt32.read(from: &buf), bytesDone: try FfiConverterUInt64.read(from: &buf), totalBytes: try FfiConverterUInt64.read(from: &buf), rateBps: try FfiConverterUInt64.read(from: &buf), etaSecs: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 9: return .transferDone(transferId: try FfiConverterString.read(from: &buf), okFiles: try FfiConverterUInt32.read(from: &buf), failedFiles: try FfiConverterUInt32.read(from: &buf), bytesTransferred: try FfiConverterUInt64.read(from: &buf), durationMs: try FfiConverterUInt64.read(from: &buf)
+        case 9: return .fileReady(transferId: try FfiConverterString.read(from: &buf), fileId: try FfiConverterUInt32.read(from: &buf), stagedPath: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeFileKind.read(from: &buf)
         )
         
-        case 10: return .transferError(transferId: try FfiConverterString.read(from: &buf), error: try FfiConverterString.read(from: &buf), resumable: try FfiConverterBool.read(from: &buf)
+        case 10: return .transferDone(transferId: try FfiConverterString.read(from: &buf), okFiles: try FfiConverterUInt32.read(from: &buf), failedFiles: try FfiConverterUInt32.read(from: &buf), bytesTransferred: try FfiConverterUInt64.read(from: &buf), durationMs: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 11: return .keyChanged(peerId: try FfiConverterString.read(from: &buf), expectedPubkey: try FfiConverterData.read(from: &buf), presentedPubkey: try FfiConverterOptionData.read(from: &buf)
+        case 11: return .transferError(transferId: try FfiConverterString.read(from: &buf), error: try FfiConverterString.read(from: &buf), resumable: try FfiConverterBool.read(from: &buf)
+        )
+        
+        case 12: return .keyChanged(peerId: try FfiConverterString.read(from: &buf), expectedPubkey: try FfiConverterData.read(from: &buf), presentedPubkey: try FfiConverterOptionData.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2398,8 +2456,15 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             FfiConverterString.write(code, into: &buf)
             
         
-        case let .pairingResult(peerId,peerPubkey,fingerprint,success,message):
+        case let .ticketRedeemed(peerId,peerPubkey,deviceName):
             writeInt(&buf, Int32(4))
+            FfiConverterString.write(peerId, into: &buf)
+            FfiConverterData.write(peerPubkey, into: &buf)
+            FfiConverterString.write(deviceName, into: &buf)
+            
+        
+        case let .pairingResult(peerId,peerPubkey,fingerprint,success,message):
+            writeInt(&buf, Int32(5))
             FfiConverterString.write(peerId, into: &buf)
             FfiConverterData.write(peerPubkey, into: &buf)
             FfiConverterString.write(fingerprint, into: &buf)
@@ -2408,7 +2473,7 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .incomingOffer(transferId,peerId,peerPubkey,fromName,deviceType,trusted,fingerprint,files,totalBytes):
-            writeInt(&buf, Int32(5))
+            writeInt(&buf, Int32(6))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterString.write(peerId, into: &buf)
             FfiConverterData.write(peerPubkey, into: &buf)
@@ -2421,7 +2486,7 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .transferStarted(transferId,peerId,direction,files,totalBytes):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterString.write(peerId, into: &buf)
             FfiConverterTypeTransferDirection.write(direction, into: &buf)
@@ -2430,7 +2495,7 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .progress(transferId,fileId,bytesDone,totalBytes,rateBps,etaSecs):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterUInt32.write(fileId, into: &buf)
             FfiConverterUInt64.write(bytesDone, into: &buf)
@@ -2440,7 +2505,7 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .fileReady(transferId,fileId,stagedPath,kind):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterUInt32.write(fileId, into: &buf)
             FfiConverterString.write(stagedPath, into: &buf)
@@ -2448,7 +2513,7 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .transferDone(transferId,okFiles,failedFiles,bytesTransferred,durationMs):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(10))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterUInt32.write(okFiles, into: &buf)
             FfiConverterUInt32.write(failedFiles, into: &buf)
@@ -2457,14 +2522,14 @@ public struct FfiConverterTypeCoreEvent: FfiConverterRustBuffer {
             
         
         case let .transferError(transferId,error,resumable):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterString.write(transferId, into: &buf)
             FfiConverterString.write(error, into: &buf)
             FfiConverterBool.write(resumable, into: &buf)
             
         
         case let .keyChanged(peerId,expectedPubkey,presentedPubkey):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterString.write(peerId, into: &buf)
             FfiConverterData.write(expectedPubkey, into: &buf)
             FfiConverterOptionData.write(presentedPubkey, into: &buf)
@@ -2851,6 +2916,15 @@ public enum WoooshError: Swift.Error {
     
     case InvalidArgument(message: String)
     
+    /**
+     * Hole punching never produced a direct path, so the route to the peer
+     * runs through a relay, and at least one file is over the relayed size
+     * limit (DESIGN.md §9.1). Shells should name the limit rather than report
+     * a generic transfer failure: the same files would send fine on a direct
+     * connection, so this is about the route, not the files.
+     */
+    case RelayFileTooLarge(message: String)
+    
 }
 
 
@@ -2931,6 +3005,10 @@ public struct FfiConverterTypeWoooshError: FfiConverterRustBuffer {
             message: try FfiConverterString.read(from: &buf)
         )
         
+        case 17: return .RelayFileTooLarge(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -2974,6 +3052,8 @@ public struct FfiConverterTypeWoooshError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(15))
         case .InvalidArgument(_ /* message is ignored*/):
             writeInt(&buf, Int32(16))
+        case .RelayFileTooLarge(_ /* message is ignored*/):
+            writeInt(&buf, Int32(17))
 
         
         }
@@ -3278,6 +3358,20 @@ public func parsePairingQr(payload: String)throws  -> QrInfo  {
     )
 })
 }
+/**
+ * Largest single file Wooosh will move over a **relayed** internet connection
+ * (DESIGN.md §9.1). No limit applies on a direct path, which includes every
+ * LAN transfer and every internet transfer that hole punched.
+ *
+ * Exported so a shell can name the limit in its own copy instead of
+ * hardcoding a number that would drift the moment the core changed it.
+ */
+public func relayMaxFileBytes() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_wooosh_core_fn_func_relay_max_file_bytes($0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -3304,6 +3398,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 43743) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_coreeventlistener_on_event() != 57891) {
@@ -3364,6 +3461,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_send() != 57342) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls() != 8523) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_set_visibility() != 28146) {

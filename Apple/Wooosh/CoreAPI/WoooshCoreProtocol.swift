@@ -76,6 +76,21 @@ struct PeerRef: Hashable, Identifiable, Sendable {
     var symbolName: String { DeviceIcon.symbol(forCoreType: deviceType) }
 }
 
+/// A parsed `wooosh-net:1?…` internet ticket (PROTOCOL.md §9.2), read without
+/// dialling anything.
+///
+/// Everything here is label material except `publicKey`, which is the key the
+/// handshake is pinned to. That key arriving out of band is what makes the
+/// internet path MITM-proof with no extra ceremony.
+struct TicketInfo: Sendable {
+    let publicKey: Data
+    let deviceID: String
+    let deviceName: String?
+    /// Home relay in the ticket; nil when it carries direct addresses only.
+    let relay: String?
+    let expired: Bool
+}
+
 /// One pinned peer, read straight from the core's canonical trust store
 /// (PROTOCOL.md §4.5). The shell keeps no trust state of its own.
 struct TrustedPeerInfo: Hashable, Identifiable, Sendable {
@@ -138,6 +153,12 @@ enum CoreEvent: Sendable {
     /// Pairing completion signal (QR or SAS), used to dismiss pairing UI and
     /// update the trust list.
     case pairingResult(peer: PeerRef, success: Bool, message: String?)
+    /// A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
+    ///
+    /// **Not a pairing.** Nothing is written to the trust store and the
+    /// authorisation dies with the connection. This is what the sending screen
+    /// waits on before handing over the files it staged.
+    case ticketRedeemed(peer: PeerRef)
 }
 
 @MainActor
@@ -179,6 +200,47 @@ protocol WoooshCore: AnyObject {
     /// Initiate camera-less SAS pairing with a connected peer
     /// (PROTOCOL.md §4.3 step 1 — sending `PAIR_REQUEST {}`).
     func requestSASPairing(peerID: String)
+
+    // MARK: - Internet path (DESIGN.md §9.1, PROTOCOL.md §9)
+
+    /// Publishes this device on the internet path and returns the
+    /// `wooosh-net:1?…` ticket to render as QR/copyable text.
+    ///
+    /// Async because it is genuinely slow and genuinely consequential: the
+    /// first call binds the iroh endpoint and waits up to ~15 s for a home
+    /// relay, and it is the first moment Wooosh contacts a relay at all. That
+    /// is why nothing calls it until the user asks for a code.
+    func beginInternetTicket() async throws -> String
+
+    /// Invalidates the outstanding ticket. A ticket is a capability, so this
+    /// runs the moment the user leaves the screen rather than waiting for the
+    /// 120 s expiry.
+    func endInternetTicket()
+
+    /// Sender-side internet path: dial the ticket's node, redeem its token,
+    /// pin the key it was minted with. Resolves through a `pairingResult`
+    /// event exactly like `pairWithQR`.
+    func redeemTicket(_ ticket: String)
+
+    /// Reads the peer identity out of a ticket *without* connecting, so the UI
+    /// can name the device while the dial runs. Returns nil for anything that
+    /// is not a Wooosh ticket.
+    func peerHint(forTicket ticket: String) -> PeerRef?
+
+    /// Ticket details for a payload the shell needs to inspect before acting
+    /// on it (expiry, relay). Returns nil when the payload is not a ticket.
+    func ticketInfo(for ticket: String) -> TicketInfo?
+
+    /// Chooses the relays the internet path uses.
+    ///
+    /// - `nil` — n0's free public relays.
+    /// - `[]` — no relay and no address lookup; nothing leaves this device
+    ///   except to addresses carried in a ticket.
+    /// - a list — a chosen or self-hosted relay. This device's tickets
+    ///   advertise it, so a redeemer uses it without configuring anything.
+    ///
+    /// Throws on a malformed URL, leaving the working setting in place.
+    func setRelayURLs(_ urls: [String]?) async throws
 
     /// Connect to a resolved address (shell-side mDNS resolution, or the
     /// Tailscale / direct-IP path, DESIGN.md §9.2). Returns the peer id.

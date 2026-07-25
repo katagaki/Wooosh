@@ -861,28 +861,22 @@ fn internet_ticket_transfer_end_to_end() {
     );
 
     // Redeeming pins both ways, exactly like QR pairing.
-    let ok = wait_for(&s.rx, Duration::from_secs(20), "sender PairingResult", |e| match e {
-        CoreEvent::PairingResult { success, .. } => Some(*success),
+    // Redeeming authorises one session and pairs NOTHING (PROTOCOL.md §9.4).
+    // Both ends learn the peer through TicketRedeemed, never PairingResult.
+    let redeemer = wait_for(&s.rx, Duration::from_secs(20), "sender TicketRedeemed", |e| match e {
+        CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
         _ => None,
     });
-    assert!(ok);
-    let ok = wait_for(&r.rx, Duration::from_secs(20), "receiver PairingResult", |e| match e {
-        CoreEvent::PairingResult { success, .. } => Some(*success),
+    assert_eq!(redeemer, r.core.device_id().unwrap());
+    let publisher = wait_for(&r.rx, Duration::from_secs(20), "receiver TicketRedeemed", |e| match e {
+        CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
         _ => None,
     });
-    assert!(ok);
-    assert!(s
-        .core
-        .trusted_peers()
-        .unwrap()
-        .iter()
-        .any(|p| p.pubkey == r.core.public_key().unwrap()));
-    assert!(r
-        .core
-        .trusted_peers()
-        .unwrap()
-        .iter()
-        .any(|p| p.pubkey == s.core.public_key().unwrap()));
+    assert_eq!(publisher, s.core.device_id().unwrap());
+    // The load-bearing assertion of the whole model: an internet transfer
+    // leaves no trace in either trust store.
+    assert!(s.core.trusted_peers().unwrap().is_empty(), "redeeming wrote a pin");
+    assert!(r.core.trusted_peers().unwrap().is_empty(), "publishing wrote a pin");
 
     // …and then the ordinary transfer engine runs over it, unchanged.
     let src = tmp.path().join("net-payload.bin");
@@ -958,6 +952,100 @@ fn internet_ticket_is_single_use_and_revocable() {
     expect_pairing_failure(&s2, "withdrawn ticket");
 }
 
+/// The relay set is chosen at runtime, and a chosen relay is what a ticket
+/// advertises (DESIGN.md §9.1) — that is the mechanism by which a redeemer
+/// ends up on the publisher's own relay without configuring anything.
+#[test]
+fn relay_urls_are_settable_and_validated() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "relay-cfg", Visibility::Everyone);
+
+    // Started relay-free: the ticket can only carry direct candidates.
+    let ticket = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
+    assert!(ticket.relay.is_none(), "relay-free node advertised {:?}", ticket.relay);
+    assert!(!ticket.addrs.is_empty(), "relay-free node advertised no address to dial");
+
+    // A malformed URL is refused, and refusing must not disturb the working
+    // configuration — a typo in Settings cannot take the internet path down.
+    let err = r
+        .core
+        .set_relay_urls(Some(vec!["not a url".into()]))
+        .unwrap_err();
+    assert!(matches!(err, WoooshError::InvalidArgument(_)), "got {err:?}");
+    let after = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
+    assert!(after.relay.is_none(), "rejected URL still changed the relay");
+
+    // A syntactically valid but unreachable relay is accepted by the setter
+    // and then fails at publish time. The failure is the point: a ticket that
+    // silently fell back to local addresses would look fine and only ever work
+    // on the publisher's own network.
+    //
+    // That a *reachable* relay is advertised is not asserted here — it would
+    // need a live relay server in-process, pulling the whole `iroh-relay`
+    // server stack in as a dev-dependency for one line. The ticket publishes
+    // `addr.relay_urls().next()`, i.e. whatever home relay the endpoint
+    // actually holds, and `internet_ticket_via_public_relays` covers that path
+    // end to end against real relays.
+    r.core
+        .set_relay_urls(Some(vec!["https://relay.invalid./".into()]))
+        .unwrap();
+    let err = r.core.begin_internet_ticket().unwrap_err();
+    assert!(matches!(err, WoooshError::Connect(_)), "got {err:?}");
+
+    // Back to relay-free, and the node still publishes: a bad relay setting is
+    // recoverable without restarting the core.
+    r.core.set_relay_urls(Some(Vec::new())).unwrap();
+    let recovered = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
+    assert!(!recovered.addrs.is_empty(), "node did not recover after a bad relay setting");
+
+    // Tickets minted before a relay change are dead by construction: the
+    // change tears the endpoint down, so the addresses in the old ticket stop
+    // answering. Not asserted by dialling one — that costs a full 30 s connect
+    // timeout for a property the teardown already guarantees.
+}
+
+/// Reads the `relay=` and `addrs=` fields back out of an encoded ticket. The
+/// parse helper the shells use deliberately does not expose `addrs`, so the
+/// test reads the wire form rather than widening the public API for a test.
+struct NetTicketFields {
+    relay: Option<String>,
+    addrs: Vec<String>,
+}
+
+impl NetTicketFields {
+    fn of(ticket: &str) -> Self {
+        let params = ticket.split_once('?').expect("ticket has params").1;
+        let mut relay = None;
+        let mut addrs = Vec::new();
+        for kv in params.split('&') {
+            match kv.split_once('=') {
+                Some(("relay", v)) => relay = Some(percent_decode(v)),
+                Some(("addrs", v)) => {
+                    addrs = v.split(',').filter(|a| !a.is_empty()).map(String::from).collect()
+                }
+                _ => {}
+            }
+        }
+        Self { relay, addrs }
+    }
+}
+
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() {
+            out.push(u8::from_str_radix(&s[i + 1..i + 3], 16).unwrap());
+            i += 3;
+        } else {
+            out.push(b[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+
 /// Malformed, expired and foreign tickets fail before any dial, and every
 /// outcome still reaches the host as a `PairingResult` (DESIGN.md §4).
 #[test]
@@ -995,15 +1083,28 @@ fn internet_ticket_rejects_bad_payloads() {
 /// (PROTOCOL.md §4.1): the restriction is a property of the channel, not of
 /// the transport.
 #[test]
-fn internet_paired_only_rejects_unpaired() {
+fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     let tmp = tempfile::tempdir().unwrap();
     let r = Node::start_offline_internet(tmp.path(), "strict-receiver", Visibility::Everyone);
     let ticket = r.core.begin_internet_ticket().unwrap();
     r.core.set_visibility(Visibility::PairedOnly).unwrap();
 
+    // A live ticket is an explicit invitation, so PairedOnly must not slam the
+    // door before the caller can present its token — otherwise the mode would
+    // block the very transfer the user just set up.
     let s = Node::start_offline_internet(tmp.path(), "strict-sender", Visibility::Everyone);
-    let err = s.core.redeem_ticket(ticket).unwrap_err();
-    assert!(matches!(err, WoooshError::PairingRequired), "got {err:?}");
+    assert_eq!(s.core.redeem_ticket(ticket.clone()).unwrap(), r.core.device_id().unwrap());
+    // Invited, not trusted: still no pin on either side.
+    assert!(r.core.trusted_peers().unwrap().is_empty());
+
+    // With the ticket consumed there is no invitation left, and PairedOnly
+    // does what it says.
+    let s2 = Node::start_offline_internet(tmp.path(), "strict-sender-2", Visibility::Everyone);
+    let err = s2.core.redeem_ticket(ticket).unwrap_err();
+    assert!(
+        matches!(err, WoooshError::PairingRequired | WoooshError::Pairing(_)),
+        "got {err:?}"
+    );
 }
 
 /// SAS over the internet path (PROTOCOL.md §4.3 + §9.4): iroh's connection is

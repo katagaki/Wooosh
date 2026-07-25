@@ -106,14 +106,67 @@ class PeerRegistry(private val scope: CoroutineScope) {
         val known = deviceType?.takeIf { it != DeviceType.UNKNOWN }
         helloByPeerId[peerId] = Hello(displayName, known)
         _peers.update { list ->
-            list.map { peer ->
-                if (peer.peerId != peerId) {
-                    peer
-                } else {
-                    peer.copy(
-                        displayName = displayName.ifBlank { peer.displayName },
-                        deviceType = known ?: peer.deviceType,
+            // Already ours: just refresh it in place.
+            if (list.any { it.peerId == peerId }) {
+                return@update list.map { peer ->
+                    if (peer.peerId != peerId) {
+                        peer
+                    } else {
+                        peer.copy(
+                            displayName = displayName.ifBlank { peer.displayName },
+                            deviceType = known ?: peer.deviceType,
+                            isStale = false,
+                        )
+                    }
+                }
+            }
+            // A discovered row that has not learned its DeviceID yet: adopt it, so a
+            // peer found over mDNS and then connected does not show up twice. HELLO
+            // usually beats connect_peer() returning, so this is the common case.
+            val adoptable = list.indexOfFirst {
+                it.peerId == null && displayName.isNotBlank() && it.displayName == displayName
+            }
+            if (adoptable >= 0) {
+                return@update list.toMutableList().also {
+                    it[adoptable] = it[adoptable].copy(
+                        peerId = peerId,
+                        deviceType = known ?: it[adoptable].deviceType,
+                        isStale = false,
                     )
+                }
+            }
+            // Nothing matches: a peer the browser never saw. This is how a device
+            // reached over the internet (PROTOCOL.md §9) enters the list at all —
+            // there is no mDNS record behind it, and without a row the user has
+            // nothing to tap. Appended like every other row (DESIGN.md §5).
+            list + Peer(
+                rid = "$CORE_RID_PREFIX$peerId",
+                displayName = displayName,
+                // No TXT record was ever seen, so the glyph stays neutral rather than
+                // being guessed from the coarse HELLO type.
+                deviceType = known ?: DeviceType.UNKNOWN,
+                port = 0,
+                hosts = emptyList(),
+                discoveredAt = SystemClock.elapsedRealtime(),
+                isStale = false,
+                peerId = peerId,
+            )
+        }
+    }
+
+    /**
+     * The core dropped a connection. A row that only ever existed *because* of that
+     * connection has no address to reconnect with, so it grays out in place rather than
+     * disappearing — rows never move or vanish (DESIGN.md §5).
+     */
+    @Synchronized
+    fun onDisconnected(peerId: String) {
+        _peers.update { list ->
+            list.map { peer ->
+                if (peer.peerId == peerId && peer.rid.startsWith(CORE_RID_PREFIX)) {
+                    peer.copy(isStale = true)
+                } else {
+                    peer
                 }
             }
         }
@@ -152,5 +205,8 @@ class PeerRegistry(private val scope: CoroutineScope) {
 
     private companion object {
         const val STALE_GRACE_MS = 10_000L
+
+        /** Marks a row that exists only because of a core connection, not a sighting. */
+        const val CORE_RID_PREFIX = "core:"
     }
 }

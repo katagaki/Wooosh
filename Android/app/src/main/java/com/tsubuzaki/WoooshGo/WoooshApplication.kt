@@ -20,6 +20,9 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -45,12 +48,26 @@ class WoooshApplication : Application() {
     val transferManager by lazy {
         TransferManager(this, appScope, core, trustStore, discovery.registry)
     }
-    val pairingManager by lazy { PairingManager(this, appScope, core, trustStore) }
+    val pairingManager by lazy {
+        PairingManager(this, appScope, core, trustStore) { internetEnabled }
+    }
+
+    /** Mirrors the stored relay setting so the pairing manager can read it synchronously. */
+    @Volatile
+    private var internetEnabled: Boolean = true
 
     /** Set once the core booted; the UI shows "Starting…" until then. */
     @Volatile
     var coreStartError: String? = null
         private set
+
+    /**
+     * Non-null when the core refused the configured relay address. The core keeps its
+     * previous working configuration in that case, so this is a correction for the user
+     * to make, not a broken state.
+     */
+    private val _relayError = MutableStateFlow<String?>(null)
+    val relayError: StateFlow<String?> = _relayError.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
@@ -89,8 +106,36 @@ class WoooshApplication : Application() {
             // Discovery advertises the core's bound port, so it starts after the core.
             discovery.start()
 
+            internetEnabled = settings.internetEnabled
+            var appliedRelays: List<String>? = settings.relayUrls
+            // The core boots on its own default (n0's public relays), so push the stored
+            // preference before anything can mint a ticket. Free at this point: the iroh
+            // endpoint is not bound until the first ticket operation.
+            runCatching { core.setRelayUrls(appliedRelays) }
+                .onFailure {
+                    _relayError.value = getString(R.string.error_relay_url_invalid)
+                    Log.w(TAG, "initial setRelayUrls failed", it)
+                }
+
             settingsRepository.settings.collect { current ->
                 core.setVisibility(current.visibility.toCore())
+                internetEnabled = current.internetEnabled
+                // Only on a real change: applying this tears the iroh endpoint down, and
+                // the settings flow re-emits for unrelated edits such as the device name.
+                if (current.relayUrls != appliedRelays) {
+                    val wanted = current.relayUrls
+                    runCatching { core.setRelayUrls(wanted) }
+                        .onSuccess {
+                            appliedRelays = wanted
+                            _relayError.value = null
+                        }
+                        .onFailure {
+                            // The core kept its previous working configuration; the
+                            // Settings screen shows the address is not valid.
+                            _relayError.value = getString(R.string.error_relay_url_invalid)
+                            Log.w(TAG, "setRelayUrls($wanted) rejected", it)
+                        }
+                }
             }
         }
 

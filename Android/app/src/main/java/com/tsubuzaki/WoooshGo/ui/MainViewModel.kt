@@ -10,6 +10,7 @@ import com.tsubuzaki.WoooshGo.core.TransferId
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 import com.tsubuzaki.WoooshGo.pairing.PairingManager
 import com.tsubuzaki.WoooshGo.peers.Peer
+import com.tsubuzaki.WoooshGo.settings.RelayMode
 import com.tsubuzaki.WoooshGo.settings.Settings
 import com.tsubuzaki.WoooshGo.settings.Visibility
 import com.tsubuzaki.WoooshGo.share.OutboxRepository
@@ -105,6 +106,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { app.settingsRepository.setVisibility(visibility) }
     }
 
+    /** Relay selection for the internet path (DESIGN.md §9.1). */
+    fun setRelayMode(mode: RelayMode) {
+        viewModelScope.launch { app.settingsRepository.setRelayMode(mode) }
+    }
+
+    fun setRelayUrl(url: String) {
+        viewModelScope.launch { app.settingsRepository.setRelayUrl(url) }
+    }
+
+    /**
+     * Non-null when the core refused the relay address. The core keeps its previous
+     * working configuration in that case, so this is a correction to make rather than a
+     * broken state.
+     */
+    val relayError: StateFlow<String?> = app.relayError
+
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
         app.transferManager.sendToPeer(peer, uris)
     }
@@ -145,7 +162,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * in-progress state, the pre-flight checks and the timeout that keep this from
      * looking like a hang.
      */
-    fun pairWithQr(payload: String) = app.pairingManager.pairWithQr(payload)
+    fun pairWithQr(payload: String) = app.pairingManager.pairWithScannedCode(payload)
+
+    /**
+     * Mints an internet ticket (PROTOCOL.md §9.2). Suspends for as long as it takes the
+     * core to bind its endpoint and find a relay, and throws rather than swallowing: this
+     * is the one call that contacts a relay, and a user who asked for a code and got
+     * silence cannot tell a slow relay from a broken one.
+     */
+    suspend fun beginInternetTicket(): String = app.core.beginInternetTicket()
+
+    fun endInternetTicket() {
+        app.core.endInternetTicket()
+        internetOutbox = emptyList()
+    }
+
+    /** Files waiting for someone to scan the code (PROTOCOL.md §9.4). */
+    private var internetOutbox: List<Uri> = emptyList()
+
+    fun stageInternetSend(uris: List<Uri>) {
+        internetOutbox = uris
+    }
+
+    /** Set when someone redeems a ticket this device published. */
+    val ticketRedeemedPeerId: StateFlow<String?> = app.transferManager.ticketRedeemedPeerId
+
+    /**
+     * Hands the staged files to whoever redeemed. The core refuses this unless that peer
+     * really did redeem (PROTOCOL.md §9.4), so a stray call cannot leak them.
+     */
+    fun completeInternetSend(peerId: String) {
+        val uris = internetOutbox
+        if (uris.isEmpty()) return
+        internetOutbox = emptyList()
+        app.transferManager.sendToPeerId(peerId, uris)
+    }
+
+    /** DeviceID of a peer that just arrived by redeeming a ticket; consumed once. */
+    val redeemedPeerId: StateFlow<String?> = app.pairingManager.redeemedPeerId
+
+    fun clearRedeemedPeer() {
+        app.pairingManager.takeRedeemedPeerId()
+    }
 
     fun cancelPairingAttempt() = app.pairingManager.cancelAttempt()
 

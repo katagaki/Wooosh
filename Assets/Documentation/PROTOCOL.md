@@ -181,7 +181,7 @@ Out of scope v1: metadata privacy against the local network operator (they can s
 
 ## 9. Internet path (off-LAN, iroh)
 
-Everything above describes packets on a LAN. §9 defines the second path they can take: an [iroh](https://iroh.computer) QUIC session that hole-punches between networks and falls back to relaying through n0's free public relays (DESIGN.md §9.1). **Only the path changes.** HELLO, OFFER/DECISION, the file streams, the resume ledger, the close codes and the trust model are the ones defined in §4–§6, byte for byte, and implementations MUST NOT fork them per transport.
+Everything above describes packets on a LAN. §9 defines the second path they can take: an [iroh](https://iroh.computer) QUIC session that hole-punches between networks, using a relay to introduce the two devices (DESIGN.md §9.1). **Only the path changes.** HELLO, OFFER/DECISION, the file streams, the resume ledger, the close codes and the trust model are the ones defined in §4–§6, byte for byte, and implementations MUST NOT fork them per transport.
 
 ### 9.1 Identity is the same key
 
@@ -193,7 +193,23 @@ An iroh endpoint's identity is an Ed25519 keypair. Implementations MUST bind the
 
 The endpoint SHOULD be bound lazily, on the first ticket operation. Binding it at startup makes every install contact a relay on launch, which contradicts the "no servers" posture for users who only ever share on a LAN.
 
-Relay selection is configuration, not protocol: the default is n0's public relays; an empty relay set means direct/hole-punched connections only; an explicit set may point anywhere, including a self-hosted relay.
+Relay selection is configuration, not protocol: the default is n0's public relays; an empty relay set means direct/hole-punched connections only, which the reference shells present as switching the internet path off entirely; an explicit set may point anywhere, including a self-hosted relay. It is changeable at runtime; doing so rebinds the endpoint and MUST invalidate any outstanding ticket, which advertises a relay the device no longer uses.
+
+### 9.1.1 Relayed transfers are size-capped
+
+iroh offers a relayed path as the fallback when hole punching fails. Wooosh uses it, but bounded: **on a relayed connection no single file may exceed `RELAY_MAX_FILE_BYTES` (100 MiB).** A direct path — every LAN transfer, and every internet transfer that hole punched — has no limit at all.
+
+- An implementation MUST wait for a direct path before applying the cap. Reference implementation: 15 s from the send request, because punching normally completes within a couple of seconds and a short budget would cap a connection that was about to be direct.
+- The sender MUST check **before the OFFER** (§5), on file metadata only, so an oversized file fails without a wasted hash pass and the receiver is never asked to accept a transfer that cannot run.
+- The receiver MUST enforce it too, declining the whole offer. The relay being spent is usually the *receiver's* home relay, so this side does not take a well-behaved sender on trust. Declining is all-or-nothing so the outcome does not depend on which files happened to be small.
+- Failure is reported as `RELAY_FILE_TOO_LARGE`, distinct from a generic transfer error: the same files would send fine on a direct connection, so it is the route that failed.
+- Control traffic — HELLO, pairing, OFFER/DECISION — is always relayable. It is small, and relaying it is what lets two devices meet at all.
+
+The cap exists because a relay is somebody else's bandwidth: n0's public relays are free, rate-limited and shared with every other iroh application, and a self-hosted relay is still a server someone pays for. 100 MiB keeps the everyday case working from anywhere while keeping a multi-gigabyte archive on the direct path it should have been on.
+
+**The cap is per file, not per transfer.** A hundred 99 MiB files is a permitted relayed transfer. Bounding the total was considered and not done: it would make a transfer's admissibility depend on how the user happened to batch it, and the per-file rule is what users can predict.
+
+If a relay set is configured but no relay can be reached, publishing a ticket MUST fail rather than emit one carrying only local addresses: such a ticket looks valid and can only ever work on the publisher's own network.
 
 ### 9.2 Ticket format
 
@@ -241,9 +257,23 @@ An iroh connection is TLS 1.3, and exposes the same RFC 8446 §7.5 exporter. The
 
 Both ends of one iroh session derive the same six digits, and a relay — which forwards opaque QUIC ciphertext and terminates nothing — cannot make two sessions agree. The MITM property of §4.3 is unchanged, and the camera-less pairing ceremony works off-LAN.
 
+### 9.4 The internet path never pairs
+
+A redeemed ticket authorises **exactly one transfer session on one connection**. Implementations MUST NOT write the trust store on this path, in either direction.
+
+- The publisher marks the connection `ticket_authorized` and emits `TicketRedeemed`, never `PairingResult`. The redeemer does the same on `PAIR_ACCEPT`.
+- The authorisation dies with the connection. It is never persisted, and a later connection from the same key is a stranger again.
+- **A device MUST NOT send file data to an unpinned internet peer that has not redeemed a ticket.** Because this path never pairs, `trusted` is false for a legitimate transfer and cannot be the gate; the redeemed token is. Without this check, anyone who learned the endpoint id could dial in and be handed the staged files.
+- `PairedOnly` MUST honour a pending ticket: a live ticket is an explicit invitation, and rejecting the caller before it can present its token would block the transfer the user just set up. With no ticket pending, `PairedOnly` rejects as usual.
+- The code is single-use and dies with the transfer it was minted for.
+
+Consequence for the UI: every internet transfer is an accept-once from an unpinned device. There is no prior relationship to check a fingerprint against, so implementations SHOULD NOT display one here — it would ask the user to verify something they cannot.
+
 ### 9.5 Threat notes specific to the relay
 
 - Relays forward encrypted QUIC payloads. They see traffic volume and timing between two endpoint ids; they cannot read file data, impersonate a peer, or forge a pairing.
 - A hostile or unavailable relay can **drop** traffic. That is a denial of service, surfaced as a connect failure, never a downgrade.
+- A relay sees traffic volume and timing for whatever it carries, which the §9.1.1 cap bounds to small files; anything larger only ever crosses a direct path, so a relay cannot observe it at all.
+- A ticket names the relay its **publisher** chose, and redeeming one therefore contacts a server the ticket's author selected. The relay learns the redeemer's IP. It learns nothing else: the identity key in the ticket pins the handshake regardless of the path taken.
 - Publishing a ticket reveals the publisher's public key to whoever receives the ticket. That is intended: it is the same disclosure a pairing QR makes, and it is what authenticates the session.
 - `addrs` also discloses the publisher's LAN and externally-mapped IP addresses to whoever holds the ticket. That is what makes a direct connection possible, and it is why a ticket is short-lived and single-use rather than a durable address book entry. Users who do not want to disclose addresses can run with an empty relay set only on networks where that is acceptable, or accept the relayed path.

@@ -11,12 +11,18 @@ struct PairDeviceView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
+    /// Two tabs, split by role rather than by transport: showing a code and
+    /// scanning one are the two things a person can do here. Which *kind* of
+    /// code is a choice inside "Show", because it is the same act either way.
     private enum Mode: String, CaseIterable, Identifiable {
         case show
         case scan
         var id: String { rawValue }
         var label: String {
-            self == .show ? L.t("pairing_tab_my_code") : L.t("pairing_tab_scan")
+            switch self {
+            case .show: L.t("pairing_tab_my_code")
+            case .scan: L.t("pairing_tab_scan")
+            }
         }
     }
 
@@ -83,7 +89,7 @@ struct PairDeviceView: View {
         }
     }
 
-    // MARK: - Show our code
+    // MARK: - Show a code
 
     private var showCode: some View {
         VStack(spacing: 0) {
@@ -156,7 +162,7 @@ struct PairDeviceView: View {
                 VStack(spacing: 16) {
                     #if os(iOS)
                     QRScannerView { scanned in
-                        model.pairWithQR(payload: scanned)
+                        model.pairWithScannedCode(scanned)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 300)
@@ -176,6 +182,14 @@ struct PairDeviceView: View {
                         .multilineTextAlignment(.center)
                     #endif
 
+                    // The scanner takes both kinds of code and picks the path
+                    // itself, so say so rather than making the user work out
+                    // which tab a code they were sent belongs to.
+                    Text(L.t("pairing_scan_accepts"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
                     TextField(L.t("pairing_paste_label"), text: $pastedPayload)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.caption, design: .monospaced))
@@ -193,7 +207,7 @@ struct PairDeviceView: View {
 
             SheetActions {
                 Button(L.t("action_pair_with_pasted")) {
-                    model.pairWithQR(payload: pastedPayload.trimmingCharacters(in: .whitespacesAndNewlines))
+                    model.pairWithScannedCode(pastedPayload)
                 }
                 .disabled(pastedPayload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

@@ -160,6 +160,77 @@ final class RealCore: WoooshCore {
         }
     }
 
+    // MARK: - Internet path (PROTOCOL.md §9)
+
+    func beginInternetTicket() async throws -> String {
+        let ffi = self.ffi
+        // Off the main actor: binds the iroh endpoint and blocks on a home
+        // relay for as long as ~15 s.
+        return try await Task.detached(priority: .userInitiated) {
+            try ffi.beginInternetTicket()
+        }.value
+    }
+
+    func endInternetTicket() {
+        perform("endInternetTicket") { try self.ffi.endInternetTicket() }
+    }
+
+    func setRelayURLs(_ urls: [String]?) async throws {
+        let ffi = self.ffi
+        // Off the main actor: closing the bound iroh endpoint is an
+        // asynchronous shutdown the core drives with `block_on`.
+        try await Task.detached(priority: .userInitiated) {
+            try ffi.setRelayUrls(urls: urls)
+        }.value
+    }
+
+    func ticketInfo(for ticket: String) -> TicketInfo? {
+        guard let info = try? WoooshCoreFFI.parseInternetTicket(ticket: ticket) else { return nil }
+        return TicketInfo(
+            publicKey: info.nodeId,
+            deviceID: info.deviceId,
+            deviceName: info.deviceName,
+            relay: info.relay,
+            expired: info.expired
+        )
+    }
+
+    /// Parse-only, the ticket twin of `peerHint(forPairingPayload:)`: a ticket
+    /// is the other place the shell legitimately learns a peer's public key.
+    @discardableResult
+    func peerHint(forTicket ticket: String) -> PeerRef? {
+        guard let info = ticketInfo(for: ticket) else { return nil }
+        let ref = PeerRef(
+            id: info.deviceID,
+            displayName: info.deviceName ?? "Scanned Device",
+            deviceType: nil,
+            fingerprint: fingerprintPhrase(forPublicKey: info.publicKey) ?? "",
+            publicKey: info.publicKey
+        )
+        peerInfo[info.deviceID] = ref
+        return ref
+    }
+
+    func redeemTicket(_ ticket: String) {
+        let hinted = peerHint(forTicket: ticket)
+        let ffi = self.ffi
+        Task.detached(priority: .userInitiated) {
+            do {
+                // Success arrives as the core's own PairingResult, same as the
+                // LAN QR path; only the failure needs synthesizing here.
+                _ = try ffi.redeemTicket(ticket: ticket)
+            } catch {
+                let message = coreErrorMessage(error)
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    let peer = hinted ?? PeerRef(id: "", displayName: "Scanned Device",
+                                                 deviceType: nil, fingerprint: "")
+                    self.emit(.pairingResult(peer: peer, success: false, message: message))
+                }
+            }
+        }
+    }
+
     // MARK: - Connections
 
     func connectPeer(addr: String, expectedPublicKey: Data?) async throws -> String {
@@ -241,6 +312,17 @@ final class RealCore: WoooshCore {
 
         case .pairingSas(let peerId, let code):
             emit(.pairingSAS(peer: peerRef(for: peerId), sixDigits: code))
+
+        case .ticketRedeemed(let peerId, let peerPubkey, let deviceName):
+            let ref = PeerRef(
+                id: peerId,
+                displayName: deviceName.isEmpty ? L.t("peer_unnamed") : deviceName,
+                deviceType: peerInfo[peerId]?.deviceType,
+                fingerprint: fingerprintPhrase(forPublicKey: peerPubkey) ?? "",
+                publicKey: peerPubkey
+            )
+            peerInfo[peerId] = ref
+            emit(.ticketRedeemed(peer: ref))
 
         case .pairingResult(let peerId, let peerPubkey, let fingerprint,
                             let success, let message):
@@ -432,6 +514,14 @@ extension Visibility {
 /// §4.1.1) as a generic transport failure is a conformance bug, and the core's
 /// own messages are untranslatable internal English that must never reach the
 /// screen. The raw text stays in the log.
+private enum RelayLimit {
+    /// Formatted once: the value is a compile-time constant in the core.
+    static let text = ByteCountFormatter.string(
+        fromByteCount: Int64(clamping: WoooshCoreFFI.relayMaxFileBytes()),
+        countStyle: .file
+    )
+}
+
 func coreErrorMessage(_ error: Error) -> String {
     guard let error = error as? WoooshCoreFFI.WoooshError else {
         return L.t("error_transfer_failed")
@@ -444,6 +534,9 @@ func coreErrorMessage(_ error: Error) -> String {
     case .InvalidQrPayload: return L.t("error_invalid_qr")
     case .Pairing(let message):
         return message.contains("expired") ? L.t("error_pairing_expired") : L.t("error_pairing_failed")
+    case .RelayFileTooLarge:
+        // The limit comes from the core so the copy cannot drift from the rule.
+        return L.f("error_relay_file_too_large", RelayLimit.text)
     case .Connect: return L.t("error_connect")
     case .UnknownPeer: return L.t("error_unknown_peer")
     case .NotStarted: return L.t("error_not_started")

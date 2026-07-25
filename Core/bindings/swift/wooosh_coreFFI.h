@@ -450,6 +450,11 @@ int8_t uniffi_wooosh_core_fn_method_woooshcore_revoke_peer(void*_Nonnull ptr, Ru
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_send(void*_Nonnull ptr, RustBuffer peer_id, RustBuffer files, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RELAY_URLS
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RELAY_URLS
+void uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(void*_Nonnull ptr, RustBuffer urls, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_VISIBILITY
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_VISIBILITY
 void uniffi_wooosh_core_fn_method_woooshcore_set_visibility(void*_Nonnull ptr, RustBuffer mode, RustCallStatus *_Nonnull out_status
@@ -488,6 +493,12 @@ RustBuffer uniffi_wooosh_core_fn_func_parse_internet_ticket(RustBuffer ticket, R
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_PARSE_PAIRING_QR
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_PARSE_PAIRING_QR
 RustBuffer uniffi_wooosh_core_fn_func_parse_pairing_qr(RustBuffer payload, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_RELAY_MAX_FILE_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FUNC_RELAY_MAX_FILE_BYTES
+uint64_t uniffi_wooosh_core_fn_func_relay_max_file_bytes(RustCallStatus *_Nonnull out_status
+    
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_WOOOSH_CORE_RUSTBUFFER_ALLOC
@@ -794,6 +805,12 @@ uint16_t uniffi_wooosh_core_checksum_func_parse_pairing_qr(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_RELAY_MAX_FILE_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_FUNC_RELAY_MAX_FILE_BYTES
+uint16_t uniffi_wooosh_core_checksum_func_relay_max_file_bytes(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_COREEVENTLISTENER_ON_EVENT
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_COREEVENTLISTENER_ON_EVENT
 uint16_t uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(void
@@ -911,6 +928,12 @@ uint16_t uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SEND
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SEND
 uint16_t uniffi_wooosh_core_checksum_method_woooshcore_send(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RELAY_URLS
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RELAY_URLS
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls(void
     
 );
 #endif

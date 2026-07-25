@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +36,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.PrimaryTabRow
@@ -42,11 +46,13 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,14 +71,18 @@ import androidx.core.content.ContextCompat
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.tsubuzaki.WoooshGo.R
+import com.tsubuzaki.WoooshGo.pairing.PortraitCaptureActivity
 import com.tsubuzaki.WoooshGo.pairing.QrCodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Pairing UX (PROTOCOL.md §4): "My code" shows this device's `wooosh-pair:1?...` QR +
- * copyable payload; "Scan" covers the camera path and a pasted payload.
+ * Pairing UX (PROTOCOL.md §4 and §9): "My code" shows this device's `wooosh-pair:1?...`
+ * QR + copyable payload; "Scan" covers the camera path and a pasted payload, for either
+ * kind of code; "Internet" publishes a `wooosh-net:1?...` ticket for a device that is not
+ * on this network.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -233,6 +243,8 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit) {
             .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
             .setPrompt(scanPrompt)
             .setBeepEnabled(false)
+            // Our own capture activity: the library's is pinned to landscape.
+            .setCaptureActivity(PortraitCaptureActivity::class.java)
             .setOrientationLocked(false)
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -281,6 +293,15 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        Spacer(Modifier.height(8.dp))
+        // The scanner takes both kinds of code and picks the path itself, so say so
+        // rather than making the user work out which tab a code they were sent belongs to.
+        Text(
+            text = stringResource(R.string.pairing_scan_accepts),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = pastedPayload,
@@ -299,3 +320,4 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit) {
         }
     }
 }
+

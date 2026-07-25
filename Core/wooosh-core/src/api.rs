@@ -131,6 +131,17 @@ pub struct TicketInfo {
     pub expired: bool,
 }
 
+/// Largest single file Wooosh will move over a **relayed** internet connection
+/// (DESIGN.md §9.1). No limit applies on a direct path, which includes every
+/// LAN transfer and every internet transfer that hole punched.
+///
+/// Exported so a shell can name the limit in its own copy instead of
+/// hardcoding a number that would drift the moment the core changed it.
+#[uniffi::export]
+pub fn relay_max_file_bytes() -> u64 {
+    crate::engine::RELAY_MAX_FILE_BYTES
+}
+
 /// Parse a `wooosh-net:1?...` ticket without redeeming it.
 #[uniffi::export]
 pub fn parse_internet_ticket(ticket: String) -> Result<TicketInfo, WoooshError> {
@@ -227,6 +238,17 @@ pub enum CoreEvent {
     /// Pairing concluded (QR or SAS; success, failure or timeout). `message`
     /// is the peer's device name on success, the reason on failure.
     /// `peer_pubkey` is the key that was (or would have been) pinned.
+    /// A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
+    ///
+    /// **Not a pairing.** Nothing is written to the trust store and the
+    /// authorisation dies with the connection. This is the signal the sending
+    /// shell waits on before handing over the files it staged when it showed
+    /// the code.
+    TicketRedeemed {
+        peer_id: String,
+        peer_pubkey: Vec<u8>,
+        device_name: String,
+    },
     PairingResult {
         peer_id: String,
         peer_pubkey: Vec<u8>,
@@ -566,6 +588,27 @@ impl WoooshCore {
     /// Invalidate the outstanding ticket immediately.
     pub fn end_internet_ticket(&self) -> Result<(), WoooshError> {
         self.with_engine(|_, e| e.end_internet_ticket())
+    }
+
+    /// Choose the relays the internet path uses (DESIGN.md §9.1).
+    ///
+    /// - `None` — n0's free public relays. Shared infrastructure with no
+    ///   uptime guarantee; fine because Wooosh only ever uses a relay to
+    ///   introduce two devices, never to carry file data.
+    /// - `Some([])` — no relay and no address lookup. Nothing leaves this
+    ///   device except to addresses carried in a ticket.
+    /// - `Some(urls)` — a chosen or self-hosted relay set. This device's
+    ///   tickets advertise it, so a redeemer uses it with no configuration of
+    ///   their own.
+    ///
+    /// Takes effect on the next ticket operation, and invalidates any
+    /// outstanding ticket, which advertises a relay that is no longer in use.
+    /// Errors on a malformed URL without disturbing the current setting.
+    ///
+    /// **BLOCKING — never call this on a UI thread.** It closes the bound iroh
+    /// endpoint, which is an asynchronous shutdown.
+    pub fn set_relay_urls(&self, urls: Option<Vec<String>>) -> Result<(), WoooshError> {
+        self.with_engine(|rt, e| rt.block_on(e.set_relay_urls(urls)))?
     }
 
     /// Sender side of the internet path: dial the ticket's node over iroh,

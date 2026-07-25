@@ -457,13 +457,13 @@
       }
     },
     "action_choose_files": {
-      "comment": "Button that opens the system file picker.",
+      "comment": "Button that opens the file picker.",
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dateien auswählen"
+            "value": "Dateien wählen"
           }
         },
         "en": {
@@ -1532,6 +1532,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "檔案"
+          }
+        }
+      }
+    },
+    "action_get_internet_code": {
+      "comment": "Button that mints an internet code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code holen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get a Code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtener un código"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenir un code"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ottieni un codice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードを取得"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드 받기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code ophalen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz kod"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obter um código"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Получить код"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hämta en kod"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取得代碼"
           }
         }
       }
@@ -4815,6 +4905,96 @@
         }
       }
     },
+    "error_internet_off": {
+      "comment": "Shown when an internet code is scanned while the path is off.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist ein Internetcode, und Internetübertragungen sind aus. Schalte sie in den Einstellungen ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is an internet code, and internet transfers are off. Turn them on in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese es un código de internet y las transferencias por internet están desactivadas. Actívalas en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ceci est un code Internet, et les transferts par Internet sont désactivés. Activez-les dans les Réglages."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo è un codice internet e i trasferimenti via internet sono disattivati. Attivali nelle Impostazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これはインターネットコードですが、インターネット転送はオフです。設定でオンにしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷 코드이지만 인터넷 전송이 꺼져 있습니다. 설정에서 켜세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit is een internetcode en internetoverdrachten staan uit. Schakel ze in bij Instellingen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To kod internetowy, a przesyłanie przez internet jest wyłączone. Włącz je w Ustawieniach."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse é um código de internet, e as transferências pela internet estão desativadas. Ative-as em Ajustes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это интернет-код, а передача через интернет выключена. Включите её в настройках."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Det här är en internetkod, och internetöverföringar är av. Slå på dem i Inställningar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是互联网代码，但互联网传输已关闭。请在设置中开启。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這是網際網路代碼，但網際網路傳輸已關閉。請在設定中開啟。"
+          }
+        }
+      }
+    },
     "error_invalid_qr": {
       "comment": "Core error: the scanned or pasted text is not a Wooosh pairing code.",
       "extractionState": "manual",
@@ -6255,6 +6435,186 @@
         }
       }
     },
+    "error_relay_file_too_large": {
+      "comment": "Transfer refused: relayed route and a file over the limit. %1$@/%1$s is a size like \"100 MB\".",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh konnte die beiden Geräte nicht direkt verbinden. Über eine indirekte Verbindung müssen Dateien kleiner als %1$@ sein. Versuche es erneut oder nutze ein Netzwerk, das eine direkte Verbindung erlaubt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh could not connect the two devices directly. Over an indirect connection, files must be under %1$@. Try again, or use a network that allows a direct connection."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh no pudo conectar los dos dispositivos directamente. Con una conexión indirecta, los archivos deben ser menores de %1$@. Inténtalo de nuevo o usa una red que permita una conexión directa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh n'a pas pu connecter les deux appareils directement. Sur une connexion indirecte, les fichiers doivent faire moins de %1$@. Réessayez ou utilisez un réseau qui autorise une connexion directe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh non è riuscito a collegare i due dispositivi direttamente. Su una connessione indiretta i file devono essere sotto %1$@. Riprova oppure usa una rete che consenta una connessione diretta."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は 2 台のデバイスを直接つなげられませんでした。間接的な接続では、ファイルは %1$@ 未満である必要があります。もう一度試すか、直接接続できるネットワークをお使いください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh가 두 기기를 직접 연결하지 못했습니다. 간접 연결에서는 파일이 %1$@ 미만이어야 합니다. 다시 시도하거나 직접 연결이 가능한 네트워크를 사용하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kon de twee apparaten niet rechtstreeks verbinden. Via een indirecte verbinding moeten bestanden kleiner zijn dan %1$@. Probeer het opnieuw of gebruik een netwerk dat een directe verbinding toelaat."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nie mógł połączyć obu urządzeń bezpośrednio. Przy połączeniu pośrednim pliki muszą być mniejsze niż %1$@. Spróbuj ponownie lub użyj sieci pozwalającej na połączenie bezpośrednie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh não conseguiu conectar os dois dispositivos diretamente. Em uma conexão indireta, os arquivos precisam ter menos de %1$@. Tente de novo ou use uma rede que permita conexão direta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh не смог соединить устройства напрямую. При непрямом соединении файлы должны быть меньше %1$@. Попробуйте снова или используйте сеть, допускающую прямое соединение."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kunde inte koppla ihop enheterna direkt. Över en indirekt anslutning måste filer vara mindre än %1$@. Försök igen eller använd ett nätverk som tillåter en direkt anslutning."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 无法让两台设备直连。通过间接连接时，文件必须小于 %1$@。请重试，或改用允许直连的网络。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 無法讓兩台裝置直連。透過間接連線時，檔案必須小於 %1$@。請重試，或改用允許直連的網路。"
+          }
+        }
+      }
+    },
+    "error_relay_url_invalid": {
+      "comment": "Shown when the core rejected the relay address.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Relay-Adresse ist ungültig. Wooosh hat die vorherige Einstellung behalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That relay address is not valid. Wooosh kept the previous setting."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa dirección de relé no es válida. Wooosh mantuvo el ajuste anterior."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette adresse de relais n'est pas valide. Wooosh a conservé le réglage précédent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo indirizzo del relay non è valido. Wooosh ha mantenuto l'impostazione precedente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのリレーのアドレスは無効です。Wooosh は以前の設定を維持しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이 주소가 올바르지 않습니다. Wooosh는 이전 설정을 유지했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dat relay-adres is ongeldig. Wooosh heeft de vorige instelling behouden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten adres przekaźnika jest nieprawidłowy. Wooosh zachował poprzednie ustawienie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse endereço de relay não é válido. O Wooosh manteve a configuração anterior."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес ретранслятора недействителен. Wooosh сохранил прежнюю настройку."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den reläadressen är ogiltig. Wooosh behöll den tidigare inställningen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该中继地址无效，Wooosh 保留了先前的设置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該中繼位址無效，Wooosh 保留了先前的設定。"
+          }
+        }
+      }
+    },
     "error_sas_timeout": {
       "comment": "Shown when the other device did not confirm the verification code in time.",
       "extractionState": "manual",
@@ -6791,6 +7151,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wooosh 無法存取用於存放接收檔案的資料夾。請檢查是否有可用空間，然後重試。"
+          }
+        }
+      }
+    },
+    "error_ticket_failed": {
+      "comment": "Shown when minting an internet code failed.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh konnte keinen Internetcode holen. Prüfe die Verbindung und versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh could not get an internet code. Check the connection and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh no pudo obtener un código de internet. Comprueba la conexión e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh n'a pas pu obtenir de code Internet. Vérifiez la connexion et réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh non è riuscito a ottenere un codice internet. Controlla la connessione e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh はインターネットコードを取得できませんでした。接続を確認してもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh가 인터넷 코드를 받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kon geen internetcode ophalen. Controleer de verbinding en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nie mógł pobrać kodu internetowego. Sprawdź połączenie i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh não conseguiu obter um código de internet. Verifique a conexão e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh не смог получить интернет-код. Проверьте подключение и попробуйте снова."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kunde inte hämta någon internetkod. Kontrollera anslutningen och försök igen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 无法获取互联网代码。请检查连接后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 無法取得網際網路代碼。請檢查連線後再試一次。"
           }
         }
       }
@@ -7645,6 +8095,1176 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "internet_expiry": {
+      "comment": "Expiry rule for an internet code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Code funktioniert einmal und läuft nach zwei Minuten ab."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This code works once and expires after two minutes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este código funciona una vez y caduca a los dos minutos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code fonctionne une seule fois et expire après deux minutes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo codice funziona una volta e scade dopo due minuti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このコードは 1 回だけ使え、2 分で期限切れになります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 코드는 한 번만 사용할 수 있으며 2분 후 만료됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze code werkt één keer en verloopt na twee minuten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten kod działa raz i wygasa po dwóch minutach."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este código funciona uma vez e expira após dois minutos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Код действует один раз и истекает через две минуты."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den här koden fungerar en gång och upphör efter två minuter."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此代码仅可使用一次，两分钟后失效。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此代碼僅可使用一次，兩分鐘後失效。"
+          }
+        }
+      }
+    },
+    "internet_intro_body": {
+      "comment": "Explains the internet path before any code is requested.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kann sich auch über das Internet verbinden, für ein Gerät außerhalb dieses Netzwerks. Hole einen Code und gib ihn dem Gerät, das die Dateien sendet."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh can also connect over the internet, for a device that is not on this network. Get a code, then give it to the device that will send the files."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh también puede conectarse por internet, para un dispositivo que no está en esta red. Obtén un código y dáselo al dispositivo que enviará los archivos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh peut aussi se connecter par Internet, pour un appareil qui n'est pas sur ce réseau. Obtenez un code, puis donnez-le à l'appareil qui enverra les fichiers."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh può connettersi anche via internet, per un dispositivo che non è su questa rete. Richiedi un codice e dallo al dispositivo che invierà i file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は同じネットワークにないデバイスとも、インターネット経由で接続できます。コードを取得し、ファイルを送る側のデバイスに渡してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh는 같은 네트워크에 없는 기기와도 인터넷으로 연결할 수 있습니다. 코드를 받아 파일을 보낼 기기에 전달하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kan ook via internet verbinden, voor een apparaat dat niet op dit netwerk zit. Vraag een code aan en geef die aan het apparaat dat de bestanden verstuurt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh może połączyć się także przez internet, z urządzeniem spoza tej sieci. Pobierz kod i przekaż go urządzeniu, które wyśle pliki."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh também pode conectar pela internet, para um dispositivo que não está nesta rede. Obtenha um código e entregue-o ao dispositivo que vai enviar os arquivos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh может подключаться и через интернет, к устройству вне этой сети. Получите код и передайте его устройству, которое будет отправлять файлы."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kan även ansluta via internet, till en enhet som inte finns i det här nätverket. Hämta en kod och ge den till enheten som ska skicka filerna."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 也可以通过互联网连接不在此网络中的设备。获取一个代码，然后交给要发送文件的设备。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 也可以透過網際網路連線到不在此網路中的裝置。取得一個代碼，然後交給要傳送檔案的裝置。"
+          }
+        }
+      }
+    },
+    "internet_off_body": {
+      "comment": "Shown in the Internet tab when the path is switched off.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetübertragungen sind aus. Schalte sie in den Einstellungen ein, um einen Code zu holen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet transfers are off. Turn them on in Settings to get a code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las transferencias por internet están desactivadas. Actívalas en Ajustes para obtener un código."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les transferts par Internet sont désactivés. Activez-les dans les Réglages pour obtenir un code."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I trasferimenti via internet sono disattivati. Attivali nelle Impostazioni per ottenere un codice."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネット転送はオフです。コードを取得するには設定でオンにしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷 전송이 꺼져 있습니다. 코드를 받으려면 설정에서 켜세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetoverdrachten staan uit. Schakel ze in bij Instellingen om een code op te halen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesyłanie przez internet jest wyłączone. Włącz je w Ustawieniach, aby pobrać kod."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As transferências pela internet estão desativadas. Ative-as em Ajustes para obter um código."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передача через интернет выключена. Включите её в настройках, чтобы получить код."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetöverföringar är av. Slå på dem i Inställningar för att hämta en kod."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "互联网传输已关闭。请在设置中开启后再获取代码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網際網路傳輸已關閉。請在設定中開啟後再取得代碼。"
+          }
+        }
+      }
+    },
+    "internet_preparing": {
+      "comment": "Shown while the internet code is being minted.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Code wird vorbereitet. Das dauert ein paar Sekunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting a code ready. This takes a few seconds."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando un código. Tarda unos segundos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation d'un code. Cela prend quelques secondes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparazione di un codice. Richiede qualche secondo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードを準備しています。数秒かかります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드를 준비하고 있습니다. 몇 초 걸립니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een code wordt klaargemaakt. Dit duurt een paar seconden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przygotowywanie kodu. Zajmie to kilka sekund."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando um código. Isso leva alguns segundos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готовим код. Это займёт несколько секунд."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Förbereder en kod. Det tar några sekunder."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在准备代码，需要几秒钟。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在準備代碼，需要幾秒鐘。"
+          }
+        }
+      }
+    },
+    "internet_qr_a11y": {
+      "comment": "Accessibility label for the internet code QR image.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetcode als QR-Code"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet code as a QR code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de internet como código QR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code Internet sous forme de code QR"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice internet come codice QR"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR コードで表したインターネットコード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR 코드로 표시된 인터넷 코드"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetcode als QR-code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod internetowy jako kod QR"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de internet como código QR"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Интернет-код в виде QR-кода"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetkod som QR-kod"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以二维码显示的互联网代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以 QR 碼顯示的網際網路代碼"
+          }
+        }
+      }
+    },
+    "internet_ready_body": {
+      "comment": "Instructions above a minted internet code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne diesen Code mit dem Gerät, das die Dateien sendet, oder kopiere ihn und sende ihn über einen Weg, dem du vertraust."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan this code with the device that will send the files, or copy it and send it over a channel you trust."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escanea este código con el dispositivo que enviará los archivos, o cópialo y envíalo por un canal de confianza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scannez ce code avec l'appareil qui enverra les fichiers, ou copiez-le et envoyez-le par un canal de confiance."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansiona questo codice con il dispositivo che invierà i file, oppure copialo e invialo tramite un canale di cui ti fidi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを送る側のデバイスでこのコードをスキャンするか、コピーして信頼できる方法で送ってください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 보낼 기기로 이 코드를 스캔하거나, 복사해 신뢰할 수 있는 경로로 보내세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan deze code met het apparaat dat de bestanden verstuurt, of kopieer hem en stuur hem via een kanaal dat je vertrouwt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeskanuj ten kod urządzeniem, które wyśle pliki, albo skopiuj go i prześlij zaufanym kanałem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escaneie este código com o dispositivo que vai enviar os arquivos, ou copie e envie por um canal confiável."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсканируйте этот код устройством, которое будет отправлять файлы, или скопируйте его и передайте по надёжному каналу."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skanna den här koden med enheten som ska skicka filerna, eller kopiera den och skicka den via en kanal du litar på."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用要发送文件的设备扫描此代码，或复制后通过你信任的渠道发送。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用要傳送檔案的裝置掃描此代碼，或複製後透過你信任的管道傳送。"
+          }
+        }
+      }
+    },
+    "internet_relay_note": {
+      "comment": "Discloses that requesting a code contacts a relay.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für einen Code wird ein öffentliches Relay kontaktiert, damit sich beide Geräte finden. Dateien laufen weiterhin direkt zwischen ihnen, sobald eine direkte Route besteht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting a code contacts a public relay so the two devices can find each other. Files still travel straight between them whenever a direct route exists."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtener un código contacta con un relé público para que ambos dispositivos se encuentren. Los archivos siguen viajando directamente entre ellos siempre que exista una ruta directa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenir un code contacte un relais public pour que les deux appareils se trouvent. Les fichiers circulent toujours directement entre eux dès qu'une route directe existe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richiedere un codice contatta un relay pubblico perché i due dispositivi si trovino. I file viaggiano comunque direttamente tra loro quando esiste un percorso diretto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードの取得時は、2 台のデバイスが互いを見つけられるように公開リレーへ接続します。直接の経路が使える場合、ファイルは引き続きデバイス間を直接転送されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드를 받을 때 두 기기가 서로를 찾을 수 있도록 공개 릴레이에 연결합니다. 직접 경로가 있으면 파일은 여전히 두 기기 사이를 바로 오갑니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor een code wordt een openbare relay benaderd zodat beide apparaten elkaar kunnen vinden. Bestanden gaan nog steeds rechtstreeks tussen de apparaten zodra er een directe route is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobranie kodu łączy się z publicznym przekaźnikiem, aby oba urządzenia mogły się odnaleźć. Pliki nadal wędrują bezpośrednio między nimi, gdy istnieje bezpośrednia trasa."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obter um código contata um relay público para que os dois dispositivos se encontrem. Os arquivos continuam indo diretamente entre eles sempre que existe uma rota direta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При получении кода выполняется обращение к публичному ретранслятору, чтобы устройства нашли друг друга. Файлы по-прежнему идут напрямую, когда прямой маршрут доступен."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Att hämta en kod kontaktar ett publikt relä så att enheterna kan hitta varandra. Filer går fortfarande direkt mellan dem så snart det finns en direkt väg."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取代码时会连接公共中继，让两台设备找到彼此。只要存在直连路径，文件仍会在两台设备之间直接传输。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取得代碼時會連線公共中繼，讓兩台裝置找到彼此。只要有直連路徑，檔案仍會在兩台裝置之間直接傳輸。"
+          }
+        }
+      }
+    },
+    "internet_send_intro_body": {
+      "comment": "Explains the send flow before files are chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle Dateien und zeige den Code dem Gerät, das sie empfängt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose files, then show the code to the device that will receive them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos y muestra el código al dispositivo que los recibirá."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez des fichiers, puis montrez le code à l'appareil qui les recevra."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli i file, poi mostra il codice al dispositivo che li riceverà."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを選び、受け取るデバイスにコードを見せてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 고른 뒤, 받을 기기에 코드를 보여주세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kies bestanden en toon de code aan het apparaat dat ze ontvangt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz pliki, a następnie pokaż kod urządzeniu, które je odbierze."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha arquivos e mostre o código ao dispositivo que vai recebê-los."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите файлы и покажите код устройству, которое их получит."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Välj filer och visa koden för enheten som ska ta emot dem."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择文件，然后把代码给要接收的设备扫描。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇檔案，然後把代碼給要接收的裝置掃描。"
+          }
+        }
+      }
+    },
+    "internet_send_ready_body": {
+      "comment": "Instructions above the send code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne dies mit dem Gerät, das die Dateien empfängt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan this with the device that will receive the files."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escanea esto con el dispositivo que recibirá los archivos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scannez ceci avec l'appareil qui recevra les fichiers."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansiona questo con il dispositivo che riceverà i file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを受け取るデバイスでこれをスキャンしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 받을 기기로 이것을 스캔하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan dit met het apparaat dat de bestanden ontvangt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeskanuj to urządzeniem, które odbierze pliki."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escaneie isto com o dispositivo que vai receber os arquivos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсканируйте это устройством, которое получит файлы."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skanna det här med enheten som ska ta emot filerna."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用要接收文件的设备扫描此代码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用要接收檔案的裝置掃描此代碼。"
+          }
+        }
+      }
+    },
+    "internet_send_started_body": {
+      "comment": "Body under the sending confirmation.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Übertragung läuft. Du kannst sie in der Geräteliste verfolgen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The transfer is running. You can follow it in the device list."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transferencia está en curso. Puedes seguirla en la lista de dispositivos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le transfert est en cours. Vous pouvez le suivre dans la liste des appareils."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il trasferimento è in corso. Puoi seguirlo nell'elenco dei dispositivi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "転送中です。デバイス一覧で確認できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전송이 진행 중입니다. 기기 목록에서 확인할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De overdracht loopt. Je kunt hem volgen in de apparatenlijst."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesyłanie trwa. Możesz je śledzić na liście urządzeń."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A transferência está em andamento. Você pode acompanhar na lista de dispositivos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передача идёт. За ней можно следить в списке устройств."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Överföringen pågår. Du kan följa den i enhetslistan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "传输进行中，可在设备列表中查看。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "傳輸進行中，可在裝置列表中查看。"
+          }
+        }
+      }
+    },
+    "internet_send_started_title": {
+      "comment": "Shown once the recipient has scanned.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gesendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi en cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invio in corso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "送信中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보내는 중"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezig met versturen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyłanie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправка"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skickar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在傳送"
+          }
+        }
+      }
+    },
+    "internet_send_title": {
+      "comment": "Title of the send-over-internet screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über Internet senden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send Over Internet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar por internet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer par Internet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia via internet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネットで送信"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷으로 보내기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via internet versturen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij przez internet"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar pela internet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправить через интернет"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skicka via internet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过互联网发送"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透過網際網路傳送"
+          }
+        }
+      }
+    },
+    "internet_send_waiting": {
+      "comment": "Shown while the sender waits for a scan.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf das andere Gerät."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for the other device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando al otro dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de l'autre appareil."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa dell'altro dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相手のデバイスを待っています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상대 기기를 기다리는 중입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wachten op het andere apparaat."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwanie na drugie urządzenie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aguardando o outro dispositivo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидание другого устройства."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Väntar på den andra enheten."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待对方设备。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待對方裝置。"
           }
         }
       }
@@ -9807,6 +11427,726 @@
         }
       }
     },
+    "other_device_body": {
+      "comment": "Instructions on the redeem screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne den Code des Geräts, an das du senden willst, oder füge ihn unten ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan the code from the device you want to send to, or paste it below."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escanea el código del dispositivo al que quieres enviar, o pégalo abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scannez le code de l'appareil auquel vous voulez envoyer, ou collez-le ci-dessous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansiona il codice del dispositivo a cui vuoi inviare, oppure incollalo qui sotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "送信先のデバイスのコードをスキャンするか、下に貼り付けてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보낼 기기의 코드를 스캔하거나 아래에 붙여넣으세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan de code van het apparaat waarnaar je wilt sturen, of plak hem hieronder."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeskanuj kod urządzenia, do którego chcesz wysłać, albo wklej go poniżej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escaneie o código do dispositivo para o qual quer enviar, ou cole abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсканируйте код устройства, которому хотите отправить, или вставьте его ниже."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skanna koden från enheten du vill skicka till, eller klistra in den nedan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描要发送到的设备上的代码，或在下方粘贴。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描要傳送到的裝置上的代碼，或在下方貼上。"
+          }
+        }
+      }
+    },
+    "other_device_connecting_body": {
+      "comment": "Shown while a ticket is being redeemed.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Verbindung über das Internet dauert länger als im lokalen Netzwerk."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting over the internet takes longer than on a local network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectarse por internet tarda más que en una red local."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecter par Internet prend plus de temps que sur un réseau local."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connettersi via internet richiede più tempo che su una rete locale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネット経由の接続は、ローカルネットワークより時間がかかります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷 연결은 로컬 네트워크보다 오래 걸립니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinden via internet duurt langer dan op een lokaal netwerk."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łączenie przez internet trwa dłużej niż w sieci lokalnej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar pela internet demora mais do que numa rede local."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение через интернет занимает больше времени, чем в локальной сети."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Att ansluta via internet tar längre tid än i ett lokalt nätverk."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过互联网连接比在本地网络中更慢。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透過網際網路連線比在本地網路中更慢。"
+          }
+        }
+      }
+    },
+    "other_device_prompt": {
+      "comment": "Asks which direction the internet transfer goes.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedes Mal wird ein Code gebraucht. Beim Senden wird einer angezeigt, beim Empfangen einer gescannt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A code is needed each time. Sending shows one, receiving scans one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se necesita un código cada vez. Al enviar se muestra uno, al recibir se escanea uno."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un code est nécessaire à chaque fois. L'envoi en affiche un, la réception en scanne un."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serve un codice ogni volta. Inviando se ne mostra uno, ricevendo se ne scansiona uno."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "毎回コードが必要です。送信側は表示し、受信側はスキャンします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "매번 코드가 필요합니다. 보낼 때는 표시하고, 받을 때는 스캔합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elke keer is een code nodig. Verzenden toont er een, ontvangen scant er een."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Za każdym razem potrzebny jest kod. Wysyłanie go pokazuje, odbieranie skanuje."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "É preciso um código a cada vez. Enviar mostra um, receber escaneia um."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый раз нужен код. При отправке он показывается, при получении сканируется."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En kod behövs varje gång. Att skicka visar en, att ta emot skannar en."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次都需要一个代码。发送时显示，接收时扫描。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次都需要一個代碼。傳送時顯示，接收時掃描。"
+          }
+        }
+      }
+    },
+    "other_device_receive": {
+      "comment": "Button: receive files by scanning a code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien empfangen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receive Files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibir archivos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recevoir des fichiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricevi file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを受信"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 받기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestanden ontvangen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odbierz pliki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receber arquivos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Получить файлы"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta emot filer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接收文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接收檔案"
+          }
+        }
+      }
+    },
+    "other_device_scan_prompt": {
+      "comment": "Camera overlay prompt when scanning an internet code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanne den Code des anderen Geräts"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan the code from the other device"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escanea el código del otro dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scannez le code de l'autre appareil"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansiona il codice dell'altro dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相手のデバイスのコードをスキャン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상대 기기의 코드를 스캔하세요"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan de code van het andere apparaat"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeskanuj kod drugiego urządzenia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escaneie o código do outro dispositivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсканируйте код другого устройства"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skanna koden från den andra enheten"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描对方设备上的代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描對方裝置上的代碼"
+          }
+        }
+      }
+    },
+    "other_device_send": {
+      "comment": "Button: send files to a device that is not on this network.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien senden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send Files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar archivos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer des fichiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを送信"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 보내기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestanden versturen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij pliki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar arquivos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправить файлы"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skicka filer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发送文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "傳送檔案"
+          }
+        }
+      }
+    },
+    "other_device_subtitle": {
+      "comment": "Second line of the Other Device row.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht in diesem Netzwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not on this network"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No está en esta red"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas sur ce réseau"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non su questa rete"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このネットワーク外"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 네트워크에 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet op dit netwerk"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poza tą siecią"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fora desta rede"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не в этой сети"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inte i det här nätverket"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不在此网络中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不在此網路中"
+          }
+        }
+      }
+    },
+    "other_device_title": {
+      "comment": "Row and screen title for the internet-path entry point.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anderes Gerät …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other Device…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro dispositivo…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autre appareil…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altro dispositivo…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかのデバイス…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 기기…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ander apparaat…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inne urządzenie…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outro dispositivo…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другое устройство…"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annan enhet…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他设备…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他裝置…"
+          }
+        }
+      }
+    },
     "outgoing_waiting_body": {
       "comment": "Subtitle while the other device decides whether to accept.",
       "extractionState": "manual",
@@ -10931,6 +13271,96 @@
         }
       }
     },
+    "pairing_scan_accepts": {
+      "comment": "Note that the scanner takes both kinds of code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier funktionieren sowohl Kopplungscodes als auch Internetcodes."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pairing codes and internet codes both work here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí funcionan tanto los códigos de vinculación como los códigos de internet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les codes d'association et les codes Internet fonctionnent tous les deux ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qui funzionano sia i codici di abbinamento sia i codici internet."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペアリングコードとインターネットコードのどちらも使えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페어링 코드와 인터넷 코드 모두 사용할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zowel koppelcodes als internetcodes werken hier."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Działają tu zarówno kody parowania, jak i kody internetowe."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Códigos de pareamento e códigos de internet funcionam aqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь подходят и коды сопряжения, и интернет-коды."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Både kopplingskoder och internetkoder fungerar här."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对码和互联网代码在这里都可以使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配對碼與網際網路代碼在這裡都可以使用。"
+          }
+        }
+      }
+    },
     "pairing_scan_body": {
       "comment": "Instructions on the scan tab.",
       "extractionState": "manual",
@@ -11647,6 +14077,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "已與 %1$@ 配對"
+          }
+        }
+      }
+    },
+    "pairing_tab_internet": {
+      "comment": "Tab for publishing an internet code.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Интернет"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "互联网"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網際網路"
           }
         }
       }
@@ -13541,6 +16061,636 @@
         }
       }
     },
+    "settings_relay_custom": {
+      "comment": "Relay option: a relay the user chose or runs.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigenes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Own"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mien"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分のもの"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 지정"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Własny"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próprio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свой"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Egen"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自有"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自有"
+          }
+        }
+      }
+    },
+    "settings_relay_custom_footer": {
+      "comment": "What the custom relay option does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nutzt das eingetragene Iroh-Relay. Codes von diesem Gerät weisen das andere Gerät an, es ebenfalls zu nutzen, sodass nur dieses Gerät die Adresse braucht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh uses the Iroh relay you enter. Codes from this device tell the other device to use it too, so only this device needs the address."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa el relé de Iroh que indiques. Los códigos de este dispositivo le dicen al otro que lo use también, así que solo este dispositivo necesita la dirección."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh utilise le relais Iroh que vous indiquez. Les codes de cet appareil indiquent à l'autre de l'utiliser aussi, donc seul cet appareil a besoin de l'adresse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa il relay Iroh che inserisci. I codici di questo dispositivo dicono all'altro di usarlo a sua volta, quindi solo questo dispositivo ha bisogno dell'indirizzo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は入力した Iroh リレーを使います。このデバイスのコードは相手のデバイスにも同じリレーを使うよう伝えるため、アドレスが必要なのはこのデバイスだけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh는 입력한 Iroh 릴레이를 사용합니다. 이 기기의 코드가 상대 기기에도 같은 릴레이를 쓰도록 알려주므로, 주소는 이 기기에만 필요합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh gebruikt de Iroh-relay die je invult. Codes van dit apparaat vertellen het andere apparaat die ook te gebruiken, dus alleen dit apparaat heeft het adres nodig."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh korzysta z podanego przekaźnika Iroh. Kody z tego urządzenia mówią drugiemu, aby też go użyło, więc adres jest potrzebny tylko na tym urządzeniu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh usa o relay Iroh que você informar. Os códigos deste dispositivo dizem ao outro para usá-lo também, então só este dispositivo precisa do endereço."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh использует указанный ретранслятор Iroh. Коды с этого устройства сообщают другому использовать его же, поэтому адрес нужен только здесь."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh använder det Iroh-relä du anger. Koder från den här enheten säger åt den andra enheten att också använda det, så bara den här enheten behöver adressen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用你填写的 Iroh 中继。本设备生成的代码会让对方设备也使用它，因此只有本设备需要填写地址。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用你填寫的 Iroh 中繼。本裝置產生的代碼會讓對方裝置也使用它，因此只有本裝置需要填寫位址。"
+          }
+        }
+      }
+    },
+    "settings_relay_off": {
+      "comment": "Relay option: internet transfers switched off.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désactivé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disattivato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "끔"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyłączone"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключено"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Av"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉"
+          }
+        }
+      }
+    },
+    "settings_relay_off_footer": {
+      "comment": "What switching the internet path off does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh schaltet Internetübertragungen aus und kontaktiert nichts. Senden funktioniert nur zwischen Geräten im selben Netzwerk."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh turns internet transfers off and contacts nothing. Sending works only between devices on the same network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh desactiva las transferencias por internet y no contacta con nada. Enviar solo funciona entre dispositivos de la misma red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh désactive les transferts par Internet et ne contacte rien. L'envoi ne fonctionne qu'entre appareils du même réseau."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh disattiva i trasferimenti via internet e non contatta nulla. L'invio funziona solo tra dispositivi sulla stessa rete."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh はインターネット転送をオフにし、どこにも接続しません。送信は同じネットワーク上のデバイス間でのみ行えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh가 인터넷 전송을 끄고 아무 곳에도 연결하지 않습니다. 전송은 같은 네트워크의 기기 사이에서만 가능합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh schakelt internetoverdrachten uit en benadert niets. Versturen werkt alleen tussen apparaten op hetzelfde netwerk."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh wyłącza przesyłanie przez internet i z niczym się nie łączy. Wysyłanie działa tylko między urządzeniami w tej samej sieci."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh desativa as transferências pela internet e não contata nada. O envio funciona só entre dispositivos na mesma rede."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh отключает передачу через интернет и ни к чему не обращается. Отправка работает только между устройствами в одной сети."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh stänger av internetöverföringar och kontaktar ingenting. Att skicka fungerar bara mellan enheter i samma nätverk."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 关闭互联网传输，不连接任何服务。仅可在同一网络的设备之间发送。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 關閉網際網路傳輸，不連線任何服務。僅可在同一網路的裝置之間傳送。"
+          }
+        }
+      }
+    },
+    "settings_relay_public": {
+      "comment": "Relay option: shared public relays.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffentlich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Públicos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publics"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubblici"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公開"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공개"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Openbaar"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publiczne"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Públicos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Публичные"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publika"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共"
+          }
+        }
+      }
+    },
+    "settings_relay_public_footer": {
+      "comment": "What the public relay option does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nutzt die kostenlosen Relays von Iroh, die mit anderen Apps geteilt werden. Ihre Verfügbarkeit ist nicht garantiert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh uses the free relays provided by Iroh, shared with other apps. They are not guaranteed to be available."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa los relés gratuitos que ofrece Iroh, compartidos con otras apps. No se garantiza su disponibilidad."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh utilise les relais gratuits fournis par Iroh, partagés avec d'autres apps. Leur disponibilité n'est pas garantie."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa i relay gratuiti forniti da Iroh, condivisi con altre app. La loro disponibilità non è garantita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は Iroh が提供する無料のリレーを使います。他のアプリと共有されており、可用性は保証されていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh는 Iroh가 제공하는 무료 릴레이를 사용합니다. 다른 앱과 공유되며 가용성은 보장되지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh gebruikt de gratis relays van Iroh, die met andere apps worden gedeeld. Beschikbaarheid is niet gegarandeerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh korzysta z darmowych przekaźników udostępnianych przez Iroh, współdzielonych z innymi aplikacjami. Ich dostępność nie jest gwarantowana."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh usa os relays gratuitos fornecidos pela Iroh, compartilhados com outros apps. A disponibilidade não é garantida."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh использует бесплатные ретрансляторы Iroh, общие с другими приложениями. Их доступность не гарантирована."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh använder de gratis reläer som Iroh tillhandahåller, delade med andra appar. Tillgängligheten är inte garanterad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用 Iroh 提供的免费中继，与其他应用共享，其可用性没有保证。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用 Iroh 提供的免費中繼，與其他 App 共享，其可用性沒有保證。"
+          }
+        }
+      }
+    },
+    "settings_relay_url": {
+      "comment": "Label of the custom relay address field.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay-Adresse"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay Address"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirección del relé"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse du relais"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo del relay"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リレーのアドレス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이 주소"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay-adres"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adres przekaźnika"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endereço do relay"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Адрес ретранслятора"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reläadress"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中继地址"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中繼位址"
+          }
+        }
+      }
+    },
     "settings_section_device": {
       "comment": "Settings section header for this device's own name.",
       "extractionState": "manual",
@@ -13897,6 +17047,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "問題"
+          }
+        }
+      }
+    },
+    "settings_section_relay": {
+      "comment": "Header of the relay-selection section.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetverbindungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet Connections"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexiones por Internet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexions Internet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessioni Internet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネット接続"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷 연결"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetverbindingen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączenia internetowe"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexões pela Internet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Интернет-подключения"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetanslutningar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "互联网连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網際網路連線"
           }
         }
       }

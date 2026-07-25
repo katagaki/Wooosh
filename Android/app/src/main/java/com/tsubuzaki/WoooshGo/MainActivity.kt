@@ -31,6 +31,7 @@ import com.tsubuzaki.WoooshGo.ui.MainViewModel
 import com.tsubuzaki.WoooshGo.ui.PairingProgressDialog
 import com.tsubuzaki.WoooshGo.ui.PairingScreen
 import com.tsubuzaki.WoooshGo.ui.SasSheet
+import com.tsubuzaki.WoooshGo.ui.SendOverInternetScreen
 import com.tsubuzaki.WoooshGo.ui.SettingsScreen
 import com.tsubuzaki.WoooshGo.ui.theme.WoooshTheme
 
@@ -49,7 +50,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { MAIN, SETTINGS, PAIRING }
+private enum class Screen { MAIN, SETTINGS, PAIRING, INTERNET_SEND }
 
 // Spelled out rather than using Manifest.permission.ACCESS_LOCAL_NETWORK so the
 // build does not depend on the constant being un-gated in the compile SDK.
@@ -71,6 +72,9 @@ private fun AppRoot(viewModel: MainViewModel) {
     val pairedDevices by viewModel.pairedDevices.collectAsStateWithLifecycle()
     val pairedDeviceIds by viewModel.pairedDeviceIds.collectAsStateWithLifecycle()
     val stagedShare by viewModel.stagedShare.collectAsStateWithLifecycle()
+    val relayError by viewModel.relayError.collectAsStateWithLifecycle()
+    val redeemedPeerId by viewModel.redeemedPeerId.collectAsStateWithLifecycle()
+    val ticketRedeemedPeerId by viewModel.ticketRedeemedPeerId.collectAsStateWithLifecycle()
 
     var screen by rememberSaveable { mutableStateOf(Screen.MAIN) }
 
@@ -148,6 +152,21 @@ private fun AppRoot(viewModel: MainViewModel) {
                 onRevokeDevice = viewModel::revokeDevice,
                 onDisplayNameChange = viewModel::setDisplayName,
                 onVisibilityChange = viewModel::setVisibility,
+                onRelayModeChange = viewModel::setRelayMode,
+                onRelayUrlChange = viewModel::setRelayUrl,
+                relayError = relayError,
+                onBack = { screen = Screen.MAIN },
+            )
+        }
+
+        screen == Screen.INTERNET_SEND -> {
+            BackHandler { screen = Screen.MAIN }
+            SendOverInternetScreen(
+                beginInternetTicket = viewModel::beginInternetTicket,
+                endInternetTicket = viewModel::endInternetTicket,
+                onStageFiles = viewModel::stageInternetSend,
+                redeemedPeerId = ticketRedeemedPeerId,
+                onRedeemed = viewModel::completeInternetSend,
                 onBack = { screen = Screen.MAIN },
             )
         }
@@ -177,6 +196,9 @@ private fun AppRoot(viewModel: MainViewModel) {
                         viewModel.sendToPeer(peer, uris)
                     }
                 },
+                internetEnabled = settings?.internetEnabled != false,
+                onRedeemTicket = viewModel::pairWithQr,
+                onSendOverInternet = { screen = Screen.INTERNET_SEND },
                 onSendStaged = { peer ->
                     withTransferPermissions(includeStorage = false) {
                         viewModel.sendStaged(peer)

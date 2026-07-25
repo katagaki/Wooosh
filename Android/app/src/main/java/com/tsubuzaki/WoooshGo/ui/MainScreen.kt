@@ -1,5 +1,7 @@
 package com.tsubuzaki.WoooshGo.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -32,7 +36,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -52,11 +58,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.tsubuzaki.WoooshGo.R
+import com.tsubuzaki.WoooshGo.pairing.PortraitCaptureActivity
 import com.tsubuzaki.WoooshGo.core.TransferId
 import com.tsubuzaki.WoooshGo.peers.Peer
 import com.tsubuzaki.WoooshGo.settings.Visibility
@@ -85,6 +96,10 @@ fun MainScreen(
     stagedShare: OutboxRepository.StagedShare?,
     statusMessages: SharedFlow<String>,
     onSendFiles: (Peer, List<Uri>) -> Unit,
+    /** Internet path entry point (PROTOCOL.md §9); hidden when it is switched off. */
+    internetEnabled: Boolean,
+    onRedeemTicket: (String) -> Unit,
+    onSendOverInternet: () -> Unit,
     onSendStaged: (Peer) -> Unit,
     onDismissStaged: () -> Unit,
     onCancelTransfer: (TransferId) -> Unit,
@@ -98,8 +113,43 @@ fun MainScreen(
         statusMessages.collect { snackbarHostState.showSnackbar(it) }
     }
 
+    val context = LocalContext.current
+
     // Peer awaiting a "photos or documents?" choice, then a system picker result.
     var pickerPeer by remember { mutableStateOf<Peer?>(null) }
+
+    // "Other Device…" goes straight to the viewfinder: the user tapped a device row,
+    // so there is nothing to choose first.
+    val ticketScanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let(onRedeemTicket)
+    }
+    val ticketScanPrompt = stringResource(R.string.other_device_scan_prompt)
+    val ticketScanOptions = remember(ticketScanPrompt) {
+        ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt(ticketScanPrompt)
+            .setBeepEnabled(false)
+            // Our own capture activity: the library's is pinned to landscape.
+            .setCaptureActivity(PortraitCaptureActivity::class.java)
+            .setOrientationLocked(false)
+    }
+    val ticketCameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) ticketScanLauncher.launch(ticketScanOptions) }
+
+    // One row, two directions: sending presents a code, receiving scans one
+    // (PROTOCOL.md §9.4).
+    var askDirection by remember { mutableStateOf(false) }
+
+    fun scanToReceive() {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            ticketScanLauncher.launch(ticketScanOptions)
+        } else {
+            ticketCameraLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
     var launchTarget by remember { mutableStateOf<Peer?>(null) }
 
     val mediaPicker = rememberLauncherForActivityResult(
@@ -159,6 +209,8 @@ fun MainScreen(
             EmptyState(
                 visibility = visibility,
                 onOpenPairing = onOpenPairing,
+                internetEnabled = internetEnabled,
+                onOtherDevice = { askDirection = true },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -195,6 +247,19 @@ fun MainScreen(
                         onDismiss = { onDismissTransfer(transfer.id) },
                     )
                 }
+                // Pinned FIRST, never appended: a synthetic row at the end would be
+                // pushed down by every new discovery, which is the moving-target mis-tap
+                // the list rules exist to prevent (DESIGN.md §5).
+                if (internetEnabled) {
+                    // Its own section: it is not a discovered device and must not read
+                    // as one sitting among them.
+                    item(key = "other-device") {
+                        OtherDeviceRow { askDirection = true }
+                    }
+                    item(key = "other-device-divider") {
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    }
+                }
                 items(peers, key = { it.rid }) { peer ->
                     PeerRow(
                         peer = peer,
@@ -211,6 +276,26 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    if (askDirection) {
+        AlertDialog(
+            onDismissRequest = { askDirection = false },
+            title = { Text(stringResource(R.string.other_device_title)) },
+            text = { Text(stringResource(R.string.other_device_prompt)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    askDirection = false
+                    onSendOverInternet()
+                }) { Text(stringResource(R.string.other_device_send)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    askDirection = false
+                    scanToReceive()
+                }) { Text(stringResource(R.string.other_device_receive)) }
+            },
+        )
     }
 
     pickerPeer?.let { peer ->
@@ -318,6 +403,41 @@ private fun StagedShareBanner(
     }
 }
 
+/**
+ * The one row that is not a discovered device: the entry point to the internet path
+ * (PROTOCOL.md §9). Tapping it scans a code from a device that is not on this network.
+ */
+@Composable
+private fun OtherDeviceRow(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .heightIn(min = 48.dp),
+    ) {
+        Icon(
+            Icons.Outlined.Public,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                text = stringResource(R.string.other_device_title),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = stringResource(R.string.other_device_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PeerRow(
     peer: Peer,
@@ -376,6 +496,8 @@ private fun PeerRow(
 private fun EmptyState(
     visibility: Visibility?,
     onOpenPairing: () -> Unit,
+    internetEnabled: Boolean,
+    onOtherDevice: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.padding(32.dp), contentAlignment = Alignment.Center) {
@@ -419,6 +541,17 @@ private fun EmptyState(
                 Icon(Icons.Outlined.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.action_pair_device))
+            }
+            // No devices nearby is exactly when someone reaches for the internet
+            // path, and the row that offers it lives in the list this state
+            // replaces — so without this it is unreachable here.
+            if (internetEnabled) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onOtherDevice) {
+                    Icon(Icons.Outlined.Public, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.other_device_title))
+                }
             }
         }
     }

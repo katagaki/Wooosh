@@ -2,6 +2,7 @@ package com.tsubuzaki.WoooshGo.core
 
 import android.content.Context
 import com.tsubuzaki.WoooshGo.R
+import uniffi.wooosh_core.relayMaxFileBytes
 
 /**
  * Turns a core failure into something a person can act on.
@@ -13,8 +14,16 @@ import com.tsubuzaki.WoooshGo.R
  */
 fun transferErrorMessage(context: Context, raw: String?): String {
     val text = raw?.lowercase().orEmpty()
+    // The limit comes from the core so the copy cannot drift from the rule.
+    if (text.contains("relay_file_too_large")) {
+        return context.getString(
+            R.string.error_relay_file_too_large,
+            android.text.format.Formatter.formatShortFileSize(context, relayMaxFileBytes().toLong()),
+        )
+    }
     return context.getString(
         when {
+
             text.contains("declined") || text.contains("rejected") ->
                 R.string.error_declined_by_peer
 

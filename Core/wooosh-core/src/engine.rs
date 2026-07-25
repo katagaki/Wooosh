@@ -45,6 +45,23 @@ const NET_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 /// Exceeding it is not fatal — the ticket still carries direct candidates —
 /// but a ticket with neither relay nor reachable candidate is useless.
 const RELAY_READY_TIMEOUT: Duration = Duration::from_secs(15);
+/// How long a send waits for hole punching to upgrade a relayed internet
+/// connection to a direct one before falling back to the relay (DESIGN.md
+/// §9.1). Generous because a direct path is strictly better and punching
+/// normally completes within a couple of seconds of the connection coming up;
+/// by send time it has usually already happened.
+const DIRECT_PATH_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Largest single file Wooosh will move over a **relayed** connection
+/// (DESIGN.md §9.1). No limit at all applies on a direct path, which includes
+/// every LAN transfer and every internet transfer that hole punched.
+///
+/// The cap exists because a relay is somebody else's bandwidth: n0's public
+/// relays are free, rate-limited and shared, and a self-hosted one is still a
+/// server someone pays for. 100 MB keeps the everyday case (photos, documents,
+/// a video clip) working from anywhere while keeping a 4 GB archive on the
+/// direct path it should have been on.
+pub const RELAY_MAX_FILE_BYTES: u64 = 100 * 1024 * 1024;
 const SMALL_FILE_LIMIT: u64 = 1024 * 1024; // <1 MiB => pipelined
 const MAX_SLOTS: usize = 4;
 const CHUNK: usize = 1024 * 1024;
@@ -80,6 +97,11 @@ pub struct Peer {
     pub pubkey: [u8; 32],
     pub device_id: String,
     pub trusted: AtomicBool,
+    /// This connection redeemed a valid ticket (PROTOCOL.md §9.4). Distinct
+    /// from `trusted`: it authorises exactly one transfer session on *this*
+    /// connection and is never persisted. Nothing else may send file data to
+    /// an unpinned internet peer.
+    pub ticket_authorized: AtomicBool,
     pub dn: Mutex<String>,
     /// Peer's HELLO `dt` (PROTOCOL.md §4.1), verbatim wire string.
     pub dt: Mutex<String>,
@@ -168,7 +190,10 @@ struct Inner {
     /// The runtime the engine was built on, so the synchronous `shutdown`
     /// can still drive iroh's asynchronous close.
     rt: tokio::runtime::Handle,
-    relay_urls: Option<Vec<String>>,
+    /// Relay selection for the internet path. Mutable at runtime: changing it
+    /// drops the bound endpoint so the next ticket operation rebinds against
+    /// the new set (see `set_relay_urls`).
+    relay_urls: Mutex<Option<Vec<String>>>,
     /// Internet path (PROTOCOL.md §9). Bound lazily on the first ticket
     /// operation so a LAN-only install never talks to a relay. The async
     /// mutex is deliberate: binding awaits, and two concurrent ticket calls
@@ -356,7 +381,7 @@ impl Engine {
             events,
             peers: Mutex::new(HashMap::new()),
             rt: tokio::runtime::Handle::current(),
-            relay_urls: cfg.relay_urls,
+            relay_urls: Mutex::new(cfg.relay_urls),
             iroh: tokio::sync::Mutex::new(None),
             ticket_pending: Mutex::new(None),
             qr_pending: Mutex::new(None),
@@ -571,7 +596,13 @@ impl Engine {
         // ticket rather than a hang. Which address counts depends on the mode:
         // with relays on, the home relay is the one that works from anywhere;
         // with relays off, only direct candidates can ever work.
-        let relays_off = self.inner.relay_urls.as_deref().is_some_and(|r| r.is_empty());
+        let relays_off = self
+            .inner
+            .relay_urls
+            .lock()
+            .unwrap()
+            .as_deref()
+            .is_some_and(|r| r.is_empty());
         let deadline = Instant::now() + RELAY_READY_TIMEOUT;
         let addr = loop {
             let a = ep.addr();
@@ -585,6 +616,17 @@ impl Engine {
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
+        // Relays on but none reachable: the endpoint never acquired a home
+        // relay, so the ticket could only carry local interface addresses.
+        // Publishing that would hand the user a code that looks fine and can
+        // only ever work on their own network — the one thing they did not ask
+        // for. Fail instead, so a wrong relay URL or a dead network is
+        // reported rather than disguised.
+        if !relays_off && addr.relay_urls().next().is_none() {
+            return Err(WoooshError::Connect(
+                "no relay could be reached to publish a ticket".into(),
+            ));
+        }
         let (pending, token) = TicketPending::new();
         *self.inner.ticket_pending.lock().unwrap() = Some(pending);
         let ticket = NetTicket {
@@ -602,6 +644,38 @@ impl Engine {
             expires_unix: inet::new_expiry_unix(),
         };
         Ok(ticket.encode())
+    }
+
+    /// Choose the relays used by the internet path (DESIGN.md §9.1).
+    ///
+    /// `None` is n0's public set, `Some(&[])` is no relay and no address
+    /// lookup at all, and a non-empty list is a chosen or self-hosted relay.
+    /// The publishing device's home relay is what a ticket advertises, so
+    /// setting this here is what makes a redeemer use *your* relay without
+    /// configuring anything on their side.
+    ///
+    /// Rebinding rather than restarting: the iroh endpoint is independent of
+    /// the LAN QUIC socket, so the endpoint is closed and dropped and the next
+    /// ticket operation binds a fresh one. Any outstanding ticket dies with
+    /// it, since it advertises a relay this device no longer uses.
+    pub async fn set_relay_urls(&self, urls: Option<Vec<String>>) -> Result<(), WoooshError> {
+        // Validated before anything is torn down, so a typo leaves the working
+        // configuration in place.
+        if let Some(list) = &urls {
+            for u in list {
+                u.parse::<iroh::RelayUrl>()
+                    .map_err(|e| WoooshError::InvalidArgument(format!("relay url {u}: {e}")))?;
+            }
+        }
+        let mut guard = self.inner.iroh.lock().await;
+        *self.inner.relay_urls.lock().unwrap() = urls;
+        *self.inner.ticket_pending.lock().unwrap() = None;
+        if let Some(ep) = guard.take() {
+            // Dropping without closing makes iroh log an error and abort its
+            // socket, exactly as in `shutdown`.
+            ep.close().await;
+        }
+        Ok(())
     }
 
     /// Invalidate the outstanding ticket. A ticket the user has stopped
@@ -873,7 +947,8 @@ impl Inner {
         if let Some(ep) = guard.as_ref() {
             return Ok(ep.clone());
         }
-        let ep = inet::bind_endpoint(&self.identity, self.relay_urls.as_deref()).await?;
+        let relays = self.relay_urls.lock().unwrap().clone();
+        let ep = inet::bind_endpoint(&self.identity, relays.as_deref()).await?;
         let inner = self.clone();
         let accept_ep = ep.clone();
         tokio::spawn(async move { inner.iroh_accept_loop(accept_ep).await });
@@ -1161,7 +1236,12 @@ impl Inner {
         // PairedOnly: reject untrusted peers right after HELLO (server side).
         if !is_client && !trusted {
             let vis = self.cfg.lock().unwrap().visibility.clone();
-            if matches!(vis, Visibility::PairedOnly) {
+            // A live ticket is an explicit invitation, so PairedOnly must not
+            // slam the door before the caller can present its token — the same
+            // carve-out QR pairing already gets (PROTOCOL.md §4.2).
+            let invited =
+                conn.is_internet() && self.ticket_pending.lock().unwrap().is_some();
+            if matches!(vis, Visibility::PairedOnly) && !invited {
                 conn.close(close_codes::PAIRING_REQUIRED, b"PAIRING_REQUIRED");
                 return Err(WoooshError::PairingRequired);
             }
@@ -1186,6 +1266,7 @@ impl Inner {
             pubkey,
             device_id: device_id.clone(),
             trusted: AtomicBool::new(trusted),
+            ticket_authorized: AtomicBool::new(false),
             dn: Mutex::new(peer_dn.clone()),
             dt: Mutex::new(peer_dt.clone()),
             out_tx,
@@ -1287,15 +1368,32 @@ impl Inner {
                     ok
                 };
                 if ok {
-                    let dn = self.pin_peer(peer)?;
-                    peer.send_msg(Msg::PairAccept);
-                    self.emit(CoreEvent::PairingResult {
-                        peer_id: peer.device_id.clone(),
-                        peer_pubkey: peer.pubkey.to_vec(),
-                        fingerprint: peer.fingerprint(),
-                        success: true,
-                        message: Some(dn),
-                    });
+                    if peer.conn.is_internet() {
+                        // The internet path never pairs (PROTOCOL.md §9.4): the
+                        // token authorises exactly one transfer session and
+                        // nothing is written to the trust store. Marking the
+                        // connection is what lets this device send to an
+                        // otherwise untrusted peer, and it is the only gate
+                        // between staged files and anyone who learned the
+                        // endpoint id.
+                        peer.ticket_authorized.store(true, Ordering::SeqCst);
+                        peer.send_msg(Msg::PairAccept);
+                        self.emit(CoreEvent::TicketRedeemed {
+                            peer_id: peer.device_id.clone(),
+                            peer_pubkey: peer.pubkey.to_vec(),
+                            device_name: peer.dn.lock().unwrap().clone(),
+                        });
+                    } else {
+                        let dn = self.pin_peer(peer)?;
+                        peer.send_msg(Msg::PairAccept);
+                        self.emit(CoreEvent::PairingResult {
+                            peer_id: peer.device_id.clone(),
+                            peer_pubkey: peer.pubkey.to_vec(),
+                            fingerprint: peer.fingerprint(),
+                            success: true,
+                            message: Some(dn),
+                        });
+                    }
                 } else {
                     peer.send_msg(Msg::PairReject);
                     peer.conn.close(close_codes::TOKEN_INVALID, b"TOKEN_INVALID");
@@ -1304,6 +1402,18 @@ impl Inner {
             Msg::PairRequest { token: None } => {
                 let code = transport::derive_sas(&peer.conn)?;
                 self.new_sas_entry(peer, code);
+            }
+            Msg::PairAccept if peer.conn.is_internet() => {
+                // Symmetric with the publisher: one-shot, no trust written.
+                peer.ticket_authorized.store(true, Ordering::SeqCst);
+                if let Some(tx) = self.qr_waiters.lock().unwrap().remove(&peer.device_id) {
+                    let _ = tx.send(true);
+                }
+                self.emit(CoreEvent::TicketRedeemed {
+                    peer_id: peer.device_id.clone(),
+                    peer_pubkey: peer.pubkey.to_vec(),
+                    device_name: peer.dn.lock().unwrap().clone(),
+                });
             }
             Msg::PairAccept => {
                 let dn = self.pin_peer(peer)?;
@@ -1566,6 +1676,20 @@ impl Inner {
         total: u64,
         _note: Option<String>,
     ) -> Result<(), WoooshError> {
+        // The relayed per-file cap is enforced on both ends (DESIGN.md §9.1).
+        // The sender already checked, but the relay being spent is usually the
+        // *receiver's* home relay, so this side does not take a well-behaved
+        // sender on trust. Declined outright rather than partially, so the
+        // outcome does not depend on which files happened to be small.
+        if !peer.conn.is_direct() && files.iter().any(|f| f.size > RELAY_MAX_FILE_BYTES) {
+            log::warn!(
+                "declining relayed offer from {}: a file exceeds {} bytes",
+                peer.device_id,
+                RELAY_MAX_FILE_BYTES
+            );
+            peer.send_msg(Msg::Decision { tid, accept: Vec::new() });
+            return Ok(());
+        }
         let dir = self.staging.join(tid_hex(&tid));
         let mut states = BTreeMap::new();
         let mut invalid = Vec::new();
@@ -2202,6 +2326,39 @@ impl Inner {
         peer: Arc<Peer>,
         paths: Vec<PathBuf>,
     ) -> Result<(), WoooshError> {
+        // The internet path never pairs (PROTOCOL.md §9.4), so `trusted` is
+        // false for a legitimate ticket transfer and cannot be the gate. The
+        // gate is the redeemed token: without it, anyone who learned this
+        // device's endpoint id could dial in and be handed the staged files.
+        if peer.conn.is_internet()
+            && !peer.ticket_authorized.load(Ordering::SeqCst)
+            && !peer.trusted.load(Ordering::SeqCst)
+        {
+            return Err(WoooshError::Protocol(
+                "refusing to send to an internet peer that has not redeemed a ticket".into(),
+            ));
+        }
+        // An internet connection comes up relayed and upgrades once hole
+        // punching lands, so wait for the upgrade before deciding which limits
+        // apply. Always true on the LAN, where there is no relay at all.
+        if !peer.conn.wait_for_direct(DIRECT_PATH_TIMEOUT).await {
+            // Still relayed, so the per-file cap applies (DESIGN.md §9.1).
+            // Checked on metadata only, before any hashing, so an oversized
+            // file fails in milliseconds rather than after a full BLAKE3 pass —
+            // and before the OFFER, so the receiver is never asked to accept a
+            // transfer that cannot run.
+            let to_check = paths.clone();
+            let oversized = tokio::task::spawn_blocking(move || {
+                to_check.iter().any(|p| {
+                    std::fs::metadata(p).map(|m| m.len()).unwrap_or(0) > RELAY_MAX_FILE_BYTES
+                })
+            })
+            .await
+            .map_err(|e| WoooshError::Io(e.to_string()))?;
+            if oversized {
+                return Err(WoooshError::RelayFileTooLarge);
+            }
+        }
         let mut files = BTreeMap::new();
         let mut metas = Vec::new();
         let mut total = 0u64;

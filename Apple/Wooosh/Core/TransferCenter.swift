@@ -171,6 +171,12 @@ final class TransferCenter {
 
     func handle(event: CoreEvent) {
         switch event {
+        case .ticketRedeemed, .peerConnected, .peerDisconnected, .pairingSAS,
+             .pairingResult, .keyChanged:
+            // Owned by AppModel; listed explicitly so a new core event cannot
+            // be silently swallowed here.
+            break
+
         case .incomingOffer(let tid, let from, let trusted, let manifest):
             handleIncomingOffer(tid: tid, from: from, trusted: trusted, manifest: manifest)
         case .transferStarted(let tid, _, _, let manifest):
@@ -193,8 +199,6 @@ final class TransferCenter {
             // The core's wording is an internal token; map it to real copy.
             transfer.state = .failed(message: transferErrorMessage(message), resumable: resumable)
             updateKeepAwake()
-        case .pairingSAS, .pairingResult, .keyChanged, .peerConnected, .peerDisconnected:
-            break // Handled by AppModel.
         }
     }
 
@@ -218,6 +222,21 @@ final class TransferCenter {
         let transfer = Transfer(id: tid, peer: from, direction: .incoming,
                                 files: files, state: .awaitingConsent,
                                 peerWasPaired: trusted)
+        // Pairing already *is* the consent (PROTOCOL.md §4). Asking again for
+        // every transfer from a device the user deliberately pinned turns the
+        // prompt into something to dismiss without reading, which is worse for
+        // the case that actually matters: the unpaired sender, who still gets
+        // the full sheet with the fingerprint to verify.
+        if trusted {
+            // Not `accept(offer:)`: that clears `pendingOffer`, which here could
+            // belong to a *different*, unpaired sender whose sheet is on screen
+            // and unanswered.
+            transfer.state = .transferring
+            transfers.append(transfer)
+            core?.respondToOffer(transferID: tid, acceptedFileIDs: manifest.map(\.id))
+            updateKeepAwake()
+            return
+        }
         // One consent sheet at a time; a second simultaneous offer replaces
         // nothing — it is silently declined (rate limiting is core's job).
         if pendingOffer == nil {

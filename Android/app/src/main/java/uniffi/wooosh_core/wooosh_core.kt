@@ -826,6 +826,10 @@ internal open class UniffiVTableCallbackInterfaceKeyStore(
 
 
 
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -848,6 +852,8 @@ fun uniffi_wooosh_core_checksum_func_fingerprint_phrase_for(
 fun uniffi_wooosh_core_checksum_func_parse_internet_ticket(
 ): Short
 fun uniffi_wooosh_core_checksum_func_parse_pairing_qr(
+): Short
+fun uniffi_wooosh_core_checksum_func_relay_max_file_bytes(
 ): Short
 fun uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(
 ): Short
@@ -888,6 +894,8 @@ fun uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer(
 fun uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_send(
+): Short
+fun uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_set_visibility(
 ): Short
@@ -1016,6 +1024,8 @@ fun uniffi_wooosh_core_fn_method_woooshcore_revoke_peer(`ptr`: Pointer,`pubkey`:
 ): Byte
 fun uniffi_wooosh_core_fn_method_woooshcore_send(`ptr`: Pointer,`peerId`: RustBuffer.ByValue,`files`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(`ptr`: Pointer,`urls`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_wooosh_core_fn_method_woooshcore_set_visibility(`ptr`: Pointer,`mode`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_wooosh_core_fn_method_woooshcore_start(`ptr`: Pointer,`config`: RustBuffer.ByValue,`keyStore`: Pointer,`listener`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1032,6 +1042,8 @@ fun uniffi_wooosh_core_fn_func_parse_internet_ticket(`ticket`: RustBuffer.ByValu
 ): RustBuffer.ByValue
 fun uniffi_wooosh_core_fn_func_parse_pairing_qr(`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_func_relay_max_file_bytes(uniffi_out_err: UniffiRustCallStatus, 
+): Long
 fun ffi_wooosh_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_wooosh_core_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1170,6 +1182,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 43743.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_wooosh_core_checksum_method_coreeventlistener_on_event() != 57891.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1228,6 +1243,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_send() != 57342.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls() != 8523.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_visibility() != 28146.toShort()) {
@@ -2639,6 +2657,27 @@ public interface WoooshCoreInterface {
      */
     fun `send`(`peerId`: kotlin.String, `files`: List<kotlin.String>): kotlin.String
     
+    /**
+     * Choose the relays the internet path uses (DESIGN.md §9.1).
+     *
+     * - `None` — n0's free public relays. Shared infrastructure with no
+     * uptime guarantee; fine because Wooosh only ever uses a relay to
+     * introduce two devices, never to carry file data.
+     * - `Some([])` — no relay and no address lookup. Nothing leaves this
+     * device except to addresses carried in a ticket.
+     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
+     * tickets advertise it, so a redeemer uses it with no configuration of
+     * their own.
+     *
+     * Takes effect on the next ticket operation, and invalidates any
+     * outstanding ticket, which advertises a relay that is no longer in use.
+     * Errors on a malformed URL without disturbing the current setting.
+     *
+     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
+     * endpoint, which is an asynchronous shutdown.
+     */
+    fun `setRelayUrls`(`urls`: List<kotlin.String>?)
+    
     fun `setVisibility`(`mode`: Visibility)
     
     /**
@@ -3074,6 +3113,37 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Choose the relays the internet path uses (DESIGN.md §9.1).
+     *
+     * - `None` — n0's free public relays. Shared infrastructure with no
+     * uptime guarantee; fine because Wooosh only ever uses a relay to
+     * introduce two devices, never to carry file data.
+     * - `Some([])` — no relay and no address lookup. Nothing leaves this
+     * device except to addresses carried in a ticket.
+     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
+     * tickets advertise it, so a redeemer uses it with no configuration of
+     * their own.
+     *
+     * Takes effect on the next ticket operation, and invalidates any
+     * outstanding ticket, which advertises a relay that is no longer in use.
+     * Errors on a malformed URL without disturbing the current setting.
+     *
+     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
+     * endpoint, which is an asynchronous shutdown.
+     */
+    @Throws(WoooshException::class)override fun `setRelayUrls`(`urls`: List<kotlin.String>?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(
+        it, FfiConverterOptionalSequenceString.lower(`urls`),_status)
+}
+    }
+    
     
 
     
@@ -3531,7 +3601,20 @@ sealed class CoreEvent {
      * Pairing concluded (QR or SAS; success, failure or timeout). `message`
      * is the peer's device name on success, the reason on failure.
      * `peer_pubkey` is the key that was (or would have been) pinned.
+     * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
+     *
+     * **Not a pairing.** Nothing is written to the trust store and the
+     * authorisation dies with the connection. This is the signal the sending
+     * shell waits on before handing over the files it staged when it showed
+     * the code.
      */
+    data class TicketRedeemed(
+        val `peerId`: kotlin.String, 
+        val `peerPubkey`: kotlin.ByteArray, 
+        val `deviceName`: kotlin.String) : CoreEvent() {
+        companion object
+    }
+    
     data class PairingResult(
         val `peerId`: kotlin.String, 
         val `peerPubkey`: kotlin.ByteArray, 
@@ -3646,14 +3729,19 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            4 -> CoreEvent.PairingResult(
+            4 -> CoreEvent.TicketRedeemed(
+                FfiConverterString.read(buf),
+                FfiConverterByteArray.read(buf),
+                FfiConverterString.read(buf),
+                )
+            5 -> CoreEvent.PairingResult(
                 FfiConverterString.read(buf),
                 FfiConverterByteArray.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            5 -> CoreEvent.IncomingOffer(
+            6 -> CoreEvent.IncomingOffer(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterByteArray.read(buf),
@@ -3664,14 +3752,14 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 FfiConverterSequenceTypeOfferedFile.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            6 -> CoreEvent.TransferStarted(
+            7 -> CoreEvent.TransferStarted(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeTransferDirection.read(buf),
                 FfiConverterSequenceTypeOfferedFile.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            7 -> CoreEvent.Progress(
+            8 -> CoreEvent.Progress(
                 FfiConverterString.read(buf),
                 FfiConverterUInt.read(buf),
                 FfiConverterULong.read(buf),
@@ -3679,25 +3767,25 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            8 -> CoreEvent.FileReady(
+            9 -> CoreEvent.FileReady(
                 FfiConverterString.read(buf),
                 FfiConverterUInt.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeFileKind.read(buf),
                 )
-            9 -> CoreEvent.TransferDone(
+            10 -> CoreEvent.TransferDone(
                 FfiConverterString.read(buf),
                 FfiConverterUInt.read(buf),
                 FfiConverterUInt.read(buf),
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            10 -> CoreEvent.TransferError(
+            11 -> CoreEvent.TransferError(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            11 -> CoreEvent.KeyChanged(
+            12 -> CoreEvent.KeyChanged(
                 FfiConverterString.read(buf),
                 FfiConverterByteArray.read(buf),
                 FfiConverterOptionalByteArray.read(buf),
@@ -3732,6 +3820,15 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 4UL
                 + FfiConverterString.allocationSize(value.`peerId`)
                 + FfiConverterString.allocationSize(value.`code`)
+            )
+        }
+        is CoreEvent.TicketRedeemed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`peerId`)
+                + FfiConverterByteArray.allocationSize(value.`peerPubkey`)
+                + FfiConverterString.allocationSize(value.`deviceName`)
             )
         }
         is CoreEvent.PairingResult -> {
@@ -3847,8 +3944,15 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 FfiConverterString.write(value.`code`, buf)
                 Unit
             }
-            is CoreEvent.PairingResult -> {
+            is CoreEvent.TicketRedeemed -> {
                 buf.putInt(4)
+                FfiConverterString.write(value.`peerId`, buf)
+                FfiConverterByteArray.write(value.`peerPubkey`, buf)
+                FfiConverterString.write(value.`deviceName`, buf)
+                Unit
+            }
+            is CoreEvent.PairingResult -> {
+                buf.putInt(5)
                 FfiConverterString.write(value.`peerId`, buf)
                 FfiConverterByteArray.write(value.`peerPubkey`, buf)
                 FfiConverterString.write(value.`fingerprint`, buf)
@@ -3857,7 +3961,7 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.IncomingOffer -> {
-                buf.putInt(5)
+                buf.putInt(6)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterString.write(value.`peerId`, buf)
                 FfiConverterByteArray.write(value.`peerPubkey`, buf)
@@ -3870,7 +3974,7 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.TransferStarted -> {
-                buf.putInt(6)
+                buf.putInt(7)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterString.write(value.`peerId`, buf)
                 FfiConverterTypeTransferDirection.write(value.`direction`, buf)
@@ -3879,7 +3983,7 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.Progress -> {
-                buf.putInt(7)
+                buf.putInt(8)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterUInt.write(value.`fileId`, buf)
                 FfiConverterULong.write(value.`bytesDone`, buf)
@@ -3889,7 +3993,7 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.FileReady -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterUInt.write(value.`fileId`, buf)
                 FfiConverterString.write(value.`stagedPath`, buf)
@@ -3897,7 +4001,7 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.TransferDone -> {
-                buf.putInt(9)
+                buf.putInt(10)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterUInt.write(value.`okFiles`, buf)
                 FfiConverterUInt.write(value.`failedFiles`, buf)
@@ -3906,14 +4010,14 @@ public object FfiConverterTypeCoreEvent : FfiConverterRustBuffer<CoreEvent>{
                 Unit
             }
             is CoreEvent.TransferError -> {
-                buf.putInt(10)
+                buf.putInt(11)
                 FfiConverterString.write(value.`transferId`, buf)
                 FfiConverterString.write(value.`error`, buf)
                 FfiConverterBoolean.write(value.`resumable`, buf)
                 Unit
             }
             is CoreEvent.KeyChanged -> {
-                buf.putInt(11)
+                buf.putInt(12)
                 FfiConverterString.write(value.`peerId`, buf)
                 FfiConverterByteArray.write(value.`expectedPubkey`, buf)
                 FfiConverterOptionalByteArray.write(value.`presentedPubkey`, buf)
@@ -4097,6 +4201,15 @@ sealed class WoooshException(message: String): kotlin.Exception(message) {
         
         class InvalidArgument(message: String) : WoooshException(message)
         
+    /**
+     * Hole punching never produced a direct path, so the route to the peer
+     * runs through a relay, and at least one file is over the relayed size
+     * limit (DESIGN.md §9.1). Shells should name the limit rather than report
+     * a generic transfer failure: the same files would send fine on a direct
+     * connection, so this is about the route, not the files.
+     */
+        class RelayFileTooLarge(message: String) : WoooshException(message)
+        
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<WoooshException> {
         override fun lift(error_buf: RustBuffer.ByValue): WoooshException = FfiConverterTypeWoooshError.lift(error_buf)
@@ -4126,6 +4239,7 @@ public object FfiConverterTypeWoooshError : FfiConverterRustBuffer<WoooshExcepti
             14 -> WoooshException.UnknownTransfer(FfiConverterString.read(buf))
             15 -> WoooshException.Protocol(FfiConverterString.read(buf))
             16 -> WoooshException.InvalidArgument(FfiConverterString.read(buf))
+            17 -> WoooshException.RelayFileTooLarge(FfiConverterString.read(buf))
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
         
@@ -4199,6 +4313,10 @@ public object FfiConverterTypeWoooshError : FfiConverterRustBuffer<WoooshExcepti
             }
             is WoooshException.InvalidArgument -> {
                 buf.putInt(16)
+                Unit
+            }
+            is WoooshException.RelayFileTooLarge -> {
+                buf.putInt(17)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -4533,6 +4651,23 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     uniffiRustCallWithError(WoooshException) { _status ->
     UniffiLib.INSTANCE.uniffi_wooosh_core_fn_func_parse_pairing_qr(
         FfiConverterString.lower(`payload`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Largest single file Wooosh will move over a **relayed** internet connection
+         * (DESIGN.md §9.1). No limit applies on a direct path, which includes every
+         * LAN transfer and every internet transfer that hole punched.
+         *
+         * Exported so a shell can name the limit in its own copy instead of
+         * hardcoding a number that would drift the moment the core changed it.
+         */ fun `relayMaxFileBytes`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_func_relay_max_file_bytes(
+        _status)
 }
     )
     }

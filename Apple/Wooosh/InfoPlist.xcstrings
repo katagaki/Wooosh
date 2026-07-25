@@ -13,6 +13,18 @@
         }
       }
     },
+    "NSBluetoothWhileInUseUsageDescription" : {
+      "comment" : "Privacy - Bluetooth While In Use Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ""
+          }
+        }
+      }
+    },
     "NSCameraUsageDescription" : {
       "comment" : "Why Wooosh needs the camera. Shown in the iOS permission prompt.",
       "extractionState" : "manual",

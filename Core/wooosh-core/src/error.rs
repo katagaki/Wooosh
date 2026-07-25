@@ -39,6 +39,13 @@ pub enum WoooshError {
     Protocol(String),
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
+    /// Hole punching never produced a direct path, so the route to the peer
+    /// runs through a relay, and at least one file is over the relayed size
+    /// limit (DESIGN.md §9.1). Shells should name the limit rather than report
+    /// a generic transfer failure: the same files would send fine on a direct
+    /// connection, so this is about the route, not the files.
+    #[error("RELAY_FILE_TOO_LARGE: no direct path to the peer and a file exceeds the relayed size limit")]
+    RelayFileTooLarge,
 }
 
 impl From<std::io::Error> for WoooshError {

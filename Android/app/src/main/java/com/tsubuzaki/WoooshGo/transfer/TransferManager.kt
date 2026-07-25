@@ -130,6 +130,17 @@ class TransferManager(
     /** Display names supplied at send() time — nicer than the core's peer ids. */
     private val requestedPeerNames = ConcurrentHashMap<TransferId, String>()
 
+    /**
+     * Peers authorised for this session by an internet ticket (PROTOCOL.md §9.4).
+     * Session-scoped on purpose: the internet path never pairs, so this must not outlive
+     * the process and is never written to disk.
+     */
+    private val ticketPeers = ConcurrentHashMap.newKeySet<String>()
+
+    /** Set when someone redeems a ticket this device published. */
+    private val _ticketRedeemedPeerId = MutableStateFlow<String?>(null)
+    val ticketRedeemedPeerId: StateFlow<String?> = _ticketRedeemedPeerId.asStateFlow()
+
     /** manifest lookup for FileReady routing (name + MIME). */
     private val manifests = ConcurrentHashMap<TransferId, Map<FileId, FileMeta>>()
 
@@ -150,7 +161,11 @@ class TransferManager(
      */
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
         val addr = peer.address
-        if (addr == null) {
+        // A row reached over the internet (PROTOCOL.md §9) has no mDNS address and never
+        // will: its connection is already up and is identified by DeviceID alone. Only a
+        // row with neither an address nor a live peer id is genuinely unreachable.
+        val established = peer.peerId?.takeIf { addr == null }
+        if (addr == null && established == null) {
             scope.launch {
                 _errors.emit(context.getString(R.string.error_still_resolving, peer.displayName))
             }
@@ -166,10 +181,10 @@ class TransferManager(
                 val pinnedKey = trustStore.pinnedKeyFor(peer.peerId)
                 Log.i(
                     TAG,
-                    "connect ${peer.displayName} at $addr " +
+                    "connect ${peer.displayName} at ${addr ?: "established connection"} " +
                         "deviceId=${peer.peerId ?: "unknown"} pinned=${pinnedKey != null}",
                 )
-                val peerId = core.connectPeer(addr, pinnedKey)
+                val peerId = established ?: core.connectPeer(addr!!, pinnedKey)
                 registry.attachPeerId(peer.rid, peerId)
                 persistReadGrants(uris)
                 val transferId = core.send(peerId, uris)
@@ -198,6 +213,39 @@ class TransferManager(
         }
     }
 
+    /**
+     * Sends to an already-connected peer identified by DeviceID alone — the internet
+     * path, where there is no mDNS row and no address to dial.
+     */
+    fun sendToPeerId(peerId: String, uris: List<Uri>) {
+        beginPending(peerId)
+        scope.launch(Dispatchers.IO) {
+            try {
+                persistReadGrants(uris)
+                val transferId = core.send(peerId, uris)
+                requestedPeerNames[transferId] = registry.peers.value
+                    .firstOrNull { it.peerId == peerId }?.displayName
+                    ?: context.getString(R.string.peer_unnamed)
+                beginPending(transferId)
+                _outgoingOffers.update { offers ->
+                    offers.filterNot { it.transferId == transferId } + OutgoingOffer(
+                        transferId = transferId,
+                        peerName = requestedPeerNames[transferId].orEmpty(),
+                        // Never pinned on this path, and the receiver already
+                        // consented by scanning, so no fingerprint is shown.
+                        peerIsPaired = true,
+                        fileCount = uris.size,
+                    )
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "internet send to $peerId failed", t)
+                _errors.emit(transferErrorMessage(context, t.message))
+            } finally {
+                endPending(peerId)
+            }
+        }
+    }
+
     fun acceptOffer(acceptedFileIds: List<FileId>) {
         val offer = _pendingOffer.value ?: return
         _pendingOffer.value = null
@@ -214,6 +262,24 @@ class TransferManager(
         manifests[offer.transferId] = offer.manifest.associateBy { it.id }
         beginPending(offer.transferId)
         core.respondToOffer(offer.transferId, acceptedFileIds)
+    }
+
+    /**
+     * Accepts a paired sender's offer without a prompt.
+     *
+     * Deliberately not routed through [acceptOffer]: that reads and clears
+     * [_pendingOffer], which here could belong to a *different*, unpaired sender whose
+     * sheet is on screen and unanswered.
+     */
+    private fun autoAccept(offer: CoreEvent.IncomingOffer) {
+        val ids = offer.manifest.map { it.id }
+        if (ids.size > FILES_PER_SUBFOLDER_THRESHOLD) {
+            subfolders[offer.transferId] =
+                "Wooosh/${LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)}"
+        }
+        manifests[offer.transferId] = offer.manifest.associateBy { it.id }
+        beginPending(offer.transferId)
+        core.respondToOffer(offer.transferId, ids)
     }
 
     fun declineOffer() {
@@ -278,7 +344,27 @@ class TransferManager(
                 ensureServiceRunning()
             }
 
-            is CoreEvent.IncomingOffer -> _pendingOffer.value = event
+            is CoreEvent.TicketRedeemed -> {
+                // Not a pairing: nothing is pinned and the authorisation dies with the
+                // connection. Remembered for this process only, so the peer's offer can
+                // skip a consent sheet the user already gave by scanning.
+                ticketPeers.add(event.peer.id)
+                registry.onConnected(event.peer.id, event.peer.displayName, event.peer.deviceType)
+                _ticketRedeemedPeerId.value = event.peer.id
+            }
+
+            is CoreEvent.IncomingOffer ->
+                // Pairing already *is* the consent (PROTOCOL.md §4). Asking again for
+                // every transfer from a device the user deliberately pinned turns the
+                // prompt into something to dismiss without reading, which is worse for
+                // the case that actually matters: the unpaired sender, who still gets
+                // the full sheet with the fingerprint to verify. `paired` is the core's
+                // verdict on the pinned key, not a shell-side guess.
+                if (event.from.paired || event.from.id in ticketPeers) {
+                    autoAccept(event)
+                } else {
+                    _pendingOffer.value = event
+                }
 
             is CoreEvent.Progress -> updateTransfer(event.transferId) { transfer ->
                 transfer.copy(
@@ -331,6 +417,8 @@ class TransferManager(
                 displayName = event.peer.displayName,
                 deviceType = event.peer.deviceType,
             )
+
+            is CoreEvent.PeerDisconnected -> registry.onDisconnected(event.peerId)
 
             else -> Unit // pairing events handled by PairingManager
         }

@@ -1,9 +1,14 @@
 import CoreImage.CIFilterBuiltins
 import SwiftUI
 
-/// Renders a `wooosh-pair:` payload as a QR code (CoreImage CIQRCodeGenerator).
+/// Renders a `wooosh-pair:` or `wooosh-net:` payload as a QR code (CoreImage
+/// CIQRCodeGenerator).
 struct QRCodeView: View {
     let payload: String
+    /// Which kind of code this is, for VoiceOver. The two payloads look
+    /// identical on screen but mean different things, so the label must say
+    /// which one is being shown.
+    var accessibilityKey = "pairing_qr_a11y"
 
     var body: some View {
         if let image = Self.qrImage(for: payload) {
@@ -11,7 +16,7 @@ struct QRCodeView: View {
                 .interpolation(.none)
                 .resizable()
                 .scaledToFit()
-                .accessibilityLabel(L.t("pairing_qr_a11y"))
+                .accessibilityLabel(L.t(accessibilityKey))
         } else {
             ContentUnavailableView("Couldn't generate code",
                                    systemImage: "qrcode")

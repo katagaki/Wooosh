@@ -18,6 +18,11 @@
 
 use crate::error::WoooshError;
 use std::net::SocketAddr;
+use std::time::{Duration, Instant};
+
+/// How often `wait_for_direct` re-checks the selected path. Hole punching
+/// completes in a handful of round trips, so a coarse poll costs nothing.
+const DIRECT_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// A closed/failed connection, normalized across the two stacks.
 ///
@@ -181,6 +186,42 @@ impl Conn {
             Conn::Lan(c) => crate::transport::quic_peer_pubkey(c),
             Conn::Net(c) => Ok(*c.remote_id().as_bytes()),
         }
+    }
+
+    /// Whether bulk data may flow over this connection right now.
+    ///
+    /// A LAN connection is point-to-point by construction. An internet
+    /// connection comes up **relayed** and only becomes direct once hole
+    /// punching succeeds, so this is the check that keeps a multi-gigabyte
+    /// transfer off shared relay infrastructure (DESIGN.md §9.1): relays
+    /// introduce peers, they do not carry files.
+    ///
+    /// The *selected* path is what matters — an open-but-unselected direct
+    /// path is not where the bytes would go.
+    pub fn is_direct(&self) -> bool {
+        match self {
+            Conn::Lan(_) => true,
+            Conn::Net(c) => c.paths().iter().any(|p| p.is_selected() && p.is_ip()),
+        }
+    }
+
+    /// Waits for hole punching to produce a direct path, up to `timeout`.
+    ///
+    /// Polled rather than driven off `paths_stream`, matching how the ticket
+    /// code waits for a home relay: the wait happens once per transfer and a
+    /// borrowed stream would have to be kept alive across it for no gain.
+    pub async fn wait_for_direct(&self, timeout: Duration) -> bool {
+        if self.is_direct() {
+            return true;
+        }
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            tokio::time::sleep(DIRECT_POLL_INTERVAL).await;
+            if self.is_direct() {
+                return true;
+            }
+        }
+        false
     }
 
     /// The peer's `ip:port`, when there is a stable one to record.

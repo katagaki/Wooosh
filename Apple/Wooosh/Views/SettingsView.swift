@@ -61,6 +61,7 @@ struct SettingsView: View {
             } footer: {
                 Text(L.t("settings_pairing_footer"))
             }
+            relaySection
             pairedDevicesSection
             Section {
                 LabeledContent(L.t("settings_device_id")) {
@@ -96,6 +97,51 @@ struct SettingsView: View {
         case .everyone: L.t("settings_visibility_everyone_desc")
         case .pairedOnly: L.t("settings_visibility_paired_desc")
         case .off: L.t("settings_visibility_off_desc")
+        }
+    }
+
+    /// Relay selection for the internet path (DESIGN.md §9.1), including
+    /// turning it off entirely.
+    ///
+    /// Worth a Settings section rather than a hidden default because the three
+    /// options differ in who has to be reachable for an internet transfer to
+    /// work, and one of them switches the path off.
+    @ViewBuilder
+    private var relaySection: some View {
+        @Bindable var model = model
+        Section {
+            Picker(L.t("settings_section_relay"), selection: $model.relayPreference.mode) {
+                ForEach(RelayMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            if model.relayPreference.mode == .custom {
+                TextField(L.t("settings_relay_url"), text: $model.relayPreference.customURL)
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+            }
+            if let error = model.relayError {
+                Text(error)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+        } header: {
+            Text(L.t("settings_section_relay"))
+        } footer: {
+            // The picker is one row, so the footer is the only place the
+            // selected option gets to explain itself.
+            Text(relayFooter)
+        }
+    }
+
+    private var relayFooter: String {
+        switch model.relayPreference.mode {
+        case .publicRelays: L.t("settings_relay_public_footer")
+        case .custom: L.t("settings_relay_custom_footer")
+        case .off: L.t("settings_relay_off_footer")
         }
     }
 

@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.TextButton
 import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.settings.Settings
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.tsubuzaki.WoooshGo.settings.RelayMode
 import com.tsubuzaki.WoooshGo.settings.Visibility
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 import java.text.DateFormat
@@ -53,11 +56,15 @@ fun SettingsScreen(
     onRevokeDevice: (String) -> Unit,
     onDisplayNameChange: (String) -> Unit,
     onVisibilityChange: (Visibility) -> Unit,
+    onRelayModeChange: (RelayMode) -> Unit,
+    onRelayUrlChange: (String) -> Unit,
+    relayError: String?,
     onBack: () -> Unit,
 ) {
     // Local edit buffer so persistence (and the discovery re-registration debounce)
     // doesn't fight the text field cursor.
     var displayName by rememberSaveable { mutableStateOf(settings.displayName) }
+    var relayUrl by rememberSaveable { mutableStateOf(settings.relayUrl) }
 
     Scaffold(
         topBar = {
@@ -118,6 +125,55 @@ fun SettingsScreen(
                     description = stringResource(R.string.settings_visibility_off_desc),
                     selected = settings.visibility == Visibility.OFF,
                     onClick = { onVisibilityChange(Visibility.OFF) },
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
+            // Worth showing rather than hiding behind a default: the three options
+            // differ in who has to be available for an internet transfer to work, and
+            // this is the only place Wooosh says a relay never carries file data.
+            Text(
+                text = stringResource(R.string.settings_section_relay),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Spacer(Modifier.height(8.dp))
+            Column(Modifier.selectableGroup()) {
+                VisibilityOption(
+                    label = stringResource(R.string.settings_relay_public),
+                    description = stringResource(R.string.settings_relay_public_footer),
+                    selected = settings.relayMode == RelayMode.PUBLIC,
+                    onClick = { onRelayModeChange(RelayMode.PUBLIC) },
+                )
+                VisibilityOption(
+                    label = stringResource(R.string.settings_relay_custom),
+                    description = stringResource(R.string.settings_relay_custom_footer),
+                    selected = settings.relayMode == RelayMode.CUSTOM,
+                    onClick = { onRelayModeChange(RelayMode.CUSTOM) },
+                )
+                VisibilityOption(
+                    label = stringResource(R.string.settings_relay_off),
+                    description = stringResource(R.string.settings_relay_off_footer),
+                    selected = settings.relayMode == RelayMode.OFF,
+                    onClick = { onRelayModeChange(RelayMode.OFF) },
+                )
+            }
+            if (settings.relayMode == RelayMode.CUSTOM) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = relayUrl,
+                    onValueChange = {
+                        relayUrl = it
+                        onRelayUrlChange(it)
+                    },
+                    label = { Text(stringResource(R.string.settings_relay_url)) },
+                    singleLine = true,
+                    isError = relayError != null,
+                    supportingText = relayError?.let { { Text(it) } },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 

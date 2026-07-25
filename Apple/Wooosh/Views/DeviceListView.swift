@@ -11,6 +11,9 @@ struct DeviceListView: View {
     /// as the live progress view).
     @State private var incomingOffer: Transfer?
     @State private var showingKeyChangedAlert = false
+    @State private var showingOtherDevice = false
+    @State private var showingInternetSend = false
+    @State private var showingInternetReceive = false
 
     var body: some View {
         @Bindable var model = model
@@ -72,6 +75,22 @@ struct DeviceListView: View {
             }
             .sheet(item: $selectedPeer) { peer in
                 SendTransferSheet(peer: peer)
+            }
+            // One row, two directions: sending presents a code, receiving
+            // scans one (PROTOCOL.md §9.4).
+            .confirmationDialog(L.t("other_device_title"), isPresented: $showingOtherDevice,
+                                titleVisibility: .visible) {
+                Button(L.t("other_device_send")) { showingInternetSend = true }
+                Button(L.t("other_device_receive")) { showingInternetReceive = true }
+                Button(L.t("action_cancel"), role: .cancel) {}
+            } message: {
+                Text(L.t("other_device_prompt"))
+            }
+            .sheet(isPresented: $showingInternetSend) {
+                SendOverInternetView()
+            }
+            .sheet(isPresented: $showingInternetReceive) {
+                RedeemTicketView()
             }
             .sheet(item: $incomingOffer, onDismiss: {
                 // Present the next queued offer, if one arrived while the
@@ -163,7 +182,20 @@ struct DeviceListView: View {
         // sighting, never re-sorted, never removed (DESIGN.md §5). No
         // `.animation` on the collection, so nothing can slide a row out from
         // under a finger.
-        List(model.registry.peers) { peer in
+        List {
+            // Pinned FIRST, never appended: a synthetic row at the end would
+            // be pushed down by every new discovery, which is the moving-target
+            // mis-tap the list rules exist to prevent. At the top it is a fixed
+            // target and the real rows keep their order below it.
+            if model.relayPreference.internetEnabled {
+                // Its own section: it is not a discovered device and must not
+                // read as one sitting among them.
+                Section {
+                    OtherDeviceRow { showingOtherDevice = true }
+                }
+            }
+            Section {
+            ForEach(model.registry.peers) { peer in
             PeerRowView(
                 peer: peer,
                 isPaired: model.isPaired(peer)
@@ -184,6 +216,8 @@ struct DeviceListView: View {
                 Button(L.t("action_show_my_code"), systemImage: "qrcode") {
                     showingPairSheet = true
                 }
+            }
+            }
             }
         }
         #if os(iOS)
@@ -256,6 +290,45 @@ struct DeviceListView: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.extraLarge)
+            // No devices nearby is exactly when someone reaches for the
+            // internet path, so it must be offered here too.
+            if model.relayPreference.internetEnabled {
+                Button(L.t("other_device_title"), systemImage: "globe") {
+                    showingOtherDevice = true
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+            }
+        }
+    }
+
+    /// The one row that is not a discovered device: the entry point to the
+    /// internet path (PROTOCOL.md §9).
+    private struct OtherDeviceRow: View {
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 14) {
+                    Image(systemName: "globe")
+                        .font(.title2)
+                        .foregroundStyle(.tint)
+                        .frame(width: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L.t("other_device_title"))
+                            .font(.body)
+                            .lineLimit(1)
+                        Text(L.t("other_device_subtitle"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 4)
+                .frame(minHeight: 44)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
         }
     }
 

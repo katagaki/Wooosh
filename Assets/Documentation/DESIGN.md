@@ -94,7 +94,7 @@ Sender                                    Receiver
   │ taps receiver in device list            │
   ├── QUIC connect (TLS1.3, both pinned) ──►│
   ├── OFFER {manifest: names,sizes,hashes}─►│
-  │                                         ├─ consent UI (auto-accept if paired+enabled)
+  │                                         ├─ consent UI (paired senders accept silently)
   │◄──────── DECISION {accepted ids} ───────┤
   ├── file streams (≤4 concurrent) ────────►│ write → .part in staging
   │      small files pipelined,             │ verify BLAKE3
@@ -274,13 +274,47 @@ Ranked; ship in this order. All of them reuse the exact same pairing trust model
 
 **The receiver publishes the ticket; the sender redeems it.** An earlier draft of this section had it the other way round, which inverts the LAN roles — there the connector is always the sender and originates `OFFER` — and would have forced a second, mirror-image transfer path. Publishing from the receiver makes the internet path the QR pairing flow with a relay in place of a camera, so one engine serves both. Ticket format and the full flow are normative in PROTOCOL.md §9.
 
-UX: receiver taps **Receive from internet** → Wooosh publishes a **ticket** (compact string, also renderable as a QR: identity key + one-time token + relay hint + expiry). Sender pastes or scans it in **Share via internet** → QUIC connection → the same pairing and OFFER/ACCEPT flow as on the LAN. Works across accounts, networks, and mobile data. The ticket travels over any channel the users already share (Messages, email, in person).
+UX, split by role because the two halves are different intentions:
+
+- **Receiving**: open **Pair a Device → Internet** and press to get a code. Wooosh publishes a **ticket** (compact string, rendered as a QR and as copyable text: identity key + one-time token + relay hint + expiry).
+- **Sending**: the device list carries one synthetic row, **Other Device…**, which opens the camera immediately. Scanning a ticket redeems it and goes straight to the send sheet.
+
+The ticket travels over any channel the users already share (Messages, email, in person). Works across accounts, networks, and mobile data.
+
+Putting the sending half in the device list rather than in a pairing tab is deliberate: redeeming a ticket *is* "I want to send to a device that is not on this network", which is exactly what tapping a device row already means. The row therefore behaves like one end to end, opening the picker on success instead of leaving the user to find a new row that appeared while they were looking elsewhere. Publishing a code is the opposite role and stays in Pair a Device.
+
+The synthetic row is pinned **first**, never appended. Appended, every new discovery would push it down, which is precisely the moving-target mis-tap the list rules exist to prevent (§5). Pinned first it is a fixed target and the discovered rows keep their own order below it. It is hidden entirely when the internet path is off.
+
+**Pairing is same-network only.** The internet path never pairs (PROTOCOL.md §9.4): a QR is required for every internet transfer, the sender presents it, the recipient scans and downloads, and the code dies with the transfer. Nothing is written to the trust store.
+
+Two rules the shells follow here:
+
+- **One scanner, both code types.** `wooosh-pair:` and `wooosh-net:` payloads look identical to a camera, so the Scan tab takes either and dispatches on the scheme. Asking the user to pre-classify a code somebody else generated is a question they cannot answer.
+- **Nothing is published until the user presses.** Getting a code is the only action in Wooosh that contacts a server of any kind, so the tab explains what will happen and waits. The ticket is invalidated when the user leaves the screen, not when it expires.
+
+A peer reached this way has no mDNS record behind it, so it enters the device list from `PeerConnected` alone, as a connection-only row (append-only like every other row, DESIGN.md §5). Sending to such a row skips `connect_peer`: the connection is already up and is identified by DeviceID.
 
 Because the ticket carries the publisher's identity key out of band, the internet path inherits the QR ceremony's MITM resistance; SAS (PROTOCOL.md §4.3) is also available over iroh, deriving from the same TLS exporter, for anyone who wants to compare digits.
 
 The iroh endpoint is bound **lazily**, on the first ticket operation. A user who only ever shares on a LAN never contacts a relay.
 
-Trade-off: dependency on n0's public relay availability (mitigated: `Config.relay_urls` selects relays — `null` = n0's public set, an empty list = direct/hole-punched only with no relay contact at all, an explicit list = chosen or self-hosted relays).
+**A relay may carry files, but only small ones.** `run_send` waits up to 15 s for hole punching to produce a direct path. If one appears there is no limit. If none does, the connection is relayed and a per-file cap of **100 MiB** applies; an oversized file fails with `RelayFileTooLarge` before the OFFER is sent, so the receiver is never asked to accept a transfer that cannot run. The receiver enforces the same rule on arrival, because the relay being spent is usually its own.
+
+The reasoning is bandwidth, not secrecy. A relay cannot read anything — the TLS session is end to end and the identity key pins it whichever path is taken. But n0's public relays are free, rate-limited and shared with every other iroh application, and a self-hosted relay is still a server someone pays for. Pushing a 4 GB archive through either is not a good-faith use of it. 100 MiB keeps photos, documents and clips working from anywhere while keeping large transfers on the direct path they should have been on.
+
+The cap is **per file, not per transfer** (PROTOCOL.md §9.1.1), so it bounds what any one stream costs a relay rather than what a session does. Bounding the total was considered and rejected: it would make a transfer's admissibility depend on how the user happened to batch it.
+
+**Relay selection** is `Config.relay_urls`, changeable at runtime via `set_relay_urls` and surfaced in Settings on both shells:
+
+| Value | Meaning |
+|---|---|
+| `null` | n0's free public relays (default). |
+| `[]` | No relay and no address lookup. Surfaced in both shells as **Off**: the UI additionally refuses to publish or redeem tickets, so the internet path is switched off rather than merely relay-free. The core value stays `[]` so that a code path which got past the UI still cannot reach a relay. |
+| a list | A chosen or self-hosted relay (`iroh-relay` is open source). |
+
+A device's tickets advertise **its own** home relay, so a self-hosted relay needs configuring on one device only: the redeemer reads the URL out of the ticket and uses it with no setting of their own. Because the ticket publisher is the receiver, the relay belongs to whoever receives. Changing the setting rebinds the iroh endpoint rather than restarting the core, and invalidates any outstanding ticket, which names a relay the device no longer uses.
+
+Relays on but none reachable is an error, not a silent fallback: publishing a ticket that quietly carries only local addresses would hand the user a code that looks fine and can only ever work on their own network.
 
 ### 9.2 Power-user: Tailscale as the network
 If both users run Tailscale and share nodes across their tailnets (Tailscale's built-in cross-account node sharing invite — free tier), each device just has a stable WireGuard-encrypted IP. Wooosh needs almost nothing: listen on all interfaces (already true) and offer **Add device manually** (`add_manual_peer(host)`) accepting a Tailscale IP/MagicDNS name. mDNS doesn't cross tailnets, so discovery is manual, but pairing and transfer are unchanged — and Wooosh's E2E crypto still applies on top of WireGuard. Zero code beyond the manual-add field; document it as a recipe.
@@ -301,6 +335,7 @@ When there's no common LAN (field work, flights, no router):
 
 - Every connection is TLS 1.3 (QUIC) with **both** peers presenting keys; trust is key pinning, not CAs.
 - First contact is authenticated by QR (out-of-band key exchange) or SAS numeric comparison (MITM detection); after that, pinned keys authenticate silently.
+- Incoming offers from a **paired** sender are accepted with no prompt. Pairing already is the consent (PROTOCOL.md §4); re-asking on every transfer trains the user to dismiss the sheet unread, which costs exactly the case the sheet exists for — the unpaired sender, who still gets the full sheet with the fingerprint to verify. The core's `trusted` verdict on the pinned key decides this, never a shell-side guess.
 - Visibility modes: **Everyone** (announce + accept offers from unpaired with consent), **Paired only** (announce, but reject unpaired connections at the handshake — with a carve-out for a pending QR/SAS pairing the user just initiated, PROTOCOL.md §4.2, else the mode would block its own pairing flow), **Off** (no announcements, no listener).
 - Discovery broadcasts contain only: display name, device type, protocol version, port, and a *rotating* discovery ID — the long-term identity key is never broadcast, so passive listeners can't track a device across networks by key.
 - Files never touch their final destination until hash-verified; staging is app-private.
