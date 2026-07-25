@@ -8,9 +8,23 @@
 # which is always the case on Xcode Cloud, so it needs no CI-specific flags.
 set -eu
 
-# Xcode Cloud sets CI_PRIMARY_REPOSITORY_PATH. Fall back to the path relative to
-# this script so the same file can be run by hand to reproduce a CI failure.
-REPO="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/.." && pwd)}"
+# This file must live beside Wooosh.xcodeproj: Xcode Cloud looks for ci_scripts
+# next to the project, not at the repository root.
+#
+# Xcode Cloud sets CI_PRIMARY_REPOSITORY_PATH. Otherwise walk up until the Rust
+# workspace is in sight, so the script can be run by hand to reproduce a CI
+# failure and does not break if it is relocated again.
+REPO="${CI_PRIMARY_REPOSITORY_PATH:-}"
+if [ -z "$REPO" ]; then
+    REPO=$(cd "$(dirname "$0")" && pwd)
+    while [ ! -f "$REPO/Core/build-bindings.sh" ] && [ "$REPO" != "/" ]; do
+        REPO=$(dirname "$REPO")
+    done
+fi
+if [ ! -f "$REPO/Core/build-bindings.sh" ]; then
+    echo "!! could not locate the repository root from $0" >&2
+    exit 1
+fi
 cd "$REPO"
 
 echo "==> repository: $REPO"

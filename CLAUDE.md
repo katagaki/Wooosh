@@ -10,7 +10,7 @@ Specs are authoritative and kept in sync with the code: [Assets/Documentation/DE
 | `Core/` | Rust workspace: `wooosh-core` (UniFFI) + `wooosh-cli`. Owns pairing, crypto, transfers. |
 | `Apple/` | SwiftUI, iOS + macOS, one app target plus a share extension and the FFI framework. |
 | `Android/` | Kotlin + Compose. |
-| `ci_scripts/` | Xcode Cloud hooks. `ci_post_clone.sh` installs Rust and builds the xcframework, which is gitignored and so absent from a fresh clone. Must stay executable (`100755`). |
+| `Apple/ci_scripts/` | Xcode Cloud hooks. Must sit **beside `Wooosh.xcodeproj`**, not at the repo root, or Xcode Cloud reports the script as not found. `ci_post_clone.sh` installs Rust and builds the xcframework, which is gitignored and so absent from a fresh clone. Must stay executable (`100755`). |
 | `Assets/Documentation/` | All specs and generated docs. Nothing lives in a top-level `docs/`. |
 | `Assets/Screenshots/` | All screenshots, under `Apple/` and `Android/`. Never inside the platform folders. |
 | Windows | Not started. Needs a Windows machine. |
