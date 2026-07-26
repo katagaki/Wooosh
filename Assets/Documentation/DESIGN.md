@@ -133,7 +133,7 @@ trusted_peers() -> [TrustedPeer]         // the pinned set, read from the trust 
 revoke_peer(pubkey) -> bool              // un-pin; next contact is untrusted again
 fingerprint_phrase_for(pubkey) -> String // 6-word verification phrase; shells never reimplement the wordlist
 device_id_for(pubkey) -> String          // rendered DeviceID == the peer_id used in events
-begin_internet_ticket() -> String         // receiver publishes an iroh ticket, §9.1
+begin_internet_ticket() -> String         // sender publishes an iroh ticket, §9.1
 end_internet_ticket()                     // withdraw it immediately
 redeem_ticket(ticket: String) -> peer_id  // sender redeems, connects, then send(), §9.1
 parse_internet_ticket(ticket) -> TicketInfo // label the UI before redeeming
@@ -290,7 +290,7 @@ Ranked; ship in this order. All of them reuse the exact same pairing trust model
 ### 9.1 Primary: iroh tickets (internet P2P, free public relays)
 [iroh](https://iroh.computer) is a Rust QUIC stack whose node identity *is* an Ed25519 key — the same shape as Wooosh's identity (PROTOCOL.md §2). It performs NAT hole punching with relay-assisted rendezvous, falling back to relaying E2E-encrypted traffic through n0's free public relay infrastructure when punching fails (symmetric NAT, CGNAT on mobile data). Nothing to deploy; traffic stays end-to-end encrypted so relays see only ciphertext.
 
-**The receiver publishes the ticket; the sender redeems it.** An earlier draft of this section had it the other way round, which inverts the LAN roles — there the connector is always the sender and originates `OFFER` — and would have forced a second, mirror-image transfer path. Publishing from the receiver makes the internet path the QR pairing flow with a relay in place of a camera, so one engine serves both. Ticket format and the full flow are normative in PROTOCOL.md §9.
+**The sender publishes the ticket; the receiver redeems it.** The sender has already chosen the files, so it is the side with something to publish, and the code it shows is the thing being offered. This does invert the LAN rule that the connector originates `OFFER`, but the engine carries either direction unchanged, so no mirror-image transfer path was needed. Ticket format and the full flow are normative in PROTOCOL.md §9.
 
 UX: one entry point, **Other Device**, which opens a single screen with two segments — **Send** and **Receive**. Segmented picker on Apple, tabs on Android, a `SelectorBar` on Windows.
 
@@ -316,11 +316,9 @@ Because the ticket carries the publisher's identity key out of band, the interne
 
 The iroh endpoint is bound **lazily**, on the first ticket operation. A user who only ever shares on a LAN never contacts a relay.
 
-**A relay may carry files, but only small ones.** `run_send` waits up to 15 s for hole punching to produce a direct path. If one appears there is no limit. If none does, the connection is relayed and a per-file cap of **100 MiB** applies; an oversized file fails with `RelayFileTooLarge` before the OFFER is sent, so the receiver is never asked to accept a transfer that cannot run. The receiver enforces the same rule on arrival, because the relay being spent is usually its own.
+**A relay may carry files, but only small ones.** `run_send` waits up to 15 s for hole punching to produce a direct path. If one appears there is no limit. If none does, the connection is relayed and a per-file cap of **100 MiB** applies; an oversized file fails with `RelayFileTooLarge` before the OFFER is sent, so the receiver is never asked to accept a transfer that cannot run. The receiver enforces the same rule on arrival rather than trusting the sender to have done it.
 
-The reasoning is bandwidth, not secrecy. A relay cannot read anything — the TLS session is end to end and the identity key pins it whichever path is taken. But n0's public relays are free, rate-limited and shared with every other iroh application, and a self-hosted relay is still a server someone pays for. Pushing a 4 GB archive through either is not a good-faith use of it. 100 MiB keeps photos, documents and clips working from anywhere while keeping large transfers on the direct path they should have been on.
-
-The cap is **per file, not per transfer** (PROTOCOL.md §9.1.1), so it bounds what any one stream costs a relay rather than what a session does. Bounding the total was considered and rejected: it would make a transfer's admissibility depend on how the user happened to batch it.
+The reasoning is bandwidth, not secrecy: a relay cannot read anything, but it is somebody else's server. The cap is per file rather than per transfer, so it bounds what one stream costs rather than how the user happened to batch. Full rationale in PROTOCOL.md §9.1.1.
 
 **Relay selection** is `Config.relay_urls`, changeable at runtime via `set_relay_urls` and surfaced in Settings on both shells:
 
@@ -330,7 +328,7 @@ The cap is **per file, not per transfer** (PROTOCOL.md §9.1.1), so it bounds wh
 | `[]` | No relay and no address lookup. Surfaced in both shells as **Off**: the UI additionally refuses to publish or redeem tickets, so the internet path is switched off rather than merely relay-free. The core value stays `[]` so that a code path which got past the UI still cannot reach a relay. |
 | a list | A chosen or self-hosted relay (`iroh-relay` is open source). |
 
-A device's tickets advertise **its own** home relay, so a self-hosted relay needs configuring on one device only: the redeemer reads the URL out of the ticket and uses it with no setting of their own. Because the ticket publisher is the receiver, the relay belongs to whoever receives. Changing the setting rebinds the iroh endpoint rather than restarting the core, and invalidates any outstanding ticket, which names a relay the device no longer uses.
+A device's tickets advertise **its own** home relay, so a self-hosted relay needs configuring on one device only: the redeemer reads the URL out of the ticket and uses it with no setting of their own. Since the publisher is the sender, the relay belongs to whoever sends. Changing the setting rebinds the iroh endpoint rather than restarting the core, and invalidates any outstanding ticket, which names a relay the device no longer uses.
 
 Relays on but none reachable is an error, not a silent fallback: publishing a ticket that quietly carries only local addresses would hand the user a code that looks fine and can only ever work on their own network.
 

@@ -201,7 +201,7 @@ iroh offers a relayed path as the fallback when hole punching fails. Wooosh uses
 
 - An implementation MUST wait for a direct path before applying the cap. Reference implementation: 15 s from the send request, because punching normally completes within a couple of seconds and a short budget would cap a connection that was about to be direct.
 - The sender MUST check **before the OFFER** (§5), on file metadata only, so an oversized file fails without a wasted hash pass and the receiver is never asked to accept a transfer that cannot run.
-- The receiver MUST enforce it too, declining the whole offer. The relay being spent is usually the *receiver's* home relay, so this side does not take a well-behaved sender on trust. Declining is all-or-nothing so the outcome does not depend on which files happened to be small.
+- The receiver MUST enforce it too, declining the whole offer, rather than take a well-behaved sender on trust. Declining is all-or-nothing so the outcome does not depend on which files happened to be small.
 - Failure is reported as `RELAY_FILE_TOO_LARGE`, distinct from a generic transfer error: the same files would send fine on a direct connection, so it is the route that failed.
 - Control traffic — HELLO, pairing, OFFER/DECISION — is always relayable. It is small, and relaying it is what lets two devices meet at all.
 
@@ -230,19 +230,19 @@ wooosh-net:1?nid=<pubkey b64url>&tok=<32B token b64url>&dn=<display name>&relay=
 
 Values are base64url (no padding) or percent-encoded; unknown keys MUST be ignored (§8). Rules:
 
-- The publisher is the **receiver**; the redeemer is the **sender** and originates `OFFER`. This matches the LAN, where the connector is always the sender, and lets both paths share one transfer engine.
+- The publisher is the **sender**; the redeemer is the **receiver**. The sender has already chosen the files, so it is the side with something to publish. This inverts the LAN rule that the connector originates `OFFER`: here the connector redeems and the *acceptor* offers. The engine allows either direction — both are tested — but the shells ship this one.
 - A ticket is a capability. TTL is **120 s** (same as a QR token), redemption is **single-use**, and the token is compared in constant time. Publishers MUST be able to withdraw an outstanding ticket immediately.
 - A token issued for one transport MUST NOT be redeemable on the other. A QR is shown in the room; a ticket travels through a chat app, and letting them substitute would widen the capability beyond what the user authorized.
 - `nid` carries the publisher's key **out of band**, exactly as `pk` does in a pairing QR (§4.2). That is what makes the internet path MITM-proof: there is no first-contact window in which an attacker can substitute a key.
 
 ### 9.3 Connection establishment and trust
 
-1. Receiver publishes a ticket (§9.2) and starts accepting on its iroh endpoint. Visibility applies unchanged: `Off` refuses, `PairedOnly` closes an untrusted peer with `PAIRING_REQUIRED` after its HELLO, `Everyone` accepts.
-2. Sender parses the ticket, rejects it if expired, and dials `nid` over iroh using ALPN `wooosh/1`.
+1. Sender publishes a ticket (§9.2) and starts accepting on its iroh endpoint. Visibility applies unchanged — `Off` refuses, `Everyone` accepts — except that a pending ticket is an invitation `PairedOnly` MUST honour, at HELLO *and* at OFFER (§9.4).
+2. Receiver parses the ticket, rejects it if expired, and dials `nid` over iroh using ALPN `wooosh/1`.
 3. iroh's TLS handshake authenticates the remote to exactly the dialled `EndpointId`. The implementation MUST additionally assert that the authenticated key equals `nid` and hard-fail `KEY_CHANGED` otherwise — pinning is never delegated to a dependency's internals (§4.5).
 4. HELLO runs exactly as in §4.1, client-first, including the §4.1.1 identity-binding check (`device_id == BLAKE3(authenticated key)[0..16]`, where the authenticated key is the `EndpointId`). A peer claiming a pinned DeviceID with a different key closes `KEY_CHANGED`.
-5. Sender presents `PAIR_REQUEST { token }`; receiver redeems it single-use. Both sides mark the connection `ticket_authorized` and emit `TicketRedeemed`. **Neither side pins**: unlike §4.2 step 4, this path writes nothing to the trust store (§9.4).
-6. Transfers proceed under §5 and §6 with no changes.
+5. The redeeming receiver presents `PAIR_REQUEST { token }`; the publishing sender redeems it single-use. Both mark the connection `ticket_authorized` and emit `TicketRedeemed`. **Neither side pins**: unlike §4.2 step 4, this path writes nothing to the trust store (§9.4).
+6. Transfers proceed under §5 and §6 with no changes, the publisher originating the `OFFER`.
 
 Two deliberate differences from the LAN path:
 

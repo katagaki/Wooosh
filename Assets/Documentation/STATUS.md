@@ -6,10 +6,10 @@ Last updated: 2026-07-26. Specs: [DESIGN.md](DESIGN.md), [PROTOCOL.md](PROTOCOL.
 
 | Component | Builds | Runtime verified | Notes |
 |---|---|---|---|
-| `Core/` (Rust) | ✅ | ✅ 30/30 unit, 17/17 integration (+1 `#[ignore]`d) | QUIC + pairing + transfers + resume; internet path over iroh tickets, direct-only file data (PROTOCOL.md §9) |
+| `Core/` (Rust) | ✅ | ✅ 30/30 unit, 19/19 integration (+1 `#[ignore]`d) | QUIC + pairing + transfers + resume; internet path over iroh tickets, direct-only file data (PROTOCOL.md §9) |
 | `Apple/` macOS | ✅ | ✅ transfers to iOS and to Android, both directions with the CLI | unsandboxed run only; internet transfer never run across networks |
 | `Apple/` iOS | ✅ | ✅ on device: transfers, Photos routing, camera QR scanning; launches clean in the iOS 26.5 Simulator and discovers a real peer | share extension with a real App Group unverified; internet transfer never run across networks |
-| `Android/` | ✅ | ✅ physical Pixel 7a: discovery, send and receive, pairing, revoke, KEY_CHANGED; emulator (API 16) walk-through of the whole internet send flow | internet transfer never run across networks |
+| `Android/` | ✅ | ✅ physical Pixel 7a: discovery, send and receive, pairing, revoke, KEY_CHANGED, QR scanning | internet transfer never run at all, on any network |
 | `Windows/` (WinUI 3) | ❌ never compiled | — | scaffold only, written on a Mac; needs a Windows machine |
 
 Build commands: `cargo test --release` (PATH needs `/opt/homebrew/opt/rustup/bin`), `xcodebuild -scheme Wooosh -destination 'platform=macOS'`, `JAVA_HOME=<Android Studio jbr> ./gradlew assembleDebug`. FFI artifacts rebuild via `Core/build-bindings.sh`.
@@ -42,6 +42,10 @@ Identity is unified: one Ed25519 keypair per install, held by the core, stored t
 11. **Confirming a SAS left its 60 s countdown running** (Android), so the timer would later abort a pairing the user had already approved.
 12. **An unreachable relay published a ticket carrying only local addresses** — a code that looks valid and can only ever work on the publisher's own network. Found by a test that took 15 s to fail for the wrong reason. Publishing now fails loudly instead.
 13. **The internet path was unreachable from Android's empty state** (found by running it, not by review). The "Other Device…" row lives inside the peer list, and the empty state *replaces* that list, so with no devices nearby there was no way to start an internet transfer at all. The Apple empty state had the affordance; Android did not. It compiled and read fine either way.
+14. **`PairedOnly` killed every internet transfer** (`engine.rs`) — the shipped default on all three shells. The post-HELLO check carved out a pending ticket; the OFFER check did not, and this path never pairs, so `trusted` is always false. The token was redeemed *and burned*, then the connection closed on the OFFER, leaving a dead code. Every pre-existing internet test used `Visibility::Everyone`, which is why it survived. Both directions now tested under `PairedOnly`.
+15. **Android treated ticket redemption as pairing.** `PairingManager` waited for a `PairingResult` this path never emits (it emits `TicketRedeemed`), so a working transfer sat behind a spinner until a 75 s watchdog reported a false "pairing timed out" — labelled "Pairing" throughout, which §9.4 says it is not. A stale `api.rs` doc comment promising `PairingResult` is what led the shell there, having already propagated into the generated bindings and an Apple comment.
+16. **A second internet send silently did nothing** (Android): the recorded redemption was never cleared, so revisiting the Send tab fired against a dead code and returned early on an empty outbox. Apple already cleared it.
+17. **QR scanning appeared to do nothing** (Android) — two causes behind one symptom. ZXing's separate `CaptureActivity` leaves Wooosh no UI surface between detection and the activity finishing, so no alert could appear during the one moment the user is watching. *And* its full-screen preview negotiated a 2560×1280 ultra-wide on which a real pairing QR never decoded at all: 27 s and zero decodes, versus 41 ms once the preview was square. Fixed by embedding the scanner in Compose.
 
 ## Repository conventions
 
@@ -50,13 +54,14 @@ Identity is unified: one Ed25519 keypair per install, held by the core, stored t
 - Discovery is **native per platform**, not in the core (DESIGN.md §2). The shells own the peer registry and the append-only, grey-out-in-place list rules.
 - Shells never reimplement core crypto: use the exported `fingerprint_phrase_for` / `device_id_for`.
 - No mock or fake-data implementations remain. `RealCore` is the only implementation on both platforms; the debug harnesses were removed once the real core was verified on device.
-- 229 strings across 14 locales, one glossary shared by both shells.
+- 225 strings across 14 locales, one glossary shared by both shells.
+- The Android QR scanner is composed in-app (`QrScanner.kt`), not ZXing's `CaptureActivity`. Detection must happen with the app's own UI on screen, or no alert can be shown during the handover.
 
 ## What is left
 
 **The internet path is one-shot and never pairs (rewritten 2026-07-26)**
 
-Pairing is now same-network only. An internet transfer needs a fresh QR every time: the **sender** presents a code, the recipient scans it and downloads, and the code dies with the transfer. Nothing is written to the trust store in either direction, which the integration suite asserts directly (`internet_ticket_transfer_end_to_end` checks both trust stores are empty afterwards). Because the path never pairs, `trusted` is false even for a legitimate transfer and cannot gate anything — the redeemed token does, and the core refuses to send to an internet peer that has not redeemed one. Normative rules in PROTOCOL.md §9.1.1 and §9.4.
+Pairing is same-network only. An internet transfer needs a fresh code every time: the **sender** publishes it, the receiver redeems it, and it dies with the transfer. Nothing is written to either trust store, which the integration suite asserts directly. Because the path never pairs, `trusted` is false even for a legitimate transfer and cannot gate anything — the redeemed token does, at both the HELLO and OFFER checks. Normative rules in PROTOCOL.md §9.1.1 and §9.4.
 
 **Host-environment note**
 
@@ -72,13 +77,12 @@ iOS receives in the background through `BGContinuedProcessingTask` (iOS 26), whi
 - **None of the background/notification work has been run on a device.** It compiles for iOS, macOS and Android, and nothing below was observed:
   - `BGContinuedProcessingTask` is **unsupported in the Simulator**, so submission, the system Live Activity, its Stop button, and expiry behaviour all need a real iPhone. Note the open Apple bug where these tasks pause on a genuinely locked device (FB19916760).
   - Arrival notifications on both platforms: permission prompt, posting, and tap-to-open (Quick Look, the Photos hand-off, `ACTION_VIEW` on a `MediaStore` URI, and the API 26-28 media-scan path, which no current test device runs).
-- **The internet path has never run between two separate networks.** Core, FFI and both shells are wired end to end, and the ticket flow is covered by four integration tests (three relay-free, one against n0's real relays), but every run so far has been two nodes on one Mac. That exercises the protocol, not NAT traversal. The real check is a phone on mobile data redeeming a ticket from a Mac on home broadband.
+- **The internet path has never run between two real devices at all**, on any network. Core, FFI and both shells are wired end to end and the ticket flow is covered by six integration tests (five relay-free, one against n0's real relays), but every run has been two nodes on one Mac — which exercises the protocol, not NAT traversal, and did not catch bug 14. The Android shell fixes for bugs 15 and 16 have only ever been compiled. The real check is a phone on mobile data redeeming a code from a Mac on home broadband.
 - **The relayed-size cap has never fired in a real scenario.** On one machine a direct path always forms, so the uncapped path is well covered but the 100 MiB relayed cap (PROTOCOL.md §9.1.1) is not. Reproducing it needs two genuinely hostile NATs, or a build with hole punching disabled.
 - **A self-hosted relay has not been run.** That a chosen relay is *advertised* in the ticket follows from the one line that publishes the endpoint's home relay, and validation plus the unreachable-relay failure are tested; that a real self-hosted relay carries an introduction end to end is not. It needs an actual `iroh-relay` deployment.
 - iOS share extension with a real App Group (needs signed builds).
 - Sandboxed macOS run end to end (ad-hoc re-signing invalidates the container ACL between rebuilds).
 - macOS Settings via ⌘, was never confirmed to actually open; the scene compiles.
-- Re-test pairing on the Pixel now that the fresh core is in the APK.
 
 **Windows**
 - Nothing has been compiled. First step is opening the solution in Visual Studio and getting a build.

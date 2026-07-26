@@ -581,12 +581,12 @@ impl Engine {
 
     /// Publish this device on iroh and mint a redeemable ticket.
     ///
-    /// **The publisher is the receiver.** DESIGN.md §9.1 originally described
-    /// the sender minting the ticket, which inverts the LAN roles (the
-    /// connector is the sender and originates `OFFER`) and would have required
-    /// a second, reversed transfer path. Publishing from the receiver makes
-    /// the internet path the QR pairing flow with a relay instead of a camera:
-    /// receiver displays a capability, sender redeems it, connects, offers.
+    /// **The publisher is the sender** (PROTOCOL.md §9.2): it has already
+    /// chosen the files, so it is the side with something to publish. This
+    /// inverts the LAN rule that the connector originates `OFFER` — here the
+    /// connector redeems and the acceptor offers — but the transfer engine
+    /// carries either direction unchanged, so no reversed path is needed.
+    /// Both directions are covered in `tests/integration.rs`.
     pub async fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
         let ep = self.inner.iroh_endpoint().await?;
         // A freshly bound endpoint knows neither its home relay nor its local

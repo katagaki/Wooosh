@@ -824,7 +824,11 @@ fn key_changed_on_pin_mismatch() {
 
 // ------------------------------------------- (i) internet path (PROTOCOL.md §9)
 
-/// Ticket → connect → pair → transfer, over iroh, entirely on loopback.
+/// Ticket → connect → redeem → transfer, over iroh, entirely on loopback.
+///
+/// Runs the redeemer-sends direction. The shells ship the opposite one (the
+/// publisher sends, PROTOCOL.md §9.2), covered separately below; the engine
+/// must carry both.
 ///
 /// Both nodes run with relays and address lookup disabled, so the ticket's
 /// direct candidates are the only way in and the test needs no network at all.
