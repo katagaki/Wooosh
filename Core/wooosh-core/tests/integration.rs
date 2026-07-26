@@ -922,6 +922,112 @@ fn internet_ticket_transfer_end_to_end() {
     assert!(dir);
 }
 
+/// The same flow with the publisher on `PairedOnly` — the shipped default on
+/// every shell, and the case every other test in this section misses.
+///
+/// The internet path never pairs (PROTOCOL.md §9.4), so `trusted` is false for
+/// a legitimate ticket transfer. A visibility check that reads `trusted` alone
+/// therefore closes the connection *after* the token has already been redeemed
+/// and burned, which is unrecoverable: the user is handed a dead code.
+#[test]
+fn internet_ticket_transfer_works_under_paired_only() {
+    let tmp = tempfile::tempdir().unwrap();
+    let r = Node::start_offline_internet(tmp.path(), "po-receiver", Visibility::PairedOnly);
+    let s = Node::start_offline_internet(tmp.path(), "po-sender", Visibility::PairedOnly);
+
+    let ticket = r.core.begin_internet_ticket().unwrap();
+    let peer_id = s.core.redeem_ticket(ticket).unwrap();
+
+    wait_for(&r.rx, Duration::from_secs(20), "receiver TicketRedeemed", |e| match e {
+        CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
+        _ => None,
+    });
+
+    let src = tmp.path().join("po-payload.bin");
+    write_random_file(&src, 1 * MIB, 0x5A5A);
+    let want = b3_of(&src);
+
+    let tid = s
+        .core
+        .send(peer_id, vec![src.to_string_lossy().to_string()])
+        .unwrap();
+
+    // The regression: PairedOnly used to close the connection right here, so
+    // the OFFER never reached the receiver at all.
+    let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(30), "IncomingOffer", |e| match e {
+        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
+        }
+        _ => None,
+    });
+    assert_eq!(rtid, tid);
+    r.core.respond_to_offer(rtid, fids).unwrap();
+
+    let staged = wait_for(&r.rx, Duration::from_secs(60), "FileReady", |e| match e {
+        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+        _ => None,
+    });
+    assert_eq!(b3_of(Path::new(&staged)), want);
+
+    // Still no pins: honouring the ticket must not have promoted the peer.
+    assert!(s.core.trusted_peers().unwrap().is_empty());
+    assert!(r.core.trusted_peers().unwrap().is_empty());
+}
+
+/// The direction the shells actually ship: the **publisher sends**.
+///
+/// PROTOCOL.md §9.2 describes the publisher as the receiver, but Android's
+/// "Other Device" Send tab stages files, then mints a ticket and sends once it
+/// is redeemed (SendOverInternetTab.kt). Both ends set `ticket_authorized`, so
+/// the engine permits either direction — this pins that down so the shipped
+/// flow cannot regress while the §9.2 direction stays green.
+#[test]
+fn internet_publisher_can_send_to_the_redeemer_under_paired_only() {
+    let tmp = tempfile::tempdir().unwrap();
+    let pubr = Node::start_offline_internet(tmp.path(), "pub-sender", Visibility::PairedOnly);
+    let red = Node::start_offline_internet(tmp.path(), "red-receiver", Visibility::PairedOnly);
+
+    let ticket = pubr.core.begin_internet_ticket().unwrap();
+    let publisher_id = red.core.redeem_ticket(ticket).unwrap();
+    assert_eq!(publisher_id, pubr.core.device_id().unwrap());
+
+    // The publisher learns who redeemed only through this event; it is the
+    // peer id the shell then sends to.
+    let redeemer_id =
+        wait_for(&pubr.rx, Duration::from_secs(20), "publisher TicketRedeemed", |e| match e {
+            CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
+            _ => None,
+        });
+    assert_eq!(redeemer_id, red.core.device_id().unwrap());
+
+    let src = tmp.path().join("pub-payload.bin");
+    write_random_file(&src, 1 * MIB, 0x3C3C);
+    let want = b3_of(&src);
+
+    let tid = pubr
+        .core
+        .send(redeemer_id, vec![src.to_string_lossy().to_string()])
+        .unwrap();
+
+    let (rtid, fids) = wait_for(&red.rx, Duration::from_secs(30), "IncomingOffer", |e| match e {
+        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
+        }
+        _ => None,
+    });
+    assert_eq!(rtid, tid);
+    red.core.respond_to_offer(rtid, fids).unwrap();
+
+    let staged = wait_for(&red.rx, Duration::from_secs(60), "FileReady", |e| match e {
+        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+        _ => None,
+    });
+    assert_eq!(b3_of(Path::new(&staged)), want);
+
+    assert!(pubr.core.trusted_peers().unwrap().is_empty());
+    assert!(red.core.trusted_peers().unwrap().is_empty());
+}
+
 /// A ticket is a capability: single-use, and dead once the publisher ends it.
 #[test]
 fn internet_ticket_is_single_use_and_revocable() {

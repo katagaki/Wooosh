@@ -1460,7 +1460,12 @@ impl Inner {
             // ----- transfers -----
             Msg::Offer { tid, files, total, note } => {
                 let vis = self.cfg.lock().unwrap().visibility.clone();
-                if !trusted && !matches!(vis, Visibility::Everyone) {
+                // A redeemed ticket is the authorisation on the internet path,
+                // which never pairs (PROTOCOL.md §9.4) — `trusted` is false for
+                // a legitimate transfer, so PairedOnly would otherwise close the
+                // connection here, one step after the token was already burned.
+                let invited = peer.ticket_authorized.load(Ordering::SeqCst);
+                if !trusted && !invited && !matches!(vis, Visibility::Everyone) {
                     peer.conn.close(close_codes::PAIRING_REQUIRED, b"PAIRING_REQUIRED");
                     return Ok(());
                 }
