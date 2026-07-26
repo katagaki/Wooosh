@@ -56,6 +56,12 @@ class PairingManager(
         val deviceName: String,
         val state: AttemptState,
         val message: String? = null,
+        /**
+         * Whether this is a ticket redemption rather than a pairing ceremony. The
+         * internet path never pairs (PROTOCOL.md §9.4), so its wait must not be
+         * labelled "Pairing" or resolved as "Paired with" — nothing is pinned.
+         */
+        val isTicket: Boolean = false,
     )
 
     /** A pinned peer presenting a different key: both phrases, so the user can compare. */
@@ -80,19 +86,9 @@ class PairingManager(
     val attempt: StateFlow<Attempt?> = _attempt.asStateFlow()
 
     /**
-     * DeviceID of a peer that just arrived by redeeming a ticket, consumed once by
-     * [takeRedeemedPeerId].
-     *
-     * Redeeming is reached by tapping a device row, so it means "I want to send to this
-     * device". Handing the id back lets the list open the send picker straight away
-     * instead of making the user find the new row.
+     * Whether the in-flight attempt is a ticket redemption. Decides which event settles
+     * it: the ticket path succeeds with `TicketRedeemed`, never `PairingResult`.
      */
-    private val _redeemedPeerId = MutableStateFlow<String?>(null)
-    val redeemedPeerId: StateFlow<String?> = _redeemedPeerId.asStateFlow()
-
-    fun takeRedeemedPeerId(): String? = _redeemedPeerId.value.also { _redeemedPeerId.value = null }
-
-    /** Whether the in-flight attempt came from a ticket, so only that path opens a send. */
     @Volatile
     private var attemptIsTicket = false
 
@@ -110,7 +106,6 @@ class PairingManager(
                         _pendingSas.value = null
                         watchdog?.cancel()
                         if (event.success) {
-                            if (attemptIsTicket) _redeemedPeerId.value = event.peerId
                             attemptIsTicket = false
                             // The core pinned it before emitting; re-read rather than guess.
                             val peers = trustStore.refreshNow()
@@ -137,6 +132,20 @@ class PairingManager(
                                 _messages.emit(message)
                             }
                         }
+                    }
+
+                    // The internet path never pairs (PROTOCOL.md §9.4), so a redeemed
+                    // ticket succeeds with this event and no `PairingResult` ever
+                    // arrives. Without settling here the ceremony would hang until the
+                    // watchdog reported a timeout for a transfer that is running fine.
+                    //
+                    // Nothing is pinned, so there is no "Paired with" outcome to show.
+                    // Redeeming is itself the consent (DESIGN.md §9.1) and the transfer
+                    // UI takes over from here, so the wait simply ends.
+                    is CoreEvent.TicketRedeemed -> if (attemptIsTicket) {
+                        attemptIsTicket = false
+                        watchdog?.cancel()
+                        _attempt.value = null
                     }
 
                     is CoreEvent.KeyChanged -> _keyChanged.value = KeyChangedAlert(
@@ -205,6 +214,7 @@ class PairingManager(
             failNow(
                 context.getString(R.string.peer_unnamed),
                 context.getString(R.string.error_internet_off),
+                isTicket = true,
             )
             return
         }
@@ -224,18 +234,21 @@ class PairingManager(
         when {
             info == null -> {
                 Log.w(TAG, "redeemTicket: payload is not a Wooosh internet code")
-                failNow(name, context.getString(R.string.error_pairing_not_a_code))
+                failNow(name, context.getString(R.string.error_pairing_not_a_code), isTicket = true)
             }
 
             info.expired -> {
                 Log.w(TAG, "redeemTicket: ticket for ${info.deviceId} already expired")
-                failNow(name, context.getString(R.string.error_pairing_code_expired_detail))
+                failNow(
+                    name,
+                    context.getString(R.string.error_pairing_code_expired_detail),
+                    isTicket = true,
+                )
             }
 
             else -> {
                 Log.i(TAG, "redeemTicket: dialling ${info.deviceId} relay=${info.relay}")
-                beginAttempt(name, TICKET_TIMEOUT_MS)
-                attemptIsTicket = true
+                beginAttempt(name, TICKET_TIMEOUT_MS, isTicket = true)
                 core.redeemTicket(payload)
             }
         }
@@ -275,10 +288,14 @@ class PairingManager(
         if (_attempt.value?.state != AttemptState.CONNECTING) _attempt.value = null
     }
 
-    private fun beginAttempt(deviceName: String, timeoutMs: Long = ATTEMPT_TIMEOUT_MS) {
-        attemptIsTicket = false
+    private fun beginAttempt(
+        deviceName: String,
+        timeoutMs: Long = ATTEMPT_TIMEOUT_MS,
+        isTicket: Boolean = false,
+    ) {
+        attemptIsTicket = isTicket
         watchdog?.cancel()
-        _attempt.value = Attempt(deviceName, AttemptState.CONNECTING)
+        _attempt.value = Attempt(deviceName, AttemptState.CONNECTING, isTicket = isTicket)
         watchdog = scope.launch {
             delay(timeoutMs)
             // Only fires when the core produced neither a result nor an error.
@@ -287,7 +304,10 @@ class PairingManager(
                 settle(
                     AttemptState.FAILED,
                     deviceName,
-                    context.getString(R.string.error_pairing_timeout),
+                    context.getString(
+                        if (isTicket) R.string.error_internet_timeout
+                        else R.string.error_pairing_timeout
+                    ),
                 )
             }
         }
@@ -305,13 +325,14 @@ class PairingManager(
             deviceName = current.deviceName.ifBlank { deviceName },
             state = state,
             message = message,
+            isTicket = current.isTicket,
         )
     }
 
     /** Raises a failed attempt with no prior CONNECTING state (pre-flight rejections). */
-    private fun failNow(deviceName: String, message: String) {
+    private fun failNow(deviceName: String, message: String, isTicket: Boolean = false) {
         watchdog?.cancel()
-        _attempt.value = Attempt(deviceName, AttemptState.FAILED, message)
+        _attempt.value = Attempt(deviceName, AttemptState.FAILED, message, isTicket = isTicket)
     }
 
     fun dismissKeyChanged() {

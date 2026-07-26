@@ -288,4 +288,8 @@
     <string name="internet_send_waiting">Oczekiwanie na drugie urządzenie.</string>
     <string name="internet_send_started_title">Wysyłanie</string>
     <string name="internet_send_started_body">Przesyłanie trwa. Możesz je śledzić na liście urządzeń.</string>
+    <string name="internet_connecting_title">Łączenie</string>
+    <string name="internet_progress_body">Pozostaw drugie urządzenie na ekranie z kodem. Łączenie przez internet może potrwać do minuty.</string>
+    <string name="internet_failed_title_named">Wooosh nie mógł połączyć się z %1$s</string>
+    <string name="error_internet_timeout">Wooosh nie zdążył połączyć się z tym urządzeniem. Sprawdź, czy nadal wyświetla kod i czy oba urządzenia mają połączenie z internetem.</string>
 </resources>

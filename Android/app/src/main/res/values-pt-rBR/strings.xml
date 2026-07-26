@@ -264,4 +264,8 @@
     <string name="internet_send_waiting">Aguardando o outro dispositivo.</string>
     <string name="internet_send_started_title">Enviando</string>
     <string name="internet_send_started_body">A transferência está em andamento. Você pode acompanhar na lista de dispositivos.</string>
+    <string name="internet_connecting_title">Conectando</string>
+    <string name="internet_progress_body">Mantenha o outro dispositivo na tela do código. Conectar pela internet pode levar até um minuto.</string>
+    <string name="internet_failed_title_named">O Wooosh não conseguiu conectar a %1$s</string>
+    <string name="error_internet_timeout">O Wooosh não conseguiu alcançar esse dispositivo a tempo. Verifique se ele ainda mostra o código e se os dois dispositivos estão conectados à internet.</string>
 </resources>

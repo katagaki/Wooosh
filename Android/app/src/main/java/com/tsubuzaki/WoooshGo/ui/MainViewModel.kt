@@ -170,10 +170,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * is the one call that contacts a relay, and a user who asked for a code and got
      * silence cannot tell a slow relay from a broken one.
      */
-    suspend fun beginInternetTicket(): String = app.core.beginInternetTicket()
+    suspend fun beginInternetTicket(): String {
+        // A redemption recorded against the *previous* code must not be mistaken for
+        // one against this one, or the tab would fire its send the moment it opens.
+        app.transferManager.clearTicketRedeemedPeer()
+        return app.core.beginInternetTicket()
+    }
 
     fun endInternetTicket() {
         app.core.endInternetTicket()
+        app.transferManager.clearTicketRedeemedPeer()
         internetOutbox = emptyList()
     }
 
@@ -195,14 +201,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val uris = internetOutbox
         if (uris.isEmpty()) return
         internetOutbox = emptyList()
+        // Consumed: a ticket is single-use, so this id must not survive to trigger a
+        // second send against a code that no longer exists.
+        app.transferManager.clearTicketRedeemedPeer()
         app.transferManager.sendToPeerId(peerId, uris)
-    }
-
-    /** DeviceID of a peer that just arrived by redeeming a ticket; consumed once. */
-    val redeemedPeerId: StateFlow<String?> = app.pairingManager.redeemedPeerId
-
-    fun clearRedeemedPeer() {
-        app.pairingManager.takeRedeemedPeerId()
     }
 
     fun cancelPairingAttempt() = app.pairingManager.cancelAttempt()

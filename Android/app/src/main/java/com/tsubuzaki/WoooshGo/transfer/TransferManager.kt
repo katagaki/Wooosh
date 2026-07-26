@@ -150,6 +150,15 @@ class TransferManager(
     private val _ticketRedeemedPeerId = MutableStateFlow<String?>(null)
     val ticketRedeemedPeerId: StateFlow<String?> = _ticketRedeemedPeerId.asStateFlow()
 
+    /**
+     * Drops a recorded redemption. A ticket is single-use, so this id is only ever
+     * meaningful for the code it arrived against; left set, the next visit to the send
+     * tab would fire immediately against a dead code and silently send nothing.
+     */
+    fun clearTicketRedeemedPeer() {
+        _ticketRedeemedPeerId.value = null
+    }
+
     /** manifest lookup for FileReady routing (name + MIME). */
     private val manifests = ConcurrentHashMap<TransferId, Map<FileId, FileMeta>>()
 

@@ -252,4 +252,8 @@
     <string name="internet_send_waiting">正在等待对方设备。</string>
     <string name="internet_send_started_title">正在发送</string>
     <string name="internet_send_started_body">传输进行中，可在设备列表中查看。</string>
+    <string name="internet_connecting_title">正在连接</string>
+    <string name="internet_progress_body">请让另一台设备保持在代码界面。通过互联网连接最多可能需要一分钟。</string>
+    <string name="internet_failed_title_named">Wooosh 无法连接到 %1$s</string>
+    <string name="error_internet_timeout">Wooosh 未能及时连接该设备。请确认它仍在显示代码，并且两台设备都已连接互联网。</string>
 </resources>

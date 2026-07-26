@@ -73,7 +73,6 @@ private fun AppRoot(viewModel: MainViewModel) {
     val pairedDeviceIds by viewModel.pairedDeviceIds.collectAsStateWithLifecycle()
     val stagedShare by viewModel.stagedShare.collectAsStateWithLifecycle()
     val relayError by viewModel.relayError.collectAsStateWithLifecycle()
-    val redeemedPeerId by viewModel.redeemedPeerId.collectAsStateWithLifecycle()
     val ticketRedeemedPeerId by viewModel.ticketRedeemedPeerId.collectAsStateWithLifecycle()
 
     var screen by rememberSaveable { mutableStateOf(Screen.MAIN) }

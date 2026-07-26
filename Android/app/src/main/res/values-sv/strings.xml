@@ -264,4 +264,8 @@
     <string name="internet_send_waiting">Väntar på den andra enheten.</string>
     <string name="internet_send_started_title">Skickar</string>
     <string name="internet_send_started_body">Överföringen pågår. Du kan följa den i enhetslistan.</string>
+    <string name="internet_connecting_title">Ansluter</string>
+    <string name="internet_progress_body">Låt den andra enheten vara kvar på kodskärmen. Att ansluta via internet kan ta upp till en minut.</string>
+    <string name="internet_failed_title_named">Wooosh kunde inte ansluta till %1$s</string>
+    <string name="error_internet_timeout">Wooosh kunde inte nå enheten i tid. Kontrollera att den fortfarande visar sin kod och att båda enheterna har internetanslutning.</string>
 </resources>

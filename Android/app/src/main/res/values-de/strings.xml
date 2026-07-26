@@ -264,4 +264,8 @@
     <string name="internet_send_waiting">Warten auf das andere Gerät.</string>
     <string name="internet_send_started_title">Wird gesendet</string>
     <string name="internet_send_started_body">Die Übertragung läuft. Du kannst sie in der Geräteliste verfolgen.</string>
+    <string name="internet_connecting_title">Verbinden</string>
+    <string name="internet_progress_body">Lass auf dem anderen Gerät den Code-Bildschirm geöffnet. Eine Verbindung über das Internet kann bis zu einer Minute dauern.</string>
+    <string name="internet_failed_title_named">Wooosh konnte keine Verbindung zu %1$s herstellen</string>
+    <string name="error_internet_timeout">Wooosh konnte das Gerät nicht rechtzeitig erreichen. Prüfe, ob es den Code noch anzeigt und ob beide Geräte mit dem Internet verbunden sind.</string>
 </resources>

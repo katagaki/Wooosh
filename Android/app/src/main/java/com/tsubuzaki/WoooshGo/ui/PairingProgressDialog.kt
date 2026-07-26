@@ -51,13 +51,23 @@ fun PairingProgressDialog(
                     strokeWidth = 3.dp,
                 )
             },
-            title = { Text(stringResource(R.string.pairing_in_progress_title)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (attempt.isTicket) R.string.internet_connecting_title
+                        else R.string.pairing_in_progress_title
+                    )
+                )
+            },
             text = {
                 Column {
                     Text(stringResource(R.string.transfer_connecting_to, attempt.deviceName))
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.pairing_progress_body),
+                        text = stringResource(
+                            if (attempt.isTicket) R.string.internet_progress_body
+                            else R.string.pairing_progress_body
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -79,7 +89,13 @@ fun PairingProgressDialog(
                 )
             },
             title = {
-                Text(stringResource(R.string.pairing_failed_title_named, attempt.deviceName))
+                Text(
+                    stringResource(
+                        if (attempt.isTicket) R.string.internet_failed_title_named
+                        else R.string.pairing_failed_title_named,
+                        attempt.deviceName,
+                    )
+                )
             },
             text = { Text(attempt.message ?: stringResource(R.string.error_pairing_failed)) },
             confirmButton = {

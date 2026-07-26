@@ -276,4 +276,8 @@
     <string name="internet_send_waiting">En attente de l\'autre appareil.</string>
     <string name="internet_send_started_title">Envoi en cours</string>
     <string name="internet_send_started_body">Le transfert est en cours. Vous pouvez le suivre dans la liste des appareils.</string>
+    <string name="internet_connecting_title">Connexion</string>
+    <string name="internet_progress_body">Laissez l\'autre appareil sur l\'écran du code. Une connexion par internet peut prendre jusqu\'à une minute.</string>
+    <string name="internet_failed_title_named">Wooosh n\'a pas pu se connecter à %1$s</string>
+    <string name="error_internet_timeout">Wooosh n\'a pas pu joindre cet appareil à temps. Vérifiez qu\'il affiche toujours son code et que les deux appareils sont connectés à internet.</string>
 </resources>

@@ -264,4 +264,8 @@
     <string name="internet_send_waiting">Wachten op het andere apparaat.</string>
     <string name="internet_send_started_title">Bezig met versturen</string>
     <string name="internet_send_started_body">De overdracht loopt. Je kunt hem volgen in de apparatenlijst.</string>
+    <string name="internet_connecting_title">Verbinden</string>
+    <string name="internet_progress_body">Houd het andere apparaat op het codescherm. Verbinden via internet kan tot een minuut duren.</string>
+    <string name="internet_failed_title_named">Wooosh kon geen verbinding maken met %1$s</string>
+    <string name="error_internet_timeout">Wooosh kon dat apparaat niet op tijd bereiken. Controleer of het de code nog toont en of beide apparaten internet hebben.</string>
 </resources>
