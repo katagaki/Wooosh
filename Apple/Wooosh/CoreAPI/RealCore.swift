@@ -216,8 +216,9 @@ final class RealCore: WoooshCore {
         let ffi = self.ffi
         Task.detached(priority: .userInitiated) {
             do {
-                // Success arrives as the core's own PairingResult, same as the
-                // LAN QR path; only the failure needs synthesizing here.
+                // Success arrives as TicketRedeemed, not PairingResult: this
+                // path never pairs (PROTOCOL.md §9.4). Only the failure needs
+                // synthesizing here.
                 _ = try ffi.redeemTicket(ticket: ticket)
             } catch {
                 let message = coreErrorMessage(error)

@@ -272,7 +272,7 @@ pub fn client_config(
 /// Identical on the internet path: iroh's QUIC connection is TLS 1.3 too and
 /// exposes the same exporter, so both ends of an iroh session derive the same
 /// code from the same transcript and a relay in the middle cannot make two
-/// sessions agree (PROTOCOL.md §9.4).
+/// sessions agree (PROTOCOL.md §9.5).
 pub fn derive_sas(conn: &crate::conn::Conn) -> Result<u32, WoooshError> {
     let mut out = [0u8; 32];
     conn.export_keying_material(&mut out, b"EXPORTER-wooosh-sas", b"")?;

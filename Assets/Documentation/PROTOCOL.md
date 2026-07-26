@@ -241,21 +241,13 @@ Values are base64url (no padding) or percent-encoded; unknown keys MUST be ignor
 2. Sender parses the ticket, rejects it if expired, and dials `nid` over iroh using ALPN `wooosh/1`.
 3. iroh's TLS handshake authenticates the remote to exactly the dialled `EndpointId`. The implementation MUST additionally assert that the authenticated key equals `nid` and hard-fail `KEY_CHANGED` otherwise — pinning is never delegated to a dependency's internals (§4.5).
 4. HELLO runs exactly as in §4.1, client-first, including the §4.1.1 identity-binding check (`device_id == BLAKE3(authenticated key)[0..16]`, where the authenticated key is the `EndpointId`). A peer claiming a pinned DeviceID with a different key closes `KEY_CHANGED`.
-5. Sender presents `PAIR_REQUEST { token }`; receiver redeems it single-use and both sides pin (§4.2 step 4).
+5. Sender presents `PAIR_REQUEST { token }`; receiver redeems it single-use. Both sides mark the connection `ticket_authorized` and emit `TicketRedeemed`. **Neither side pins**: unlike §4.2 step 4, this path writes nothing to the trust store (§9.4).
 6. Transfers proceed under §5 and §6 with no changes.
 
 Two deliberate differences from the LAN path:
 
 - **No `last_addr`.** An iroh session may be relayed and may migrate paths, so there is no stable `ip:port` to record as the §4.5 address pin. Implementations MUST NOT write one; a relayed address stored there would mis-resolve a later LAN dial. The `nid`-in-ticket and HELLO identity binding cover the same ground.
 - **Rejections still travel as close codes** (§4.1.2). Nothing about relaying changes that.
-
-### 9.4 SAS over the internet path
-
-An iroh connection is TLS 1.3, and exposes the same RFC 8446 §7.5 exporter. The §4.3 derivation is therefore used **verbatim**:
-
-`SAS = BE_u32(export_keying_material("EXPORTER-wooosh-sas", "", 32)[0..4]) mod 1_000_000`
-
-Both ends of one iroh session derive the same six digits, and a relay — which forwards opaque QUIC ciphertext and terminates nothing — cannot make two sessions agree. The MITM property of §4.3 is unchanged, and the camera-less pairing ceremony works off-LAN.
 
 ### 9.4 The internet path never pairs
 
@@ -269,7 +261,17 @@ A redeemed ticket authorises **exactly one transfer session on one connection**.
 
 Consequence for the UI: every internet transfer is an accept-once from an unpinned device. There is no prior relationship to check a fingerprint against, so implementations SHOULD NOT display one here — it would ask the user to verify something they cannot.
 
-### 9.5 Threat notes specific to the relay
+### 9.5 SAS over the internet path
+
+Redeeming a ticket never pairs (§9.4), but a user who *wants* a durable pairing off-LAN can still run the §4.3 ceremony over iroh. That is a separate, explicitly-requested act — `request_sas_pairing` — and it does pin, exactly as on the LAN. Nothing about §9.4 is weakened: the ticket path still writes nothing.
+
+An iroh connection is TLS 1.3, and exposes the same RFC 8446 §7.5 exporter. The §4.3 derivation is therefore used **verbatim**:
+
+`SAS = BE_u32(export_keying_material("EXPORTER-wooosh-sas", "", 32)[0..4]) mod 1_000_000`
+
+Both ends of one iroh session derive the same six digits, and a relay — which forwards opaque QUIC ciphertext and terminates nothing — cannot make two sessions agree. The MITM property of §4.3 is unchanged, and the camera-less pairing ceremony works off-LAN.
+
+### 9.6 Threat notes specific to the relay
 
 - Relays forward encrypted QUIC payloads. They see traffic volume and timing between two endpoint ids; they cannot read file data, impersonate a peer, or forge a pairing.
 - A hostile or unavailable relay can **drop** traffic. That is a denial of service, surfaced as a connect failure, never a downgrade.

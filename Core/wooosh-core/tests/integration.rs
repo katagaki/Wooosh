@@ -1213,7 +1213,7 @@ fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     );
 }
 
-/// SAS over the internet path (PROTOCOL.md §4.3 + §9.4): iroh's connection is
+/// SAS over the internet path (PROTOCOL.md §4.3 + §9.5): iroh's connection is
 /// TLS 1.3 too, so both ends derive the same transcript-bound six digits and
 /// the camera-less pairing ceremony works unchanged off-LAN.
 #[test]

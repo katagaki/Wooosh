@@ -612,10 +612,12 @@ impl WoooshCore {
     }
 
     /// Sender side of the internet path: dial the ticket's node over iroh,
-    /// pair with its token, and return the peer_id to pass to `send`.
+    /// redeem its token, and return the peer_id to pass to `send`.
     ///
-    /// Every outcome also arrives as a `PairingResult` event, exactly as with
-    /// `pair_with_qr`, so a shell can drive its UI purely off events.
+    /// **This does not pair** (PROTOCOL.md §9.4). Success arrives as
+    /// `TicketRedeemed`, never `PairingResult`, and nothing is written to the
+    /// trust store — a shell that waits for `PairingResult` here will wait for
+    /// ever. Failures do still arrive as `PairingResult { success: false }`.
     ///
     /// **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
     /// punching plus a 20 s pairing-reply timeout.
