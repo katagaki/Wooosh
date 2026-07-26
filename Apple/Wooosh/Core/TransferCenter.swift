@@ -2,6 +2,9 @@ import Foundation
 import Observation
 import os
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#endif
 
 /// Shell-side view state for one transfer, fed by the core event stream.
 @MainActor
@@ -117,6 +120,11 @@ final class TransferCenter {
 
     @ObservationIgnored private weak var core: (any WoooshCore)?
     @ObservationIgnored private let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "transfers")
+    #if os(iOS)
+    @ObservationIgnored private let backgroundTask = BackgroundTransferTask()
+    /// Transfers whose receipt notification has been posted — see `maybeNotifyReceived`.
+    @ObservationIgnored private var notifiedReceipts: Set<TransferID> = []
+    #endif
 
     func attach(core: any WoooshCore) {
         self.core = core
@@ -152,6 +160,7 @@ final class TransferCenter {
         pendingOffer = nil
         transfers.append(offer)
         core?.respondToOffer(transferID: offer.id, acceptedFileIDs: accepted)
+        requestNotificationAuthorization()
         updateKeepAwake()
     }
 
@@ -194,6 +203,7 @@ final class TransferCenter {
                 transfer.files[index].status = .completed
             }
             updateKeepAwake()
+            maybeNotifyReceived(transfer)
         case .transferError(let tid, let message, let resumable):
             guard let transfer = transfer(for: tid) else { return }
             // The core's wording is an internal token; map it to real copy.
@@ -234,6 +244,7 @@ final class TransferCenter {
             transfer.state = .transferring
             transfers.append(transfer)
             core?.respondToOffer(transferID: tid, acceptedFileIDs: manifest.map(\.id))
+            requestNotificationAuthorization()
             updateKeepAwake()
             return
         }
@@ -261,6 +272,11 @@ final class TransferCenter {
         } else {
             transfer.files[index].status = .transferring
         }
+        #if os(iOS)
+        // Not `updateKeepAwake()`: this fires per progress event, and the set of
+        // active transfers has not changed.
+        if let snapshot = receiveSnapshot() { backgroundTask.update(snapshot) }
+        #endif
     }
 
     private func handleFileReady(tid: TransferID, fileID: UInt32, stagedURL: URL, kind: FileKind) {
@@ -286,12 +302,80 @@ final class TransferCenter {
                     transfer.files[index].status = .failed(L.t("error_save_failed"))
                 }
             }
+            // Routing is async, so the last file can settle after transferDone
+            // has already landed. Whichever happens second posts.
+            maybeNotifyReceived(transfer)
         }
     }
 
-    // MARK: - Keep-awake (DESIGN.md §7)
+    /// Asked when files are actually about to arrive rather than at launch, so
+    /// the prompt lands next to the thing it is for. Wooosh's own copy in the
+    /// consent sheet has already explained what is happening.
+    private func requestNotificationAuthorization() {
+        #if os(iOS)
+        ReceiptNotifier.shared.requestAuthorizationIfNeeded()
+        #endif
+    }
 
+    /// Posts the "files arrived" notification once the transfer is both
+    /// finished and fully routed. A notification that opened a file still
+    /// sitting in staging would be a lie.
+    private func maybeNotifyReceived(_ transfer: Transfer) {
+        #if os(iOS)
+        guard transfer.direction == .incoming, case .done = transfer.state else { return }
+        let settled = transfer.files.allSatisfy {
+            switch $0.status {
+            case .saved, .failed: true
+            default: false
+            }
+        }
+        guard settled, notifiedReceipts.insert(transfer.id).inserted else { return }
+        ReceiptNotifier.shared.notifyReceived(transfer)
+        #endif
+    }
+
+    // MARK: - Keep-awake and background execution (DESIGN.md §7)
+
+    /// Called on every state edge: a transfer starting, ending, failing or
+    /// being cancelled.
     private func updateKeepAwake() {
         KeepAwake.setActive(transfers.contains { $0.isActive })
+        #if os(iOS)
+        guard let snapshot = receiveSnapshot() else {
+            // Per-file outcomes are reported on the transfer card; `success`
+            // only tells the scheduler that the session it granted time for
+            // ended in an orderly way rather than being torn out from under us.
+            backgroundTask.finish(nil, success: true)
+            return
+        }
+        backgroundTask.begin(snapshot) { [weak self] in
+            guard let self else { return }
+            // Expiration and the Stop button in the system UI are
+            // indistinguishable through this API. On screen, the user is
+            // watching the transfer and cannot have pressed anything on the
+            // Lock Screen, so all that was lost is the assertion: keep going.
+            // Backgrounded without it, the transfer cannot progress anyway, so
+            // stop it for real rather than leave a card that will never move.
+            guard UIApplication.shared.applicationState == .background else { return }
+            for transfer in transfers where transfer.direction == .incoming && transfer.isActive {
+                cancel(transfer)
+            }
+        }
+        #endif
     }
+
+    #if os(iOS)
+    /// Aggregate of everything being received right now, or nil when nothing is.
+    private func receiveSnapshot() -> BackgroundTransferTask.Snapshot? {
+        let incoming = transfers.filter { $0.direction == .incoming && $0.isActive }
+        guard let first = incoming.first else { return nil }
+        return BackgroundTransferTask.Snapshot(
+            peerName: first.peer.displayName,
+            transferCount: incoming.count,
+            completedBytes: incoming.reduce(0) { $0 + $1.transferredBytes },
+            totalBytes: incoming.reduce(0) { $0 + $1.totalBytes },
+            rate: incoming.reduce(0) { $0 + $1.rate }
+        )
+    }
+    #endif
 }

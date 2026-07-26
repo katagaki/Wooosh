@@ -26,6 +26,19 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- Package visibility for the "files arrived" notification. Without these, API 30+
+         filtering makes resolveActivity return null for every viewer on the device, and
+         the notification would always fall back to opening Wooosh instead of the file. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW_DOWNLOADS" />
+        </intent>
+    </queries>
+
     <application
         android:name=".WoooshApplication"
         android:allowBackup="true"

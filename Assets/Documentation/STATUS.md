@@ -50,7 +50,7 @@ Identity is unified: one Ed25519 keypair per install, held by the core, stored t
 - Discovery is **native per platform**, not in the core (DESIGN.md §2). The shells own the peer registry and the append-only, grey-out-in-place list rules.
 - Shells never reimplement core crypto: use the exported `fingerprint_phrase_for` / `device_id_for`.
 - No mock or fake-data implementations remain. `RealCore` is the only implementation on both platforms; the debug harnesses were removed once the real core was verified on device.
-- 228 strings across 14 locales, one glossary shared by both shells.
+- 229 strings across 14 locales, one glossary shared by both shells.
 
 ## What is left
 
@@ -62,7 +62,16 @@ Pairing is now same-network only. An internet transfer needs a fresh QR every ti
 
 `/Applications/Xcode-beta.app` is missing its `PrivateFrameworks`, so `SimulatorKit.framework` is absent and the live simulator panel plus all MCP simulator control fail. Screenshots still work through `simctl`, and the Simulator window can be opened from the stable Xcode. Fix: `sudo xcode-select -s /Applications/Xcode.app`.
 
+**Background receiving and arrival notifications (added 2026-07-26)**
+
+Visibility now defaults to **Paired only** on all three shells (DESIGN.md §10); the core still has no default of its own, and `wooosh-cli` keeps `--visibility everyone`.
+
+iOS receives in the background through `BGContinuedProcessingTask` (iOS 26), which also supplies the Lock Screen / Dynamic Island Live Activity, so no ActivityKit target was added. Both mobile shells post an arrival notification that opens what landed. Caveats are in DESIGN.md §7; the load-bearing ones are that the API cannot distinguish a user pressing Stop from a system expiry, and that iOS gives no runtime guarantee.
+
 **Needs a human at the keyboard**
+- **None of the background/notification work has been run on a device.** It compiles for iOS, macOS and Android, and nothing below was observed:
+  - `BGContinuedProcessingTask` is **unsupported in the Simulator**, so submission, the system Live Activity, its Stop button, and expiry behaviour all need a real iPhone. Note the open Apple bug where these tasks pause on a genuinely locked device (FB19916760).
+  - Arrival notifications on both platforms: permission prompt, posting, and tap-to-open (Quick Look, the Photos hand-off, `ACTION_VIEW` on a `MediaStore` URI, and the API 26-28 media-scan path, which no current test device runs).
 - **The internet path has never run between two separate networks.** Core, FFI and both shells are wired end to end, and the ticket flow is covered by four integration tests (three relay-free, one against n0's real relays), but every run so far has been two nodes on one Mac. That exercises the protocol, not NAT traversal. The real check is a phone on mobile data redeeming a ticket from a Mac on home broadband.
 - **The relayed-size cap has never fired in a real scenario.** On one machine a direct path always forms, so the uncapped path is well covered but the 100 MiB relayed cap (PROTOCOL.md §9.1.1) is not. Reproducing it needs two genuinely hostile NATs, or a build with hole punching disabled.
 - **A self-hosted relay has not been run.** That a chosen relay is *advertised* in the ticket follows from the one line that publishes the endpoint's home relay, and validation plus the unreachable-relay failure are tested; that a real self-hosted relay carries an introduction end to end is not. It needs an actual `iroh-relay` deployment.

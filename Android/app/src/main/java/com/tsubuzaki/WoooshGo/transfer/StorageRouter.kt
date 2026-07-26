@@ -3,11 +3,16 @@ package com.tsubuzaki.WoooshGo.transfer
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 
 /**
  * Storage routing (DESIGN.md §6): on FileReady, everything goes to Downloads.
@@ -19,16 +24,30 @@ import java.io.IOException
  *   (the caller passes [subfolder]); otherwise Downloads root.
  * - Name collisions get " (2)", " (3)", ... — never overwrite.
  */
+/**
+ * Where a received file ended up: the user-visible location
+ * ("Download/Wooosh/2026-07-24/IMG_0001 (2).jpeg") and, when one could be obtained, the
+ * content URI to hand to `ACTION_VIEW` so the completion notification can open it.
+ *
+ * [uri] is nullable because the pre-API-29 media scan is best effort: a routed file with
+ * no URI is still correctly saved, it just is not directly openable from the notification.
+ */
+data class RoutedFile(val location: String, val uri: Uri?)
+
 class StorageRouter(context: Context) {
 
     private val appContext = context.applicationContext
 
     /**
-     * Moves [staged] into public Downloads. Returns the user-visible location
-     * ("Download/Wooosh/2026-07-24/IMG_0001 (2).jpeg"). Deletes [staged] on success.
+     * Moves [staged] into public Downloads. Deletes [staged] on success.
      */
     @Throws(IOException::class)
-    fun routeToDownloads(staged: File, preferredName: String, mime: String, subfolder: String?): String {
+    suspend fun routeToDownloads(
+        staged: File,
+        preferredName: String,
+        mime: String,
+        subfolder: String?,
+    ): RoutedFile {
         if (!staged.isFile) throw IOException("Staged file missing: ${staged.path}")
         val name = sanitize(preferredName)
         return if (Build.VERSION.SDK_INT >= 29) {
@@ -38,7 +57,7 @@ class StorageRouter(context: Context) {
         }
     }
 
-    private fun routeViaMediaStore(staged: File, name: String, mime: String, subfolder: String?): String {
+    private fun routeViaMediaStore(staged: File, name: String, mime: String, subfolder: String?): RoutedFile {
         check(Build.VERSION.SDK_INT >= 29)
         val resolver = appContext.contentResolver
         val relativePath =
@@ -77,11 +96,11 @@ class StorageRouter(context: Context) {
             throw t
         }
         staged.delete()
-        return "$relativePath/$uniqueName"
+        return RoutedFile("$relativePath/$uniqueName", itemUri)
     }
 
     @Suppress("DEPRECATION")
-    private fun routeDirect(staged: File, name: String, subfolder: String?): String {
+    private suspend fun routeDirect(staged: File, name: String, subfolder: String?): RoutedFile {
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val targetDir = if (subfolder != null) File(downloads, subfolder) else downloads
         if (!targetDir.isDirectory && !targetDir.mkdirs()) {
@@ -94,9 +113,28 @@ class StorageRouter(context: Context) {
             target.outputStream().use { input.copyTo(it) }
         }
         staged.delete()
-        MediaScannerConnection.scanFile(appContext, arrayOf(target.absolutePath), null, null)
         val prefix = if (subfolder != null) "Download/$subfolder" else "Download"
-        return "$prefix/$uniqueName"
+        return RoutedFile("$prefix/$uniqueName", scan(target))
+    }
+
+    /**
+     * Media-scans [file] and waits for the content URI it produces, which is the only way
+     * to get an openable URI on API 26-28 without shipping a FileProvider (a `file://` URI
+     * in an ACTION_VIEW intent throws `FileUriExposedException`).
+     *
+     * Best effort: the file is already saved and visible either way, so a scan that stalls
+     * must not hold up the transfer. On timeout the caller simply gets no URI.
+     */
+    private suspend fun scan(file: File): Uri? = try {
+        withTimeout(SCAN_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                MediaScannerConnection.scanFile(
+                    appContext, arrayOf(file.absolutePath), null,
+                ) { _, uri -> if (continuation.isActive) continuation.resume(uri) }
+            }
+        }
+    } catch (_: TimeoutCancellationException) {
+        null
     }
 
     /** " (2)", " (3)", ... before the extension; never overwrites. */
@@ -121,5 +159,9 @@ class StorageRouter(context: Context) {
             .filter { it.code >= 0x20 }
             .trim()
         return cleaned.ifBlank { "received-file" }
+    }
+
+    private companion object {
+        const val SCAN_TIMEOUT_MS = 5_000L
     }
 }

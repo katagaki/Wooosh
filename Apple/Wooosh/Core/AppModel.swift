@@ -180,8 +180,10 @@ final class AppModel {
     init() {
         let defaults = UserDefaults.standard
         displayName = defaults.string(forKey: Self.displayNameKey) ?? Self.defaultDisplayName
+        // Paired only by default: a fresh install should not accept transfers
+        // from strangers on a shared network before the user has opted in.
         visibility = defaults.string(forKey: Self.visibilityKey)
-            .flatMap(Visibility.init(rawValue:)) ?? .everyone
+            .flatMap(Visibility.init(rawValue:)) ?? .pairedOnly
         relayPreference = RelayPreference(
             mode: defaults.string(forKey: Self.relayModeKey)
                 .flatMap(RelayMode.init(rawValue:)) ?? RelayPreference.default.mode,

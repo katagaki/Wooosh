@@ -99,7 +99,7 @@ struct TransferProgressView: View {
                 TransferFormat.bytes(transfer.totalBytes))
         ]
         if transfer.rate > 0 {
-            parts.append(L.f("transfer_progress_rate", TransferFormat.bytes(Int64(transfer.rate))))
+            parts.append(TransferFormat.rate(transfer.rate))
         }
         if let eta = transfer.eta, eta > 0.5 {
             parts.append(L.f("transfer_progress_eta", TransferFormat.duration(eta)))
@@ -195,6 +195,11 @@ struct TransferFileRow: View {
 enum TransferFormat {
     static func bytes(_ value: Int64) -> String {
         value.formatted(.byteCount(style: .file))
+    }
+
+    /// Bytes per second, as "12 MB/s".
+    static func rate(_ bytesPerSecond: Double) -> String {
+        L.f("transfer_progress_rate", bytes(Int64(bytesPerSecond)))
     }
 
     /// Durations come from the system's own units formatter, so the unit

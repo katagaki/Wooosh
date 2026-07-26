@@ -13,6 +13,13 @@
 			</array>
 		</dict>
 	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<!-- Wildcard prefix required by BGContinuedProcessingTaskRequest: each
+		     submission uses a concrete id under it (BackgroundTransferTask.swift).
+		     Ignored on macOS, where BackgroundTasks does not exist. -->
+		<string>com.tsubuzaki.Wooosh.transfer.*</string>
+	</array>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_wooosh._tcp</string>

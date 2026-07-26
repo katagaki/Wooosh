@@ -79,9 +79,11 @@ class SettingsRepository(context: Context) {
         .map { prefs ->
             Settings(
                 displayName = prefs[KEY_DISPLAY_NAME]?.takeIf { it.isNotBlank() } ?: Build.MODEL,
+                // Paired only by default: a fresh install should not accept transfers
+                // from strangers on a shared network before the user has opted in.
                 visibility = prefs[KEY_VISIBILITY]
                     ?.let { stored -> Visibility.entries.firstOrNull { it.name == stored } }
-                    ?: Visibility.EVERYONE,
+                    ?: Visibility.PAIRED_ONLY,
                 relayMode = prefs[KEY_RELAY_MODE]
                     ?.let { stored -> RelayMode.entries.firstOrNull { it.name == stored } }
                     ?: RelayMode.PUBLIC,

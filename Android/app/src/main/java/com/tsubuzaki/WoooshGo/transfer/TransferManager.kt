@@ -45,7 +45,12 @@ data class FileState(
     /** True only once the file is routed to its final location (DESIGN.md §6). */
     val routed: Boolean = false,
     val error: String? = null,
-)
+    /** Content URI of the routed file, when one could be obtained — see [RoutedFile]. */
+    val savedUri: Uri? = null,
+) {
+    /** Routing has run and either placed the file or given up on it. */
+    val isSettled: Boolean get() = routed || error != null
+}
 
 data class TransferUi(
     val id: TransferId,
@@ -92,6 +97,10 @@ class TransferManager(
 ) {
 
     private val storageRouter = StorageRouter(context)
+    private val receivedNotifier = ReceivedNotifier(context)
+
+    /** Transfers whose "files arrived" notification has been posted — see [maybeNotifyReceived]. */
+    private val notifiedReceived = ConcurrentHashMap.newKeySet<TransferId>()
 
     private val _transfers = MutableStateFlow<List<TransferUi>>(emptyList())
     val transfers: StateFlow<List<TransferUi>> = _transfers.asStateFlow()
@@ -380,16 +389,19 @@ class TransferManager(
 
             is CoreEvent.FileReady -> routeFile(event)
 
-            is CoreEvent.TransferDone -> updateTransfer(event.transferId) { transfer ->
-                transfer.copy(
-                    status = TransferStatus.DONE,
-                    message = summaryOf(event, transfer.direction),
-                    durationMs = event.durationMs,
-                    etaSeconds = 0,
-                    files = transfer.files.map {
-                        if (it.error == null) it.copy(bytes = it.meta.size) else it
-                    },
-                )
+            is CoreEvent.TransferDone -> {
+                updateTransfer(event.transferId) { transfer ->
+                    transfer.copy(
+                        status = TransferStatus.DONE,
+                        message = summaryOf(event, transfer.direction),
+                        durationMs = event.durationMs,
+                        etaSeconds = 0,
+                        files = transfer.files.map {
+                            if (it.error == null) it.copy(bytes = it.meta.size) else it
+                        },
+                    )
+                }
+                maybeNotifyReceived(event.transferId)
             }
 
             is CoreEvent.TransferError -> {
@@ -464,13 +476,21 @@ class TransferManager(
             val result = runCatching {
                 storageRouter.routeToDownloads(staged, name, mime, subfolders[event.transferId])
             }
-            result.onFailure { Log.w(TAG, "routing ${event.stagedPath} failed", it) }
+            result
+                .onSuccess { Log.i(TAG, "routed $name to ${it.location} uri=${it.uri}") }
+                .onFailure { Log.w(TAG, "routing ${event.stagedPath} failed", it) }
             updateTransfer(event.transferId) { transfer ->
                 transfer.copy(
                     files = transfer.files.map { fileState ->
                         if (fileState.meta.id == event.fileId) {
                             result.fold(
-                                onSuccess = { fileState.copy(routed = true, bytes = fileState.meta.size) },
+                                onSuccess = { routed ->
+                                    fileState.copy(
+                                        routed = true,
+                                        bytes = fileState.meta.size,
+                                        savedUri = routed.uri,
+                                    )
+                                },
                                 onFailure = {
                                     fileState.copy(
                                         error = context.getString(R.string.error_save_failed)
@@ -481,7 +501,23 @@ class TransferManager(
                     },
                 )
             }
+            // Routing runs off the event thread, so the last file can settle after
+            // TransferDone has already landed. Whichever happens second posts.
+            maybeNotifyReceived(event.transferId)
         }
+    }
+
+    /**
+     * Posts the "files arrived" notification once the transfer is both finished and fully
+     * routed — a notification that opened a file still sitting in staging would be a lie.
+     */
+    private fun maybeNotifyReceived(transferId: TransferId) {
+        val transfer = _transfers.value.firstOrNull { it.id == transferId } ?: return
+        if (transfer.direction != TransferDirection.RECEIVE) return
+        if (transfer.status != TransferStatus.DONE) return
+        if (!transfer.files.all { it.isSettled }) return
+        if (!notifiedReceived.add(transferId)) return
+        receivedNotifier.notifyReceived(transfer)
     }
 
     private fun persistReadGrants(uris: List<Uri>) {

@@ -31,6 +31,9 @@ struct WoooshApp: App {
             .onReceive(NotificationCenter.default.publisher(for: terminationNotification)) { _ in
                 model.shutdown()
             }
+        #if os(iOS)
+            .modifier(ReceivedFilePreview())
+        #endif
     }
 
     #if os(macOS)

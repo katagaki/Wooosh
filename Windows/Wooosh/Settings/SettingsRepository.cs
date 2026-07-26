@@ -43,11 +43,13 @@ public sealed class SettingsRepository
             DisplayName = _store.Values[DisplayNameKey] as string is { Length: > 0 } name
                 ? name
                 : Environment.MachineName,
+            // Paired only by default: a fresh install should not accept transfers
+            // from strangers on a shared network before the user has opted in.
             Visibility = _store.Values[VisibilityKey] as string switch
             {
-                "pairedOnly" => CoreVisibility.PairedOnly,
+                "everyone" => CoreVisibility.Everyone,
                 "off" => CoreVisibility.Off,
-                _ => CoreVisibility.Everyone,
+                _ => CoreVisibility.PairedOnly,
             },
             KeepRunningInBackground = _store.Values[KeepRunningKey] as bool? ?? true,
         };
