@@ -20,12 +20,15 @@
 		     Ignored on macOS, where BackgroundTasks does not exist. -->
 		<string>com.tsubuzaki.Wooosh.transfer.*</string>
 	</array>
-	<!-- Export compliance. True because the Rust core bundles its own crypto
-	     (rustls/ring, ed25519-dalek, blake3) to encrypt transferred file data,
-	     so none of Apple's exemptions apply: not OS-provided encryption, not
-	     plain HTTPS, and not limited to authentication or signing. -->
+	<!-- Export compliance. This governs Apple's per-submission questionnaire,
+	     not whether Wooosh encrypts: the Rust core does encrypt every transfer
+	     (TLS 1.3 via rustls/ring). False because the App Store Connect
+	     questionnaire determined that no encryption documentation is required,
+	     which means Apple issues no compliance code, and True without a
+	     matching ITSEncryptionExportComplianceCode fails upload as ITMS-90592.
+	     The separate BIS 5D992.c self-classification report still applies. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<true/>
+	<false/>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_wooosh._tcp</string>
