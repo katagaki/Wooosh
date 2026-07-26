@@ -466,4 +466,6 @@
     <string name="internet_progress_body">Keep the other device on its code screen. Connecting over the internet can take up to a minute.</string>
     <string name="internet_failed_title_named">Wooosh Couldn\'t Connect to %1$s</string>
     <string name="error_internet_timeout">Wooosh couldn\'t reach that device in time. Check that it is still showing its code and that both devices have an internet connection.</string>
+    <string name="camera_permission_body">Wooosh needs the camera to read a code. Nothing is recorded or sent.</string>
+    <string name="action_allow_camera">Allow Camera</string>
 </resources>

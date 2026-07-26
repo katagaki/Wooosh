@@ -256,4 +256,6 @@
     <string name="internet_progress_body">請讓另一部裝置保持在代碼畫面。透過網際網路連線最多可能需要一分鐘。</string>
     <string name="internet_failed_title_named">Wooosh 無法連線到 %1$s</string>
     <string name="error_internet_timeout">Wooosh 未能及時連線到該裝置。請確認它仍在顯示代碼，且兩部裝置都已連上網際網路。</string>
+    <string name="camera_permission_body">Wooosh 需要使用相機來讀取代碼。不會錄製或傳送任何內容。</string>
+    <string name="action_allow_camera">允許使用相機</string>
 </resources>

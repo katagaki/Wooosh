@@ -256,4 +256,6 @@
     <string name="internet_progress_body">相手のデバイスのコード画面を表示したままにしてください。インターネット経由の接続には最大1分ほどかかります。</string>
     <string name="internet_failed_title_named">%1$s に接続できませんでした</string>
     <string name="error_internet_timeout">時間内にそのデバイスに接続できませんでした。コードがまだ表示されていること、両方のデバイスがインターネットに接続されていることを確認してください。</string>
+    <string name="camera_permission_body">コードを読み取るにはカメラへのアクセスが必要です。撮影内容が保存または送信されることはありません。</string>
+    <string name="action_allow_camera">カメラを許可</string>
 </resources>

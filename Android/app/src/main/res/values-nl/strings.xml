@@ -268,4 +268,6 @@
     <string name="internet_progress_body">Houd het andere apparaat op het codescherm. Verbinden via internet kan tot een minuut duren.</string>
     <string name="internet_failed_title_named">Wooosh kon geen verbinding maken met %1$s</string>
     <string name="error_internet_timeout">Wooosh kon dat apparaat niet op tijd bereiken. Controleer of het de code nog toont en of beide apparaten internet hebben.</string>
+    <string name="camera_permission_body">Wooosh heeft de camera nodig om een code te lezen. Er wordt niets opgenomen of verzonden.</string>
+    <string name="action_allow_camera">Camera toestaan</string>
 </resources>

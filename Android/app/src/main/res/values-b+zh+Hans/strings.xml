@@ -256,4 +256,6 @@
     <string name="internet_progress_body">请让另一台设备保持在代码界面。通过互联网连接最多可能需要一分钟。</string>
     <string name="internet_failed_title_named">Wooosh 无法连接到 %1$s</string>
     <string name="error_internet_timeout">Wooosh 未能及时连接该设备。请确认它仍在显示代码，并且两台设备都已连接互联网。</string>
+    <string name="camera_permission_body">Wooosh 需要使用相机来读取代码。不会录制或发送任何内容。</string>
+    <string name="action_allow_camera">允许使用相机</string>
 </resources>

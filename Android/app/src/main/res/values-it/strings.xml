@@ -268,4 +268,6 @@
     <string name="internet_progress_body">Lascia l\'altro dispositivo sulla schermata del codice. La connessione via internet può richiedere fino a un minuto.</string>
     <string name="internet_failed_title_named">Wooosh non è riuscito a connettersi a %1$s</string>
     <string name="error_internet_timeout">Wooosh non è riuscito a raggiungere il dispositivo in tempo. Verifica che stia ancora mostrando il codice e che entrambi i dispositivi siano connessi a internet.</string>
+    <string name="camera_permission_body">Wooosh ha bisogno della fotocamera per leggere un codice. Nulla viene registrato o inviato.</string>
+    <string name="action_allow_camera">Consenti fotocamera</string>
 </resources>

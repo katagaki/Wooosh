@@ -86,18 +86,6 @@
             android:name=".transfer.TransferService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-
-        <!-- Replaces the library's CaptureActivity, which hardcodes
-             sensorLandscape and forces a phone held normally into landscape
-             to scan a code. See PortraitCaptureActivity. -->
-        <activity
-            android:name=".pairing.PortraitCaptureActivity"
-            android:clearTaskOnLaunch="true"
-            android:exported="false"
-            android:screenOrientation="fullSensor"
-            android:stateNotNeeded="true"
-            android:theme="@style/zxing_CaptureTheme"
-            android:windowSoftInputMode="stateAlwaysHidden" />
     </application>
 
 </manifest>

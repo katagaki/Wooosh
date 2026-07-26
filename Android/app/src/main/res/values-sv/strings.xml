@@ -268,4 +268,6 @@
     <string name="internet_progress_body">Låt den andra enheten vara kvar på kodskärmen. Att ansluta via internet kan ta upp till en minut.</string>
     <string name="internet_failed_title_named">Wooosh kunde inte ansluta till %1$s</string>
     <string name="error_internet_timeout">Wooosh kunde inte nå enheten i tid. Kontrollera att den fortfarande visar sin kod och att båda enheterna har internetanslutning.</string>
+    <string name="camera_permission_body">Wooosh behöver kameran för att läsa en kod. Inget spelas in eller skickas.</string>
+    <string name="action_allow_camera">Tillåt kamera</string>
 </resources>

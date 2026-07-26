@@ -1,22 +1,18 @@
 package com.tsubuzaki.WoooshGo.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,15 +37,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.tsubuzaki.WoooshGo.R
-import com.tsubuzaki.WoooshGo.pairing.PortraitCaptureActivity
+import com.tsubuzaki.WoooshGo.pairing.QrScanner
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
@@ -142,25 +135,7 @@ fun OtherDeviceScreen(
  */
 @Composable
 private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit) {
-    val context = LocalContext.current
     var pastedCode by rememberSaveable { mutableStateOf("") }
-
-    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let(onRedeemTicket)
-    }
-    val scanPrompt = stringResource(R.string.other_device_scan_prompt)
-    val scanOptions = remember(scanPrompt) {
-        ScanOptions()
-            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-            .setPrompt(scanPrompt)
-            .setBeepEnabled(false)
-            // Our own capture activity: the library's is pinned to landscape.
-            .setCaptureActivity(PortraitCaptureActivity::class.java)
-            .setOrientationLocked(false)
-    }
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) scanLauncher.launch(scanOptions) }
 
     Column(
         modifier = Modifier
@@ -169,11 +144,15 @@ private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit) {
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            Icons.Outlined.QrCodeScanner,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = MaterialTheme.colorScheme.primary,
+        // Redeeming dials over the internet, which is slow enough that the wait must be
+        // visible immediately. Scanning inside this tree is what lets the alert appear
+        // the moment the code is read, rather than after a scanner activity closes.
+        QrScanner(
+            onScanned = onRedeemTicket,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp)),
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -182,18 +161,6 @@ private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = {
-            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED
-            if (granted) {
-                scanLauncher.launch(scanOptions)
-            } else {
-                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }) {
-            Text(stringResource(R.string.action_scan_qr))
-        }
         Spacer(Modifier.height(32.dp))
         OutlinedTextField(
             value = pastedCode,
