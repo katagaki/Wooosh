@@ -20,6 +20,10 @@
 		     Ignored on macOS, where BackgroundTasks does not exist. -->
 		<string>com.tsubuzaki.Wooosh.transfer.*</string>
 	</array>
+	<!-- Export compliance: declares Wooosh's encryption as exempt so App Store
+	     Connect stops asking on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_wooosh._tcp</string>
