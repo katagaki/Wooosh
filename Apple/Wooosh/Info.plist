@@ -20,10 +20,12 @@
 		     Ignored on macOS, where BackgroundTasks does not exist. -->
 		<string>com.tsubuzaki.Wooosh.transfer.*</string>
 	</array>
-	<!-- Export compliance: declares Wooosh's encryption as exempt so App Store
-	     Connect stops asking on every upload. -->
+	<!-- Export compliance. True because the Rust core bundles its own crypto
+	     (rustls/ring, ed25519-dalek, blake3) to encrypt transferred file data,
+	     so none of Apple's exemptions apply: not OS-provided encryption, not
+	     plain HTTPS, and not limited to authentication or signing. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<true/>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_wooosh._tcp</string>
