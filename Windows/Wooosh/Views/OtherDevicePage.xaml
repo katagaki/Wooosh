@@ -1,0 +1,156 @@
+<Page
+    x:Class="Wooosh.Views.OtherDevicePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:loc="using:Wooosh.Localization"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" MaxWidth="640" Spacing="24">
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    AutomationProperties.Name="{loc:Localize Key=ActionBack}"
+                    Click="OnBackClick"
+                    Content="&#xE72B;"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    Text="{loc:Localize Key=OtherDeviceTitle}" />
+            </StackPanel>
+
+            <!--
+                Sending and receiving are two directions of one job, so they are two
+                segments of a single screen rather than a question asked before the screen
+                opens. Asking first made the user commit to a direction while looking at
+                nothing; here both are visible and switching costs a click.
+            -->
+            <SelectorBar x:Name="DirectionBar" SelectionChanged="OnDirectionChanged">
+                <SelectorBarItem
+                    x:Name="SendSegment"
+                    IsSelected="True"
+                    Text="{loc:Localize Key=OtherDeviceSend}" />
+                <SelectorBarItem
+                    x:Name="ReceiveSegment"
+                    Text="{loc:Localize Key=OtherDeviceReceive}" />
+            </SelectorBar>
+
+            <!--
+                Send (PROTOCOL.md §9.4). Nothing is paired and no fingerprint is shown: the
+                code authorises one transfer and dies with it, so there is no prior
+                relationship to check a phrase against.
+            -->
+            <StackPanel x:Name="SendPanel" Spacing="12">
+                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=InternetSendTitle}" />
+
+                <StackPanel x:Name="SendIntro" Spacing="12">
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{ThemeResource BodyTextBlockStyle}"
+                        Text="{loc:Localize Key=InternetSendIntroBody}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Text="{loc:Localize Key=InternetRelayNote}"
+                        TextWrapping="Wrap" />
+                    <Button
+                        x:Name="ChooseFilesButton"
+                        HorizontalAlignment="Left"
+                        Click="OnChooseFilesClick"
+                        Content="{loc:Localize Key=ActionChooseFiles}"
+                        Style="{ThemeResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <StackPanel x:Name="SendMinting" Spacing="8" Visibility="Collapsed">
+                    <ProgressRing HorizontalAlignment="Left" IsActive="True" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{ThemeResource BodyTextBlockStyle}"
+                        Text="{loc:Localize Key=InternetPreparing}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!--
+                    TODO(pairing): render the ticket as a QR code once a QR renderer is
+                    chosen. There is none in the box on Windows, and the phones scan rather
+                    than paste, so this is the half of the flow that stays worse until that
+                    dependency decision is made. The copyable text below is the real
+                    fallback, not a placeholder.
+                -->
+                <StackPanel x:Name="SendTicket" Spacing="8" Visibility="Collapsed">
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{ThemeResource BodyTextBlockStyle}"
+                        Text="{loc:Localize Key=InternetSendReadyBodyDesktop}"
+                        TextWrapping="Wrap" />
+                    <TextBox
+                        x:Name="TicketBox"
+                        AcceptsReturn="True"
+                        IsReadOnly="True"
+                        TextWrapping="Wrap" />
+                    <Button
+                        x:Name="CopyTicketButton"
+                        HorizontalAlignment="Left"
+                        Click="OnCopyTicketClick"
+                        Content="{loc:Localize Key=ActionCopyCode}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ProgressRing IsActive="True" Width="16" Height="16" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Text="{loc:Localize Key=InternetSendWaiting}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel x:Name="SendStarted" Spacing="8" Visibility="Collapsed">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=InternetSendStartedTitle}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{ThemeResource BodyTextBlockStyle}"
+                        Text="{loc:Localize Key=InternetSendStartedBody}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+
+            <!--
+                Receive (PROTOCOL.md §9.4). Redeeming the code *is* the consent, so no
+                second prompt follows: the incoming transfer shows in the device list like
+                any other. A PC has no camera in the general case, so pasting is the whole
+                flow here rather than a fallback under a viewfinder.
+            -->
+            <StackPanel x:Name="ReceivePanel" Spacing="12" Visibility="Collapsed">
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Text="{loc:Localize Key=OtherDeviceBodyDesktop}"
+                    TextWrapping="Wrap" />
+                <TextBox
+                    x:Name="PasteBox"
+                    Header="{loc:Localize Key=PairingPasteLabel}"
+                    TextChanged="OnPasteBoxChanged"
+                    TextWrapping="Wrap" />
+                <Button
+                    x:Name="RedeemButton"
+                    Click="OnRedeemClick"
+                    Content="{loc:Localize Key=ActionPairWithPasted}"
+                    IsEnabled="False"
+                    Style="{ThemeResource AccentButtonStyle}" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Text="{loc:Localize Key=OtherDeviceConnectingBody}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <InfoBar
+                x:Name="Status"
+                IsClosable="False"
+                IsOpen="False" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

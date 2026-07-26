@@ -89,6 +89,7 @@ Windows/
     │   └── ObservableObject.cs
     ├── Views/
     │   ├── DeviceListPage.xaml / .cs
+    │   ├── OtherDevicePage.xaml / .cs  the internet path, Send / Receive segments
     │   ├── SettingsPage.xaml / .cs
     │   ├── PairingPage.xaml / .cs
     │   ├── IncomingOfferDialog.xaml / .cs
@@ -238,30 +239,46 @@ Everything below is marked with a `TODO(...)` comment at the place it belongs.
    package. Do not commit the DLL.
 3. **`TODO(send)`: the send flow.** File picker, then `connect_peer` with the pinned key
    from `trusted_peers()`, then `send`. Both calls block and must run off the UI thread.
-4. **`TODO(share)`: Share Target activation.** The manifest declaration is in place; the
+   `OtherDevicePage` has the picker half of this written already.
+4. **The internet path (PROTOCOL.md §9).** `OtherDevicePage` is the whole UI: one screen
+   with Send and Receive segments, reached from the command bar and from the empty state.
+   The core half is not wired. `begin_internet_ticket`, `redeem_ticket` and
+   `end_internet_ticket` are not declared in `NativeMethods.cs` at all, and the first two
+   are exported as UniFFI *async* functions, which are polled through a Rust future handle
+   rather than called straight through — so they need the async scaffolding that comes with
+   item 1, not just a symbol declaration. `IWoooshCore` carries the three members and
+   `NativeWoooshCore` answers all of them with `NotWired()`, so the page surfaces a real
+   error rather than appearing to work.
+
+   Two further gaps behind the same wall: the sender never learns that its code was
+   redeemed (that is a core event, so it needs the `CoreEventListener` VTable), and there
+   is no relay setting on Windows yet. Apple and Android both let the user choose a public
+   relay, their own, or off, and hide the internet path entirely when it is off. Windows
+   shows it unconditionally. The strings for the setting have not been ported either.
+5. **`TODO(share)`: Share Target activation.** The manifest declaration is in place; the
    handler in `App.xaml.cs` only logs. It has to stage the `StorageItems` into the local
    folder and report the share operation complete *before* the transfer finishes, or
    Windows keeps the source app blocked for the whole send.
-5. **File Explorer context-menu verb.** DESIGN.md §8 asks for "Send with Wooosh" on
+6. **File Explorer context-menu verb.** DESIGN.md §8 asks for "Send with Wooosh" on
    right-click. On Windows 11 that is a sparse-package `IExplorerCommand` COM server, which
    is a project of its own. `Package.appxmanifest` documents what it needs. An XML-only stub
    would register a verb that does nothing, which is worse than no verb.
-6. **`TODO(pairing)`: QR rendering.** There is no QR encoder in the box on Windows. The
+7. **`TODO(pairing)`: QR rendering.** There is no QR encoder in the box on Windows. The
    pairing page shows the payload as copyable text and leaves a placeholder where the code
    goes. Filling it means picking a dependency, which is a real decision rather than a stub.
-7. **`TODO(views)`: the remaining dialogs.** `IncomingOfferDialog` is written but never
+8. **`TODO(views)`: the remaining dialogs.** `IncomingOfferDialog` is written but never
    shown; SAS comparison, pairing result and the `KeyChanged` warning have no dialog yet.
    `KeyChanged` in particular must be prominent and must never offer a silent re-pin.
-8. **`TODO(DESIGN.md §6)`: the `Wooosh/<date>` subfolder** for receives of more than 20
+9. **`TODO(DESIGN.md §6)`: the `Wooosh/<date>` subfolder** for receives of more than 20
    files.
-9. **Placeholder art.** `Assets/*.png` are flat grey rectangles at the right dimensions so
+10. **Placeholder art.** `Assets/*.png` are flat grey rectangles at the right dimensions so
    the package builds. Replace them, and add the scaled variants
    (`.scale-100/125/150/200/400`) Windows expects.
-10. **Package identity.** `Publisher="CN=Tsubuzaki"` is a placeholder for a local
+11. **Package identity.** `Publisher="CN=Tsubuzaki"` is a placeholder for a local
     self-signed test certificate. Replace it before doing anything but F5 on a dev machine.
-11. **UDP discovery fallback** (PROTOCOL.md §3.2, broadcast on 44777). Not implemented here.
+12. **UDP discovery fallback** (PROTOCOL.md §3.2, broadcast on 44777). Not implemented here.
     Neither is it implemented on Android, so the shells are consistent.
-12. **No tests.** There is no test project. `PeerRegistry`, `TxtRecord`, `PluralRules` and
+13. **No tests.** There is no test project. `PeerRegistry`, `TxtRecord`, `PluralRules` and
     `StorageRouter`'s collision naming are all pure enough to unit test and are the obvious
     first candidates.
 

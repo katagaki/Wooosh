@@ -226,6 +226,15 @@ Rules:
 - The move is atomic per file: verify hash → move/insert → only then report success to the sender. A transfer is never reported complete for a file the user can't find.
 - Multi-file receives on Android/desktop optionally land in a `Wooosh/<date>` subfolder of Downloads when count > 20 (keeps Downloads usable); single files always go to Downloads root.
 
+**Arrival notification (mobile).** Once a received transfer has finished *and* every file has been routed, the shell posts a notification whose tap opens what arrived. It waits for routing to finish on purpose: a notification that opened a file still sitting in staging would be a lie, and routing is asynchronous, so whichever of "transfer done" and "last file routed" happens second is what posts.
+
+| | Tapping a single received file | Several at once |
+|---|---|---|
+| iOS | Document: Quick Look inside Wooosh, from the URL kept at routing time. Photo or video: hands off to Photos. Add-only library access means Wooosh never holds a readable URL for what it inserted and cannot deep-link to the asset, so opening Photos itself is the honest ceiling — escalating to full library read access just to preview one photo is the wrong trade | Opens Wooosh, where the transfer card lists them |
+| Android | `ACTION_VIEW` on the `MediaStore` content URI retained at insert time (`RoutedFile.uri`), with a read grant. On API 26-28 there is no insert, so the URI comes from the media scan and the notification degrades to opening Wooosh if the scan does not return one | `ACTION_VIEW_DOWNLOADS` |
+
+Android needs `<queries>` entries for `VIEW` and `VIEW_DOWNLOADS`, or API 30+ package-visibility filtering makes every viewer invisible and the tap always falls back to Wooosh. Both platforms ask for notification permission when a transfer is actually incoming, not at launch.
+
 ---
 
 ## 7. Transfer engine & performance
@@ -244,11 +253,20 @@ Transport is **QUIC** (quinn) with TLS 1.3 — one UDP socket, multiplexed strea
 | Platform | Screen on during transfer | App keeps running |
 |---|---|---|
 | Android | `FLAG_KEEP_SCREEN_ON` on the activity | **Foreground service** (`dataSync` type) with progress notification + partial wake lock — transfers survive screen-off and app-switch; this is the platform-blessed path |
-| iOS | `UIApplication.isIdleTimerDisabled = true` while active | Foregrounded: fine. Backgrounded: `beginBackgroundTask` buys ~30 s to wind down/persist resume state; **Live Activity** shows progress on the Lock Screen. **Opt-in PiP workaround**: a minimal `AVPictureInPictureController` session (rendering the progress UI as its content) keeps the process executing while the user does other things — shipped behind a setting labeled honestly ("Keep transfers running in background (uses Picture in Picture)"), because it is an App Review risk and shouldn't be the silent default. Resume (§ above) is the real safety net either way |
+| iOS | `UIApplication.isIdleTimerDisabled = true` while active | **`BGContinuedProcessingTask`** (iOS 26, `BackgroundTransferTask.swift`), submitted when the first incoming transfer starts. This is the sanctioned mechanism for user-initiated work that must outlive backgrounding, and it renders its own Live Activity — Lock Screen and Dynamic Island, progress bar driven by `task.progress`, Stop button included. Resume (§ above) is still the safety net |
 | macOS | n/a | `NSProcessInfo.beginActivity(.idleSystemSleepDisabled, …)` during transfers; app lives in Dock and/or menu bar |
 | Windows | n/a | `SetThreadExecutionState(ES_CONTINUOUS \| ES_SYSTEM_REQUIRED)` during transfers; minimizes to tray and keeps receiving |
 
-iOS receiving requires the app (or its PiP session) to be alive — this is an iOS platform constraint, same one AirDrop solves with OS privileges we don't have. The UI communicates it ("Keep Wooosh open while receiving").
+Notes on the iOS path, because it has sharp edges:
+
+- **No second Live Activity.** The system already draws one for the continued-processing task and Wooosh cannot restyle it. Shipping an ActivityKit activity alongside would put two progress bars for one transfer on the same Lock Screen, so Wooosh ships none.
+- **One task for the whole receive session**, not one per transfer or per file. Apple's guidance is explicit that many small tasks is the wrong shape, and the scheduler caps how many run at once.
+- **Progress must keep moving, but not too fast.** A task that looks stalled is force-expired; a task updated dozens of times a second is expired for lock traffic. The core emits `Progress` every 8 MiB per file, which on a fast LAN is well past that, so the shell coalesces to 4/s.
+- **Expiration and the user pressing Stop are indistinguishable** through this API — both just call `expirationHandler`. Wooosh treats it as "stop" only when backgrounded, where the transfer could not have continued anyway; on screen it keeps going, having lost nothing but the assertion.
+- **Submission requires the foreground**, so a transfer that somehow begins while backgrounded simply runs without an assertion.
+- Runtime is not guaranteed or unbounded, and the Simulator does not support it at all. Receiving still works best with Wooosh open, and the UI says so.
+
+macOS and Windows have no equivalent constraint; Android's foreground service is the closest analogue and is strictly stronger.
 
 ---
 
@@ -274,16 +292,16 @@ Ranked; ship in this order. All of them reuse the exact same pairing trust model
 
 **The receiver publishes the ticket; the sender redeems it.** An earlier draft of this section had it the other way round, which inverts the LAN roles — there the connector is always the sender and originates `OFFER` — and would have forced a second, mirror-image transfer path. Publishing from the receiver makes the internet path the QR pairing flow with a relay in place of a camera, so one engine serves both. Ticket format and the full flow are normative in PROTOCOL.md §9.
 
-UX, split by role because the two halves are different intentions:
+UX: one entry point, **Other Device**, which opens a single screen with two segments — **Send** and **Receive**. Segmented picker on Apple, tabs on Android, a `SelectorBar` on Windows.
 
-- **Receiving**: open **Pair a Device → Internet** and press to get a code. Wooosh publishes a **ticket** (compact string, rendered as a QR and as copyable text: identity key + one-time token + relay hint + expiry).
-- **Sending**: the device list carries one synthetic row, **Other Device…**, which opens the camera immediately. Scanning a ticket redeems it and goes straight to the send sheet.
+- **Send**: choose files, then Wooosh publishes a **ticket** (compact string, rendered as a QR and as copyable text: identity key + one-time token + relay hint + expiry) and waits. Redemption starts the transfer.
+- **Receive**: scan or paste the ticket the other device is showing. Redeeming it *is* the consent, so no second prompt follows; the incoming transfer appears in the device list like any other.
 
 The ticket travels over any channel the users already share (Messages, email, in person). Works across accounts, networks, and mobile data.
 
-Putting the sending half in the device list rather than in a pairing tab is deliberate: redeeming a ticket *is* "I want to send to a device that is not on this network", which is exactly what tapping a device row already means. The row therefore behaves like one end to end, opening the picker on success instead of leaving the user to find a new row that appeared while they were looking elsewhere. Publishing a code is the opposite role and stays in Pair a Device.
+Both halves live behind one entry point rather than behind a question asked first. An earlier build presented a Send / Receive dialog before opening either screen, which made the user commit to a direction while looking at nothing and turned a wrong guess into a full back-and-forth. Two segments show both directions at once and cost a tap to change. The entry point lives in the device list, not in Pair a Device, because "a device that is not on this network" is a destination, which is what a device row already is.
 
-The synthetic row is pinned **first**, never appended. Appended, every new discovery would push it down, which is precisely the moving-target mis-tap the list rules exist to prevent (§5). Pinned first it is a fixed target and the discovered rows keep their own order below it. It is hidden entirely when the internet path is off.
+On Apple and Android the entry point is a synthetic row in the device list, pinned **first**, never appended. Appended, every new discovery would push it down, which is precisely the moving-target mis-tap the list rules exist to prevent (§5). Pinned first it is a fixed target and the discovered rows keep their own order below it. It is hidden entirely when the internet path is off. Windows puts it in the command bar instead: its list is bound straight to the registry's append-only collection, and wrapping that collection to inject one non-device row is the sort of indirection the ordering rules exist to keep out.
 
 **Pairing is same-network only.** The internet path never pairs (PROTOCOL.md §9.4): a QR is required for every internet transfer, the sender presents it, the recipient scans and downloads, and the code dies with the transfer. Nothing is written to the trust store.
 
@@ -337,6 +355,7 @@ When there's no common LAN (field work, flights, no router):
 - First contact is authenticated by QR (out-of-band key exchange) or SAS numeric comparison (MITM detection); after that, pinned keys authenticate silently.
 - Incoming offers from a **paired** sender are accepted with no prompt. Pairing already is the consent (PROTOCOL.md §4); re-asking on every transfer trains the user to dismiss the sheet unread, which costs exactly the case the sheet exists for — the unpaired sender, who still gets the full sheet with the fingerprint to verify. The core's `trusted` verdict on the pinned key decides this, never a shell-side guess.
 - Visibility modes: **Everyone** (announce + accept offers from unpaired with consent), **Paired only** (announce, but reject unpaired connections at the handshake — with a carve-out for a pending QR/SAS pairing the user just initiated, PROTOCOL.md §4.2, else the mode would block its own pairing flow), **Off** (no announcements, no listener).
+- **The default is Paired only**, on every shell. The core deliberately has no default (`Config.visibility` is required), so each shell sets it. A fresh install on a shared network — an office, a dorm, a café — should not be reachable by strangers before the user has opted in, and the QR carve-out means the safe default still cannot block its own pairing flow. `wooosh-cli` keeps `--visibility everyone` as its default because it is a test harness driven by an explicit flag, not a shipped product surface.
 - Discovery broadcasts contain only: display name, device type, protocol version, port, and a *rotating* discovery ID — the long-term identity key is never broadcast, so passive listeners can't track a device across networks by key.
 - Files never touch their final destination until hash-verified; staging is app-private.
 - No accounts, no cloud, no telemetry.
@@ -352,7 +371,7 @@ When there's no common LAN (field work, flights, no router):
 
 ## 12. What to revisit as it grows
 - Flow-control window sizes and stream-pool size per platform (measure, don't guess).
-- iOS background story if Apple ever grants a proper background-transfer entitlement (drop the PiP workaround the day that happens).
+- iOS background story if Apple ever grants a proper background-transfer entitlement, or once `BGContinuedProcessingTask` can tell a user Stop apart from a system expiry.
 - Directory/folder transfers with structure preservation (manifest already carries `relPath` — UI work only).
 - Trusted-device sync across a user's own devices (currently pair each pair of devices; could gossip trust between already-paired devices).
 - Protocol versioning is in place from day one (`v` in discovery TXT + HELLO); v2 candidates: compression negotiation for compressible types, delta transfer for re-sends.

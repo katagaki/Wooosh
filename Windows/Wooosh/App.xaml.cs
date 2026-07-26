@@ -15,6 +15,12 @@ public partial class App : Application
     /// </summary>
     public static MainViewModel? ViewModel { get; private set; }
 
+    /// <summary>
+    /// Owner window for the file and folder pickers, which are window-owned on WinUI 3 and
+    /// throw without an HWND. <see cref="IntPtr.Zero"/> before the window exists.
+    /// </summary>
+    public static IntPtr MainWindowHandle { get; private set; }
+
     private MainWindow? _window;
 
     public App()
@@ -25,6 +31,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         _window = new MainWindow();
+        MainWindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
 
         var settings = new SettingsRepository();
         var core = new NativeWoooshCore();

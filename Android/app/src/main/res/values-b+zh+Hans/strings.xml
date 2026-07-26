@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">正在进行的传输的进度。</string>
     <string name="notification_progress_percent">%1$d%%</string>
     <string name="notification_progress_percent_rate">%1$d%% · %2$s</string>
+    <string name="notification_received_channel_name">已接收的文件</string>
+    <string name="notification_received_channel_desc">已接收完成的文件。</string>
+    <string name="notification_received_from">来自 %1$s</string>
     <string name="device_kind_windows">Windows 电脑</string>
     <string name="device_kind_android_phone">Android 手机</string>
     <string name="device_kind_android_tablet">Android 平板电脑</string>
@@ -211,6 +214,9 @@
     <plurals name="notification_title_multiple">
         <item quantity="other">正在进行 %1$d 项传输</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="other">已接收 %1$d 个文件</item>
+    </plurals>
     <string name="pairing_tab_internet">互联网</string>
     <string name="pairing_scan_accepts">配对码和互联网代码在这里都可以使用。</string>
     <string name="internet_intro_body">Wooosh 也可以通过互联网连接不在此网络中的设备。获取一个代码，然后交给要发送文件的设备。</string>
@@ -232,15 +238,14 @@
     <string name="settings_relay_off_footer">Wooosh 关闭互联网传输，不连接任何服务。仅可在同一网络的设备之间发送。</string>
     <string name="internet_off_body">互联网传输已关闭。请在设置中开启后再获取代码。</string>
     <string name="error_internet_off">这是互联网代码，但互联网传输已关闭。请在设置中开启。</string>
-    <string name="other_device_title">其他设备…</string>
+    <string name="other_device_title">其他设备</string>
     <string name="other_device_subtitle">不在此网络中</string>
     <string name="other_device_body">扫描要发送到的设备上的代码，或在下方粘贴。</string>
     <string name="other_device_connecting_body">通过互联网连接比在本地网络中更慢。</string>
     <string name="other_device_scan_prompt">扫描对方设备上的代码</string>
     <string name="error_relay_file_too_large">Wooosh 无法让两台设备直连。通过间接连接时，文件必须小于 %1$s。请重试，或改用允许直连的网络。</string>
-    <string name="other_device_prompt">每次都需要一个代码。发送时显示，接收时扫描。</string>
-    <string name="other_device_send">发送文件</string>
-    <string name="other_device_receive">接收文件</string>
+    <string name="other_device_send">发送</string>
+    <string name="other_device_receive">接收</string>
     <string name="internet_send_title">通过互联网发送</string>
     <string name="internet_send_intro_body">选择文件，然后把代码给要接收的设备扫描。</string>
     <string name="internet_send_ready_body">用要接收文件的设备扫描此代码。</string>

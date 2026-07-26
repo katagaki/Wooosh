@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">진행 중인 전송의 상태입니다.</string>
     <string name="notification_progress_percent">%1$d%%</string>
     <string name="notification_progress_percent_rate">%1$d%% · %2$s</string>
+    <string name="notification_received_channel_name">받은 파일</string>
+    <string name="notification_received_channel_desc">수신이 완료된 파일입니다.</string>
+    <string name="notification_received_from">%1$s에서</string>
     <string name="device_kind_windows">Windows PC</string>
     <string name="device_kind_android_phone">Android 휴대전화</string>
     <string name="device_kind_android_tablet">Android 태블릿</string>
@@ -211,6 +214,9 @@
     <plurals name="notification_title_multiple">
         <item quantity="other">전송 %1$d개 진행 중</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="other">파일 %1$d개 받음</item>
+    </plurals>
     <string name="pairing_tab_internet">인터넷</string>
     <string name="pairing_scan_accepts">페어링 코드와 인터넷 코드 모두 사용할 수 있습니다.</string>
     <string name="internet_intro_body">Wooosh는 같은 네트워크에 없는 기기와도 인터넷으로 연결할 수 있습니다. 코드를 받아 파일을 보낼 기기에 전달하세요.</string>
@@ -232,15 +238,14 @@
     <string name="settings_relay_off_footer">Wooosh가 인터넷 전송을 끄고 아무 곳에도 연결하지 않습니다. 전송은 같은 네트워크의 기기 사이에서만 가능합니다.</string>
     <string name="internet_off_body">인터넷 전송이 꺼져 있습니다. 코드를 받으려면 설정에서 켜세요.</string>
     <string name="error_internet_off">인터넷 코드이지만 인터넷 전송이 꺼져 있습니다. 설정에서 켜세요.</string>
-    <string name="other_device_title">다른 기기…</string>
+    <string name="other_device_title">다른 기기</string>
     <string name="other_device_subtitle">이 네트워크에 없음</string>
     <string name="other_device_body">보낼 기기의 코드를 스캔하거나 아래에 붙여넣으세요.</string>
     <string name="other_device_connecting_body">인터넷 연결은 로컬 네트워크보다 오래 걸립니다.</string>
     <string name="other_device_scan_prompt">상대 기기의 코드를 스캔하세요</string>
     <string name="error_relay_file_too_large">Wooosh가 두 기기를 직접 연결하지 못했습니다. 간접 연결에서는 파일이 %1$s 미만이어야 합니다. 다시 시도하거나 직접 연결이 가능한 네트워크를 사용하세요.</string>
-    <string name="other_device_prompt">매번 코드가 필요합니다. 보낼 때는 표시하고, 받을 때는 스캔합니다.</string>
-    <string name="other_device_send">파일 보내기</string>
-    <string name="other_device_receive">파일 받기</string>
+    <string name="other_device_send">보내기</string>
+    <string name="other_device_receive">받기</string>
     <string name="internet_send_title">인터넷으로 보내기</string>
     <string name="internet_send_intro_body">파일을 고른 뒤, 받을 기기에 코드를 보여주세요.</string>
     <string name="internet_send_ready_body">파일을 받을 기기로 이것을 스캔하세요.</string>

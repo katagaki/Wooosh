@@ -689,4 +689,64 @@
     <value>Invia con Wooosh</value>
     <comment>Label Wooosh shows in the Windows share sheet.</comment>
   </data>
+  <data name="OtherDeviceTitle" xml:space="preserve">
+    <value>Altro dispositivo</value>
+    <comment>Entry point for a transfer with a device that is not on this network.</comment>
+  </data>
+  <data name="OtherDeviceSubtitle" xml:space="preserve">
+    <value>Non su questa rete</value>
+    <comment>Subtitle under the Other Device entry point.</comment>
+  </data>
+  <data name="OtherDeviceSend" xml:space="preserve">
+    <value>Invia</value>
+    <comment>Segment of the Other Device screen for sending. A direction, not a sentence.</comment>
+  </data>
+  <data name="OtherDeviceReceive" xml:space="preserve">
+    <value>Ricevi</value>
+    <comment>Segment of the Other Device screen for receiving. A direction, not a sentence.</comment>
+  </data>
+  <data name="OtherDeviceConnectingBody" xml:space="preserve">
+    <value>Connettersi via internet richiede più tempo che su una rete locale.</value>
+    <comment>Warning that an internet connection is slower than a local one.</comment>
+  </data>
+  <data name="InternetSendTitle" xml:space="preserve">
+    <value>Invia via internet</value>
+    <comment>Heading of the Send segment of the Other Device screen.</comment>
+  </data>
+  <data name="InternetSendIntroBody" xml:space="preserve">
+    <value>Scegli i file, poi mostra il codice al dispositivo che li riceverà.</value>
+    <comment>Instructions before any files have been chosen for an internet transfer.</comment>
+  </data>
+  <data name="InternetSendWaiting" xml:space="preserve">
+    <value>In attesa dell'altro dispositivo.</value>
+    <comment>Status while the code is published and nobody has redeemed it yet.</comment>
+  </data>
+  <data name="InternetSendStartedTitle" xml:space="preserve">
+    <value>Invio in corso</value>
+    <comment>Heading once the other device has redeemed the code.</comment>
+  </data>
+  <data name="InternetSendStartedBody" xml:space="preserve">
+    <value>Il trasferimento è in corso. Puoi seguirlo nell'elenco dei dispositivi.</value>
+    <comment>Body once the transfer is running.</comment>
+  </data>
+  <data name="InternetPreparing" xml:space="preserve">
+    <value>Preparazione di un codice. Richiede qualche secondo.</value>
+    <comment>Status while the code is being minted.</comment>
+  </data>
+  <data name="InternetRelayNote" xml:space="preserve">
+    <value>Richiedere un codice contatta un relay pubblico perché i due dispositivi si trovino. I file viaggiano comunque direttamente tra loro quando esiste un percorso diretto.</value>
+    <comment>Explains what getting an internet code contacts.</comment>
+  </data>
+  <data name="ErrorTicketFailed" xml:space="preserve">
+    <value>Wooosh non è riuscito a ottenere un codice internet. Controlla la connessione e riprova.</value>
+    <comment>Error when the internet code could not be minted.</comment>
+  </data>
+  <data name="OtherDeviceBodyDesktop" xml:space="preserve">
+    <value>Incolla il codice del dispositivo che invia i file.</value>
+    <comment>Instructions on a computer, which receives by pasting a code rather than scanning one.</comment>
+  </data>
+  <data name="InternetSendReadyBodyDesktop" xml:space="preserve">
+    <value>Copia questo codice e invialo al dispositivo che riceverà i file.</value>
+    <comment>Instructions on a computer, which shares its code as text rather than as a QR code.</comment>
+  </data>
 </root>

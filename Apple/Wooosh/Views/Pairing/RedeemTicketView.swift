@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The receiving half of the internet path (PROTOCOL.md §9.4): scan the code
-/// the sender is showing, and the files follow.
+/// The receiving half of the internet path (PROTOCOL.md §9.4), shown as the
+/// Receive segment of `OtherDeviceView`: scan the code the sender is showing,
+/// and the files follow.
 ///
 /// Scanning *is* the consent, so the incoming offer never raises a second
 /// prompt. Nothing is paired, and no fingerprint is shown: there is no prior
@@ -13,37 +14,21 @@ struct RedeemTicketView: View {
     @State private var pastedCode = ""
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch model.pairingPhase {
-                case .connecting(let peerName):
-                    connecting(peerName: peerName)
-                case .success:
-                    // Success is a hand-off, not a screen: the send sheet is
-                    // what the user came for.
-                    Color.clear.onAppear(perform: finish)
-                case .failed(let message):
-                    failure(message)
-                case .idle:
-                    scanner
-                }
-            }
-            .navigationTitle(L.t("other_device_receive"))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    CloseButton { dismiss() }
-                }
+        Group {
+            switch model.pairingPhase {
+            case .connecting(let peerName):
+                connecting(peerName: peerName)
+            case .success:
+                // Success is a hand-off, not a screen: the send sheet is
+                // what the user came for.
+                Color.clear.onAppear(perform: finish)
+            case .failed(let message):
+                failure(message)
+            case .idle:
+                scanner
             }
         }
         .onAppear { model.resetPairingPhase() }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 420)
-        #else
-        .presentationDetents(model.pairingPhase == .idle ? [.large] : [.medium, .large])
-        #endif
     }
 
     /// Redeeming is the whole job: the sender hands the files over on its own,

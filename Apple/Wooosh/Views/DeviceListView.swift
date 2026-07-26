@@ -12,8 +12,6 @@ struct DeviceListView: View {
     @State private var incomingOffer: Transfer?
     @State private var showingKeyChangedAlert = false
     @State private var showingOtherDevice = false
-    @State private var showingInternetSend = false
-    @State private var showingInternetReceive = false
 
     var body: some View {
         @Bindable var model = model
@@ -76,21 +74,10 @@ struct DeviceListView: View {
             .sheet(item: $selectedPeer) { peer in
                 SendTransferSheet(peer: peer)
             }
-            // One row, two directions: sending presents a code, receiving
-            // scans one (PROTOCOL.md §9.4).
-            .confirmationDialog(L.t("other_device_title"), isPresented: $showingOtherDevice,
-                                titleVisibility: .visible) {
-                Button(L.t("other_device_send")) { showingInternetSend = true }
-                Button(L.t("other_device_receive")) { showingInternetReceive = true }
-                Button(L.t("action_cancel"), role: .cancel) {}
-            } message: {
-                Text(L.t("other_device_prompt"))
-            }
-            .sheet(isPresented: $showingInternetSend) {
-                SendOverInternetView()
-            }
-            .sheet(isPresented: $showingInternetReceive) {
-                RedeemTicketView()
+            // One row, one sheet: sending and receiving are segments inside it,
+            // not a question asked before it opens (PROTOCOL.md §9.4).
+            .sheet(isPresented: $showingOtherDevice) {
+                OtherDeviceView()
             }
             .sheet(item: $incomingOffer, onDismiss: {
                 // Present the next queued offer, if one arrived while the

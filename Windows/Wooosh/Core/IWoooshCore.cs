@@ -121,6 +121,31 @@ public interface IWoooshCore : IDisposable
     /// <summary>An empty <paramref name="acceptedFileIds"/> declines the whole offer.</summary>
     void RespondToOffer(TransferId transferId, IReadOnlyList<FileId> acceptedFileIds);
 
+    // ---- the internet path (PROTOCOL.md §9) ----
+    //
+    // A code minted here authorises exactly one transfer and dies with it. Nothing is
+    // paired and no fingerprint is shown: there is no prior relationship to check one
+    // against, and asking the user to verify something they cannot is worse than asking
+    // nothing (DESIGN.md §9).
+
+    /// <summary>
+    /// Blocking. Publishes a <c>wooosh-net:1?…</c> ticket and returns it. Contacting the
+    /// relay is what makes it slow, so this is never called on the UI thread.
+    /// </summary>
+    Task<string> BeginInternetTicketAsync();
+
+    /// <summary>
+    /// Revokes the live ticket. Cheap and synchronous, and safe to call when there is no
+    /// ticket. The UI calls this whenever the screen showing a code goes away.
+    /// </summary>
+    void EndInternetTicket();
+
+    /// <summary>
+    /// Redeems a ticket the other device minted. Blocking: hole punching before the reply
+    /// takes noticeably longer than a connection on the same network. Returns the peer id.
+    /// </summary>
+    Task<string> RedeemTicketAsync(string ticket);
+
     /// <summary>Cancels a whole transfer, or one file when <paramref name="fileId"/> is given.</summary>
     void Cancel(TransferId transferId, FileId? fileId = null);
 }

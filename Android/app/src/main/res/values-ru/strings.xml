@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">Ход выполняемых передач.</string>
     <string name="notification_progress_percent">%1$d %%</string>
     <string name="notification_progress_percent_rate">%1$d %% · %2$s</string>
+    <string name="notification_received_channel_name">Полученные файлы</string>
+    <string name="notification_received_channel_desc">Файлы, приём которых завершён.</string>
+    <string name="notification_received_from">От %1$s</string>
     <string name="device_kind_windows">ПК с Windows</string>
     <string name="device_kind_android_phone">Телефон Android</string>
     <string name="device_kind_android_tablet">Планшет Android</string>
@@ -244,6 +247,12 @@
         <item quantity="many">Выполняется: %1$d передач</item>
         <item quantity="other">Выполняется: %1$d передачи</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="one">Получено: %1$d файл</item>
+        <item quantity="few">Получено: %1$d файла</item>
+        <item quantity="many">Получено: %1$d файлов</item>
+        <item quantity="other">Получено: %1$d файла</item>
+    </plurals>
     <string name="pairing_tab_internet">Интернет</string>
     <string name="pairing_scan_accepts">Здесь подходят и коды сопряжения, и интернет-коды.</string>
     <string name="internet_intro_body">Wooosh может подключаться и через интернет, к устройству вне этой сети. Получите код и передайте его устройству, которое будет отправлять файлы.</string>
@@ -265,15 +274,14 @@
     <string name="settings_relay_off_footer">Wooosh отключает передачу через интернет и ни к чему не обращается. Отправка работает только между устройствами в одной сети.</string>
     <string name="internet_off_body">Передача через интернет выключена. Включите её в настройках, чтобы получить код.</string>
     <string name="error_internet_off">Это интернет-код, а передача через интернет выключена. Включите её в настройках.</string>
-    <string name="other_device_title">Другое устройство…</string>
+    <string name="other_device_title">Другое устройство</string>
     <string name="other_device_subtitle">Не в этой сети</string>
     <string name="other_device_body">Отсканируйте код устройства, которому хотите отправить, или вставьте его ниже.</string>
     <string name="other_device_connecting_body">Подключение через интернет занимает больше времени, чем в локальной сети.</string>
     <string name="other_device_scan_prompt">Отсканируйте код другого устройства</string>
     <string name="error_relay_file_too_large">Wooosh не смог соединить устройства напрямую. При непрямом соединении файлы должны быть меньше %1$s. Попробуйте снова или используйте сеть, допускающую прямое соединение.</string>
-    <string name="other_device_prompt">Каждый раз нужен код. При отправке он показывается, при получении сканируется.</string>
-    <string name="other_device_send">Отправить файлы</string>
-    <string name="other_device_receive">Получить файлы</string>
+    <string name="other_device_send">Отправить</string>
+    <string name="other_device_receive">Получить</string>
     <string name="internet_send_title">Отправить через интернет</string>
     <string name="internet_send_intro_body">Выберите файлы и покажите код устройству, которое их получит.</string>
     <string name="internet_send_ready_body">Отсканируйте это устройством, которое получит файлы.</string>

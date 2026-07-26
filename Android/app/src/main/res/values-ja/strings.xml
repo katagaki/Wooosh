@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">実行中の転送の進行状況です。</string>
     <string name="notification_progress_percent">%1$d%%</string>
     <string name="notification_progress_percent_rate">%1$d%% ・%2$s</string>
+    <string name="notification_received_channel_name">受信したファイル</string>
+    <string name="notification_received_channel_desc">受信が完了したファイルです。</string>
+    <string name="notification_received_from">%1$s から</string>
     <string name="device_kind_windows">Windows PC</string>
     <string name="device_kind_android_phone">Android スマートフォン</string>
     <string name="device_kind_android_tablet">Android タブレット</string>
@@ -211,6 +214,9 @@
     <plurals name="notification_title_multiple">
         <item quantity="other">%1$d 件の転送を実行中</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="other">%1$d 件のファイルを受信しました</item>
+    </plurals>
     <string name="pairing_tab_internet">インターネット</string>
     <string name="pairing_scan_accepts">ペアリングコードとインターネットコードのどちらも使えます。</string>
     <string name="internet_intro_body">Wooosh は同じネットワークにないデバイスとも、インターネット経由で接続できます。コードを取得し、ファイルを送る側のデバイスに渡してください。</string>
@@ -232,15 +238,14 @@
     <string name="settings_relay_off_footer">Wooosh はインターネット転送をオフにし、どこにも接続しません。送信は同じネットワーク上のデバイス間でのみ行えます。</string>
     <string name="internet_off_body">インターネット転送はオフです。コードを取得するには設定でオンにしてください。</string>
     <string name="error_internet_off">これはインターネットコードですが、インターネット転送はオフです。設定でオンにしてください。</string>
-    <string name="other_device_title">ほかのデバイス…</string>
+    <string name="other_device_title">ほかのデバイス</string>
     <string name="other_device_subtitle">このネットワーク外</string>
     <string name="other_device_body">送信先のデバイスのコードをスキャンするか、下に貼り付けてください。</string>
     <string name="other_device_connecting_body">インターネット経由の接続は、ローカルネットワークより時間がかかります。</string>
     <string name="other_device_scan_prompt">相手のデバイスのコードをスキャン</string>
     <string name="error_relay_file_too_large">Wooosh は 2 台のデバイスを直接つなげられませんでした。間接的な接続では、ファイルは %1$s 未満である必要があります。もう一度試すか、直接接続できるネットワークをお使いください。</string>
-    <string name="other_device_prompt">毎回コードが必要です。送信側は表示し、受信側はスキャンします。</string>
-    <string name="other_device_send">ファイルを送信</string>
-    <string name="other_device_receive">ファイルを受信</string>
+    <string name="other_device_send">送信</string>
+    <string name="other_device_receive">受信</string>
     <string name="internet_send_title">インターネットで送信</string>
     <string name="internet_send_intro_body">ファイルを選び、受け取るデバイスにコードを見せてください。</string>
     <string name="internet_send_ready_body">ファイルを受け取るデバイスでこれをスキャンしてください。</string>

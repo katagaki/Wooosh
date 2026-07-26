@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">正在進行的傳輸進度。</string>
     <string name="notification_progress_percent">%1$d%%</string>
     <string name="notification_progress_percent_rate">%1$d%% · %2$s</string>
+    <string name="notification_received_channel_name">已接收的檔案</string>
+    <string name="notification_received_channel_desc">已接收完成的檔案。</string>
+    <string name="notification_received_from">來自 %1$s</string>
     <string name="device_kind_windows">Windows 電腦</string>
     <string name="device_kind_android_phone">Android 手機</string>
     <string name="device_kind_android_tablet">Android 平板電腦</string>
@@ -211,6 +214,9 @@
     <plurals name="notification_title_multiple">
         <item quantity="other">正在進行 %1$d 項傳輸</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="other">已接收 %1$d 個檔案</item>
+    </plurals>
     <string name="pairing_tab_internet">網際網路</string>
     <string name="pairing_scan_accepts">配對碼與網際網路代碼在這裡都可以使用。</string>
     <string name="internet_intro_body">Wooosh 也可以透過網際網路連線到不在此網路中的裝置。取得一個代碼，然後交給要傳送檔案的裝置。</string>
@@ -232,15 +238,14 @@
     <string name="settings_relay_off_footer">Wooosh 關閉網際網路傳輸，不連線任何服務。僅可在同一網路的裝置之間傳送。</string>
     <string name="internet_off_body">網際網路傳輸已關閉。請在設定中開啟後再取得代碼。</string>
     <string name="error_internet_off">這是網際網路代碼，但網際網路傳輸已關閉。請在設定中開啟。</string>
-    <string name="other_device_title">其他裝置…</string>
+    <string name="other_device_title">其他裝置</string>
     <string name="other_device_subtitle">不在此網路中</string>
     <string name="other_device_body">掃描要傳送到的裝置上的代碼，或在下方貼上。</string>
     <string name="other_device_connecting_body">透過網際網路連線比在本地網路中更慢。</string>
     <string name="other_device_scan_prompt">掃描對方裝置上的代碼</string>
     <string name="error_relay_file_too_large">Wooosh 無法讓兩台裝置直連。透過間接連線時，檔案必須小於 %1$s。請重試，或改用允許直連的網路。</string>
-    <string name="other_device_prompt">每次都需要一個代碼。傳送時顯示，接收時掃描。</string>
-    <string name="other_device_send">傳送檔案</string>
-    <string name="other_device_receive">接收檔案</string>
+    <string name="other_device_send">傳送</string>
+    <string name="other_device_receive">接收</string>
     <string name="internet_send_title">透過網際網路傳送</string>
     <string name="internet_send_intro_body">選擇檔案，然後把代碼給要接收的裝置掃描。</string>
     <string name="internet_send_ready_body">用要接收檔案的裝置掃描此代碼。</string>

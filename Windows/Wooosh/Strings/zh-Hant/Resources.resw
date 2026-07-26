@@ -669,4 +669,64 @@
     <value>使用 Wooosh 傳送</value>
     <comment>Label Wooosh shows in the Windows share sheet.</comment>
   </data>
+  <data name="OtherDeviceTitle" xml:space="preserve">
+    <value>其他裝置</value>
+    <comment>Entry point for a transfer with a device that is not on this network.</comment>
+  </data>
+  <data name="OtherDeviceSubtitle" xml:space="preserve">
+    <value>不在此網路中</value>
+    <comment>Subtitle under the Other Device entry point.</comment>
+  </data>
+  <data name="OtherDeviceSend" xml:space="preserve">
+    <value>傳送</value>
+    <comment>Segment of the Other Device screen for sending. A direction, not a sentence.</comment>
+  </data>
+  <data name="OtherDeviceReceive" xml:space="preserve">
+    <value>接收</value>
+    <comment>Segment of the Other Device screen for receiving. A direction, not a sentence.</comment>
+  </data>
+  <data name="OtherDeviceConnectingBody" xml:space="preserve">
+    <value>透過網際網路連線比在本地網路中更慢。</value>
+    <comment>Warning that an internet connection is slower than a local one.</comment>
+  </data>
+  <data name="InternetSendTitle" xml:space="preserve">
+    <value>透過網際網路傳送</value>
+    <comment>Heading of the Send segment of the Other Device screen.</comment>
+  </data>
+  <data name="InternetSendIntroBody" xml:space="preserve">
+    <value>選擇檔案，然後把代碼給要接收的裝置掃描。</value>
+    <comment>Instructions before any files have been chosen for an internet transfer.</comment>
+  </data>
+  <data name="InternetSendWaiting" xml:space="preserve">
+    <value>正在等待對方裝置。</value>
+    <comment>Status while the code is published and nobody has redeemed it yet.</comment>
+  </data>
+  <data name="InternetSendStartedTitle" xml:space="preserve">
+    <value>正在傳送</value>
+    <comment>Heading once the other device has redeemed the code.</comment>
+  </data>
+  <data name="InternetSendStartedBody" xml:space="preserve">
+    <value>傳輸進行中，可在裝置列表中查看。</value>
+    <comment>Body once the transfer is running.</comment>
+  </data>
+  <data name="InternetPreparing" xml:space="preserve">
+    <value>正在準備代碼，需要幾秒鐘。</value>
+    <comment>Status while the code is being minted.</comment>
+  </data>
+  <data name="InternetRelayNote" xml:space="preserve">
+    <value>取得代碼時會連線公共中繼，讓兩台裝置找到彼此。只要有直連路徑，檔案仍會在兩台裝置之間直接傳輸。</value>
+    <comment>Explains what getting an internet code contacts.</comment>
+  </data>
+  <data name="ErrorTicketFailed" xml:space="preserve">
+    <value>Wooosh 無法取得網際網路代碼。請檢查連線後再試一次。</value>
+    <comment>Error when the internet code could not be minted.</comment>
+  </data>
+  <data name="OtherDeviceBodyDesktop" xml:space="preserve">
+    <value>貼上傳送檔案的裝置上的代碼。</value>
+    <comment>Instructions on a computer, which receives by pasting a code rather than scanning one.</comment>
+  </data>
+  <data name="InternetSendReadyBodyDesktop" xml:space="preserve">
+    <value>複製此代碼，傳送給將接收檔案的裝置。</value>
+    <comment>Instructions on a computer, which shares its code as text rather than as a QR code.</comment>
+  </data>
 </root>

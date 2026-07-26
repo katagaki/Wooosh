@@ -31,7 +31,7 @@ import com.tsubuzaki.WoooshGo.ui.MainViewModel
 import com.tsubuzaki.WoooshGo.ui.PairingProgressDialog
 import com.tsubuzaki.WoooshGo.ui.PairingScreen
 import com.tsubuzaki.WoooshGo.ui.SasSheet
-import com.tsubuzaki.WoooshGo.ui.SendOverInternetScreen
+import com.tsubuzaki.WoooshGo.ui.OtherDeviceScreen
 import com.tsubuzaki.WoooshGo.ui.SettingsScreen
 import com.tsubuzaki.WoooshGo.ui.theme.WoooshTheme
 
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { MAIN, SETTINGS, PAIRING, INTERNET_SEND }
+private enum class Screen { MAIN, SETTINGS, PAIRING, OTHER_DEVICE }
 
 // Spelled out rather than using Manifest.permission.ACCESS_LOCAL_NETWORK so the
 // build does not depend on the constant being un-gated in the compile SDK.
@@ -159,14 +159,16 @@ private fun AppRoot(viewModel: MainViewModel) {
             )
         }
 
-        screen == Screen.INTERNET_SEND -> {
+        screen == Screen.OTHER_DEVICE -> {
             BackHandler { screen = Screen.MAIN }
-            SendOverInternetScreen(
+            OtherDeviceScreen(
                 beginInternetTicket = viewModel::beginInternetTicket,
                 endInternetTicket = viewModel::endInternetTicket,
                 onStageFiles = viewModel::stageInternetSend,
                 redeemedPeerId = ticketRedeemedPeerId,
                 onRedeemed = viewModel::completeInternetSend,
+                onRedeemTicket = viewModel::pairWithQr,
+                statusMessages = viewModel.statusMessages,
                 onBack = { screen = Screen.MAIN },
             )
         }
@@ -197,8 +199,7 @@ private fun AppRoot(viewModel: MainViewModel) {
                     }
                 },
                 internetEnabled = settings?.internetEnabled != false,
-                onRedeemTicket = viewModel::pairWithQr,
-                onSendOverInternet = { screen = Screen.INTERNET_SEND },
+                onOtherDevice = { screen = Screen.OTHER_DEVICE },
                 onSendStaged = { peer ->
                     withTransferPermissions(includeStorage = false) {
                         viewModel.sendStaged(peer)

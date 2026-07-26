@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">Progreso de las transferencias en curso.</string>
     <string name="notification_progress_percent">%1$d %%</string>
     <string name="notification_progress_percent_rate">%1$d %% · %2$s</string>
+    <string name="notification_received_channel_name">Archivos recibidos</string>
+    <string name="notification_received_channel_desc">Archivos que se han terminado de recibir.</string>
+    <string name="notification_received_from">De %1$s</string>
     <string name="device_kind_windows">PC con Windows</string>
     <string name="device_kind_android_phone">Teléfono Android</string>
     <string name="device_kind_android_tablet">Tablet Android</string>
@@ -222,6 +225,10 @@
         <item quantity="one">En curso: %1$d transferencia</item>
         <item quantity="other">En curso: %1$d transferencias</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="one">Recibido: %1$d archivo</item>
+        <item quantity="other">Recibido: %1$d archivos</item>
+    </plurals>
     <string name="pairing_tab_internet">Internet</string>
     <string name="pairing_scan_accepts">Aquí funcionan tanto los códigos de vinculación como los códigos de internet.</string>
     <string name="internet_intro_body">Wooosh también puede conectarse por internet, para un dispositivo que no está en esta red. Obtén un código y dáselo al dispositivo que enviará los archivos.</string>
@@ -243,15 +250,14 @@
     <string name="settings_relay_off_footer">Wooosh desactiva las transferencias por internet y no contacta con nada. Enviar solo funciona entre dispositivos de la misma red.</string>
     <string name="internet_off_body">Las transferencias por internet están desactivadas. Actívalas en Ajustes para obtener un código.</string>
     <string name="error_internet_off">Ese es un código de internet y las transferencias por internet están desactivadas. Actívalas en Ajustes.</string>
-    <string name="other_device_title">Otro dispositivo…</string>
+    <string name="other_device_title">Otro dispositivo</string>
     <string name="other_device_subtitle">No está en esta red</string>
     <string name="other_device_body">Escanea el código del dispositivo al que quieres enviar, o pégalo abajo.</string>
     <string name="other_device_connecting_body">Conectarse por internet tarda más que en una red local.</string>
     <string name="other_device_scan_prompt">Escanea el código del otro dispositivo</string>
     <string name="error_relay_file_too_large">Wooosh no pudo conectar los dos dispositivos directamente. Con una conexión indirecta, los archivos deben ser menores de %1$s. Inténtalo de nuevo o usa una red que permita una conexión directa.</string>
-    <string name="other_device_prompt">Se necesita un código cada vez. Al enviar se muestra uno, al recibir se escanea uno.</string>
-    <string name="other_device_send">Enviar archivos</string>
-    <string name="other_device_receive">Recibir archivos</string>
+    <string name="other_device_send">Enviar</string>
+    <string name="other_device_receive">Recibir</string>
     <string name="internet_send_title">Enviar por internet</string>
     <string name="internet_send_intro_body">Elige archivos y muestra el código al dispositivo que los recibirá.</string>
     <string name="internet_send_ready_body">Escanea esto con el dispositivo que recibirá los archivos.</string>

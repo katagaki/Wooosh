@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Sending to a device that is not on this network (PROTOCOL.md §9).
+/// The sending half of the internet path (PROTOCOL.md §9), shown as the Send
+/// segment of `OtherDeviceView`.
 ///
 /// The sender presents a code and waits; the recipient scans it and downloads.
 /// **Nothing is paired.** The code authorises one transfer and dies with it, so
@@ -18,18 +19,7 @@ struct SendOverInternetView: View {
     @State private var sent = false
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle(L.t("internet_send_title"))
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        CloseButton { dismiss() }
-                    }
-                }
-        }
+        content
         .fileImporter(isPresented: $picking, allowedContentTypes: [.item],
                       allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result, !urls.isEmpty else { return }
@@ -48,9 +38,6 @@ struct SendOverInternetView: View {
             sent = true
             model.completeInternetSend(to: peerID)
         }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 520)
-        #endif
     }
 
     @ViewBuilder

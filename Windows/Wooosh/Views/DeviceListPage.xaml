@@ -33,6 +33,17 @@
                 Click="OnPairClick"
                 Icon="Link"
                 Label="{loc:Localize Key=ActionPairDevice}" />
+            <!--
+                The internet path (PROTOCOL.md §9). Apple and Android pin it as a synthetic
+                first row in the list; here it is a command, because the ListView is bound
+                straight to the registry's append-only collection and wrapping that
+                collection just to inject one non-device row is exactly the kind of
+                indirection the ordering rules exist to keep out.
+            -->
+            <AppBarButton
+                Click="OnOtherDeviceClick"
+                Icon="Globe"
+                Label="{loc:Localize Key=OtherDeviceTitle}" />
             <AppBarButton
                 Click="OnSettingsClick"
                 Icon="Setting"
@@ -98,6 +109,19 @@
                 Click="OnPairClick"
                 Content="{loc:Localize Key=ActionPairDevice}"
                 Style="{ThemeResource AccentButtonStyle}" />
+            <!--
+                No devices nearby is exactly when someone reaches for the internet path, and
+                the command bar is easy to miss from the middle of an empty page.
+            -->
+            <Button
+                HorizontalAlignment="Center"
+                Click="OnOtherDeviceClick"
+                Content="{loc:Localize Key=OtherDeviceTitle}" />
+            <TextBlock
+                HorizontalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Text="{loc:Localize Key=OtherDeviceSubtitle}" />
         </StackPanel>
 
         <!--

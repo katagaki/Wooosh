@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">Voortgang van lopende overdrachten.</string>
     <string name="notification_progress_percent">%1$d%%</string>
     <string name="notification_progress_percent_rate">%1$d%% · %2$s</string>
+    <string name="notification_received_channel_name">Ontvangen bestanden</string>
+    <string name="notification_received_channel_desc">Bestanden die volledig zijn ontvangen.</string>
+    <string name="notification_received_from">Van %1$s</string>
     <string name="device_kind_windows">Windows-pc</string>
     <string name="device_kind_android_phone">Android-telefoon</string>
     <string name="device_kind_android_tablet">Android-tablet</string>
@@ -222,6 +225,10 @@
         <item quantity="one">Actief: %1$d overdracht</item>
         <item quantity="other">Actief: %1$d overdrachten</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="one">Ontvangen: %1$d bestand</item>
+        <item quantity="other">Ontvangen: %1$d bestanden</item>
+    </plurals>
     <string name="pairing_tab_internet">Internet</string>
     <string name="pairing_scan_accepts">Zowel koppelcodes als internetcodes werken hier.</string>
     <string name="internet_intro_body">Wooosh kan ook via internet verbinden, voor een apparaat dat niet op dit netwerk zit. Vraag een code aan en geef die aan het apparaat dat de bestanden verstuurt.</string>
@@ -243,15 +250,14 @@
     <string name="settings_relay_off_footer">Wooosh schakelt internetoverdrachten uit en benadert niets. Versturen werkt alleen tussen apparaten op hetzelfde netwerk.</string>
     <string name="internet_off_body">Internetoverdrachten staan uit. Schakel ze in bij Instellingen om een code op te halen.</string>
     <string name="error_internet_off">Dit is een internetcode en internetoverdrachten staan uit. Schakel ze in bij Instellingen.</string>
-    <string name="other_device_title">Ander apparaat…</string>
+    <string name="other_device_title">Ander apparaat</string>
     <string name="other_device_subtitle">Niet op dit netwerk</string>
     <string name="other_device_body">Scan de code van het apparaat waarnaar je wilt sturen, of plak hem hieronder.</string>
     <string name="other_device_connecting_body">Verbinden via internet duurt langer dan op een lokaal netwerk.</string>
     <string name="other_device_scan_prompt">Scan de code van het andere apparaat</string>
     <string name="error_relay_file_too_large">Wooosh kon de twee apparaten niet rechtstreeks verbinden. Via een indirecte verbinding moeten bestanden kleiner zijn dan %1$s. Probeer het opnieuw of gebruik een netwerk dat een directe verbinding toelaat.</string>
-    <string name="other_device_prompt">Elke keer is een code nodig. Verzenden toont er een, ontvangen scant er een.</string>
-    <string name="other_device_send">Bestanden versturen</string>
-    <string name="other_device_receive">Bestanden ontvangen</string>
+    <string name="other_device_send">Versturen</string>
+    <string name="other_device_receive">Ontvangen</string>
     <string name="internet_send_title">Via internet versturen</string>
     <string name="internet_send_intro_body">Kies bestanden en toon de code aan het apparaat dat ze ontvangt.</string>
     <string name="internet_send_ready_body">Scan dit met het apparaat dat de bestanden ontvangt.</string>

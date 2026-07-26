@@ -247,6 +247,20 @@ public sealed class NativeWoooshCore : IWoooshCore
                 ref status));
     }
 
+    // The internet path (PROTOCOL.md §9). All three are exported as UniFFI async
+    // functions, which are polled through a Rust future handle rather than called
+    // straight through, so they need the async scaffolding the codecs bring with them —
+    // not just a symbol declaration. `end_internet_ticket` is the one synchronous
+    // exception, but wiring it alone would give the UI a revoke with nothing to revoke.
+
+    public Task<string> BeginInternetTicketAsync() =>
+        Task.FromException<string>(NotWired());
+
+    public void EndInternetTicket() => throw NotWired();
+
+    public Task<string> RedeemTicketAsync(string ticket) =>
+        Task.FromException<string>(NotWired());
+
     /// <summary>Raises an event onto the shell. Called from the core's event thread.</summary>
     internal void Publish(CoreEvent coreEvent) => EventReceived?.Invoke(coreEvent);
 

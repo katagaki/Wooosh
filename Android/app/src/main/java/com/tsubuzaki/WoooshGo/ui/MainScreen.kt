@@ -1,7 +1,5 @@
 package com.tsubuzaki.WoooshGo.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -38,7 +36,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -58,16 +55,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.tsubuzaki.WoooshGo.R
-import com.tsubuzaki.WoooshGo.pairing.PortraitCaptureActivity
 import com.tsubuzaki.WoooshGo.core.TransferId
 import com.tsubuzaki.WoooshGo.peers.Peer
 import com.tsubuzaki.WoooshGo.settings.Visibility
@@ -98,8 +90,7 @@ fun MainScreen(
     onSendFiles: (Peer, List<Uri>) -> Unit,
     /** Internet path entry point (PROTOCOL.md §9); hidden when it is switched off. */
     internetEnabled: Boolean,
-    onRedeemTicket: (String) -> Unit,
-    onSendOverInternet: () -> Unit,
+    onOtherDevice: () -> Unit,
     onSendStaged: (Peer) -> Unit,
     onDismissStaged: () -> Unit,
     onCancelTransfer: (TransferId) -> Unit,
@@ -113,43 +104,9 @@ fun MainScreen(
         statusMessages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    val context = LocalContext.current
-
     // Peer awaiting a "photos or documents?" choice, then a system picker result.
     var pickerPeer by remember { mutableStateOf<Peer?>(null) }
 
-    // "Other Device…" goes straight to the viewfinder: the user tapped a device row,
-    // so there is nothing to choose first.
-    val ticketScanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let(onRedeemTicket)
-    }
-    val ticketScanPrompt = stringResource(R.string.other_device_scan_prompt)
-    val ticketScanOptions = remember(ticketScanPrompt) {
-        ScanOptions()
-            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-            .setPrompt(ticketScanPrompt)
-            .setBeepEnabled(false)
-            // Our own capture activity: the library's is pinned to landscape.
-            .setCaptureActivity(PortraitCaptureActivity::class.java)
-            .setOrientationLocked(false)
-    }
-    val ticketCameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) ticketScanLauncher.launch(ticketScanOptions) }
-
-    // One row, two directions: sending presents a code, receiving scans one
-    // (PROTOCOL.md §9.4).
-    var askDirection by remember { mutableStateOf(false) }
-
-    fun scanToReceive() {
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            ticketScanLauncher.launch(ticketScanOptions)
-        } else {
-            ticketCameraLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
     var launchTarget by remember { mutableStateOf<Peer?>(null) }
 
     val mediaPicker = rememberLauncherForActivityResult(
@@ -210,7 +167,7 @@ fun MainScreen(
                 visibility = visibility,
                 onOpenPairing = onOpenPairing,
                 internetEnabled = internetEnabled,
-                onOtherDevice = { askDirection = true },
+                onOtherDevice = onOtherDevice,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -254,7 +211,7 @@ fun MainScreen(
                     // Its own section: it is not a discovered device and must not read
                     // as one sitting among them.
                     item(key = "other-device") {
-                        OtherDeviceRow { askDirection = true }
+                        OtherDeviceRow(onOtherDevice)
                     }
                     item(key = "other-device-divider") {
                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -276,26 +233,6 @@ fun MainScreen(
                 }
             }
         }
-    }
-
-    if (askDirection) {
-        AlertDialog(
-            onDismissRequest = { askDirection = false },
-            title = { Text(stringResource(R.string.other_device_title)) },
-            text = { Text(stringResource(R.string.other_device_prompt)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askDirection = false
-                    onSendOverInternet()
-                }) { Text(stringResource(R.string.other_device_send)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    askDirection = false
-                    scanToReceive()
-                }) { Text(stringResource(R.string.other_device_receive)) }
-            },
-        )
     }
 
     pickerPeer?.let { peer ->

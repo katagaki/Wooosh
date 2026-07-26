@@ -44,6 +44,8 @@ public sealed partial class DeviceListPage : Page, INotifyPropertyChanged
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => Frame.Navigate(typeof(SettingsPage));
 
+    private void OnOtherDeviceClick(object sender, RoutedEventArgs e) => Frame.Navigate(typeof(OtherDevicePage));
+
     private void OnPeerClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is not Peer peer || peer.IsStale)

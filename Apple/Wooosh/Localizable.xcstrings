@@ -10259,6 +10259,500 @@
         }
       }
     },
+    "notification_received_from": {
+      "comment": "Notification body when several files arrived. %1$s is the sender's device name.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ から"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Van %1$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Od %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De %1$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "От %1$@"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Från %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自 %1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來自 %1$@"
+          }
+        }
+      }
+    },
+    "notification_received_title": {
+      "comment": "Notification title when files have finished arriving. Tapping it opens them.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@ empfangen"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Datei"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Dateien"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Received %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg File"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Files"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibido: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg archivo"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg archivos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reçu : %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg fichiers"
+                    }
+                  },
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg fichier"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg fichiers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricevuto: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg file"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg file"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@を受信しました"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 件のファイル"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@ 받음"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "파일 %arg개"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ontvangen: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg bestand"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg bestanden"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrano: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg pliki"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg plików"
+                    }
+                  },
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg plik"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg pliku"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recebido: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg arquivo"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg arquivos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Получено: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg файла"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg файлов"
+                    }
+                  },
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg файл"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg файла"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mottaget: %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg fil"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg filer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已接收 %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 个文件"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已接收 %#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 個檔案"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "notification_title_multiple": {
       "comment": "Notification title when several transfers run at once.",
       "extractionState": "manual",
@@ -11607,182 +12101,92 @@
         }
       }
     },
-    "other_device_prompt": {
-      "comment": "Asks which direction the internet transfer goes.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jedes Mal wird ein Code gebraucht. Beim Senden wird einer angezeigt, beim Empfangen einer gescannt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A code is needed each time. Sending shows one, receiving scans one."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se necesita un código cada vez. Al enviar se muestra uno, al recibir se escanea uno."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un code est nécessaire à chaque fois. L'envoi en affiche un, la réception en scanne un."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Serve un codice ogni volta. Inviando se ne mostra uno, ricevendo se ne scansiona uno."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "毎回コードが必要です。送信側は表示し、受信側はスキャンします。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "매번 코드가 필요합니다. 보낼 때는 표시하고, 받을 때는 스캔합니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elke keer is een code nodig. Verzenden toont er een, ontvangen scant er een."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Za każdym razem potrzebny jest kod. Wysyłanie go pokazuje, odbieranie skanuje."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "É preciso um código a cada vez. Enviar mostra um, receber escaneia um."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Каждый раз нужен код. При отправке он показывается, при получении сканируется."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En kod behövs varje gång. Att skicka visar en, att ta emot skannar en."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每次都需要一个代码。发送时显示，接收时扫描。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每次都需要一個代碼。傳送時顯示，接收時掃描。"
-          }
-        }
-      }
-    },
     "other_device_receive": {
-      "comment": "Button: receive files by scanning a code.",
+      "comment": "Segment of the Other Device screen for receiving. A direction, not a sentence.",
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dateien empfangen"
+            "value": "Empfangen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Receive Files"
+            "value": "Receive"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recibir archivos"
+            "value": "Recibir"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recevoir des fichiers"
+            "value": "Recevoir"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ricevi file"
+            "value": "Ricevi"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ファイルを受信"
+            "value": "受信"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "파일 받기"
+            "value": "받기"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestanden ontvangen"
+            "value": "Ontvangen"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odbierz pliki"
+            "value": "Odbierz"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Receber arquivos"
+            "value": "Receber"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Получить файлы"
+            "value": "Получить"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ta emot filer"
+            "value": "Ta emot"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "接收文件"
+            "value": "接收"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "接收檔案"
+            "value": "接收"
           }
         }
       }
@@ -11878,91 +12282,91 @@
       }
     },
     "other_device_send": {
-      "comment": "Button: send files to a device that is not on this network.",
+      "comment": "Segment of the Other Device screen for sending. A direction, not a sentence.",
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dateien senden"
+            "value": "Senden"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Send Files"
+            "value": "Send"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enviar archivos"
+            "value": "Enviar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Envoyer des fichiers"
+            "value": "Envoyer"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invia file"
+            "value": "Invia"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ファイルを送信"
+            "value": "送信"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "파일 보내기"
+            "value": "보내기"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestanden versturen"
+            "value": "Versturen"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wyślij pliki"
+            "value": "Wyślij"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enviar arquivos"
+            "value": "Enviar"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Отправить файлы"
+            "value": "Отправить"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skicka filer"
+            "value": "Skicka"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发送文件"
+            "value": "发送"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "傳送檔案"
+            "value": "傳送"
           }
         }
       }
@@ -12064,85 +12468,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anderes Gerät …"
+            "value": "Anderes Gerät"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Other Device…"
+            "value": "Other Device"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otro dispositivo…"
+            "value": "Otro dispositivo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autre appareil…"
+            "value": "Autre appareil"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Altro dispositivo…"
+            "value": "Altro dispositivo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ほかのデバイス…"
+            "value": "ほかのデバイス"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 기기…"
+            "value": "다른 기기"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ander apparaat…"
+            "value": "Ander apparaat"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inne urządzenie…"
+            "value": "Inne urządzenie"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outro dispositivo…"
+            "value": "Outro dispositivo"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Другое устройство…"
+            "value": "Другое устройство"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annan enhet…"
+            "value": "Annan enhet"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "其他设备…"
+            "value": "其他设备"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "其他裝置…"
+            "value": "其他裝置"
           }
         }
       }

@@ -89,6 +89,9 @@
     <string name="notification_channel_desc">Förlopp för pågående överföringar.</string>
     <string name="notification_progress_percent">%1$d %%</string>
     <string name="notification_progress_percent_rate">%1$d %% · %2$s</string>
+    <string name="notification_received_channel_name">Mottagna filer</string>
+    <string name="notification_received_channel_desc">Filer som har tagits emot färdigt.</string>
+    <string name="notification_received_from">Från %1$s</string>
     <string name="device_kind_windows">Windows-dator</string>
     <string name="device_kind_android_phone">Android-telefon</string>
     <string name="device_kind_android_tablet">Android-surfplatta</string>
@@ -222,6 +225,10 @@
         <item quantity="one">Pågår: %1$d överföring</item>
         <item quantity="other">Pågår: %1$d överföringar</item>
     </plurals>
+    <plurals name="notification_received_title">
+        <item quantity="one">Mottaget: %1$d fil</item>
+        <item quantity="other">Mottaget: %1$d filer</item>
+    </plurals>
     <string name="pairing_tab_internet">Internet</string>
     <string name="pairing_scan_accepts">Både kopplingskoder och internetkoder fungerar här.</string>
     <string name="internet_intro_body">Wooosh kan även ansluta via internet, till en enhet som inte finns i det här nätverket. Hämta en kod och ge den till enheten som ska skicka filerna.</string>
@@ -243,15 +250,14 @@
     <string name="settings_relay_off_footer">Wooosh stänger av internetöverföringar och kontaktar ingenting. Att skicka fungerar bara mellan enheter i samma nätverk.</string>
     <string name="internet_off_body">Internetöverföringar är av. Slå på dem i Inställningar för att hämta en kod.</string>
     <string name="error_internet_off">Det här är en internetkod, och internetöverföringar är av. Slå på dem i Inställningar.</string>
-    <string name="other_device_title">Annan enhet…</string>
+    <string name="other_device_title">Annan enhet</string>
     <string name="other_device_subtitle">Inte i det här nätverket</string>
     <string name="other_device_body">Skanna koden från enheten du vill skicka till, eller klistra in den nedan.</string>
     <string name="other_device_connecting_body">Att ansluta via internet tar längre tid än i ett lokalt nätverk.</string>
     <string name="other_device_scan_prompt">Skanna koden från den andra enheten</string>
     <string name="error_relay_file_too_large">Wooosh kunde inte koppla ihop enheterna direkt. Över en indirekt anslutning måste filer vara mindre än %1$s. Försök igen eller använd ett nätverk som tillåter en direkt anslutning.</string>
-    <string name="other_device_prompt">En kod behövs varje gång. Att skicka visar en, att ta emot skannar en.</string>
-    <string name="other_device_send">Skicka filer</string>
-    <string name="other_device_receive">Ta emot filer</string>
+    <string name="other_device_send">Skicka</string>
+    <string name="other_device_receive">Ta emot</string>
     <string name="internet_send_title">Skicka via internet</string>
     <string name="internet_send_intro_body">Välj filer och visa koden för enheten som ska ta emot dem.</string>
     <string name="internet_send_ready_body">Skanna det här med enheten som ska ta emot filerna.</string>
