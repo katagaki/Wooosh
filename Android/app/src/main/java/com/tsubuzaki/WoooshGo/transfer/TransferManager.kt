@@ -162,6 +162,9 @@ class TransferManager(
     /** manifest lookup for FileReady routing (name + MIME). */
     private val manifests = ConcurrentHashMap<TransferId, Map<FileId, FileMeta>>()
 
+    /** `TransferDone` does not name its peer, and the ticket rows need to know. */
+    private val peerIdByTransfer = ConcurrentHashMap<TransferId, String>()
+
     /** `Wooosh/<yyyy-MM-dd>` when the transfer has > 20 files, else null (DESIGN.md §6). */
     private val subfolders = ConcurrentHashMap<TransferId, String>()
 
@@ -341,6 +344,7 @@ class TransferManager(
                 // being displayed.
                 clearOutgoingOffer(event.transferId)
                 manifests[event.transferId] = event.manifest.associateBy { it.id }
+                peerIdByTransfer[event.transferId] = event.peer.id
                 if (event.direction == TransferDirection.RECEIVE &&
                     event.manifest.size > FILES_PER_SUBFOLDER_THRESHOLD
                 ) {
@@ -367,7 +371,16 @@ class TransferManager(
                 // connection. Remembered for this process only, so the peer's offer can
                 // skip a consent sheet the user already gave by scanning.
                 ticketPeers.add(event.peer.id)
-                registry.onConnected(event.peer.id, event.peer.displayName, event.peer.deviceType)
+                registry.onConnected(
+                    peerId = event.peer.id,
+                    displayName = event.peer.displayName,
+                    deviceType = event.peer.deviceType,
+                    // The row must not claim to be paired. A previously pinned peer is
+                    // still in the trust store and the core still reports the connection
+                    // as trusted, but the pin admitted nothing here: the single-use
+                    // ticket did (DESIGN.md §9).
+                    viaTicket = true,
+                )
                 _ticketRedeemedPeerId.value = event.peer.id
             }
 
@@ -411,6 +424,7 @@ class TransferManager(
                     )
                 }
                 maybeNotifyReceived(event.transferId)
+                endTicketSession(event.transferId)
             }
 
             is CoreEvent.TransferError -> {
@@ -429,6 +443,7 @@ class TransferManager(
                         transferErrorMessage(context, event.message)
                     )
                 }
+                endTicketSession(event.transferId)
             }
 
             // HELLO is authoritative for identity and device type; the mDNS TXT the row
@@ -443,6 +458,17 @@ class TransferManager(
 
             else -> Unit // pairing events handled by PairingManager
         }
+    }
+
+    /**
+     * A ticket authorises exactly one transfer, so its row stops being a place to send
+     * things the moment that transfer settles — whether it succeeded or not. Waiting for
+     * the connection to close instead would leave a live-looking row for as long as iroh
+     * kept the link open.
+     */
+    private fun endTicketSession(transferId: TransferId) {
+        val peerId = peerIdByTransfer.remove(transferId) ?: return
+        registry.onTicketSessionEnded(peerId)
     }
 
     /** Completion line for the card; every number comes from the core's `TransferDone`. */

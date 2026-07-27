@@ -35,6 +35,7 @@
     <string name="action_discard_shared">放弃已共享的文件</string>
     <string name="peer_state_ready">就绪</string>
     <string name="peer_state_ready_paired">就绪 · 已配对</string>
+    <string name="peer_state_ready_internet">就绪 · 通过互联网</string>
     <string name="peer_state_away">已离开</string>
     <string name="peer_state_tap_to_send">轻点即可发送</string>
     <string name="peer_badge_paired">已配对</string>
@@ -219,6 +220,7 @@
     </plurals>
     <string name="pairing_tab_internet">互联网</string>
     <string name="pairing_scan_accepts">配对码和互联网代码在这里都可以使用。</string>
+    <string name="pairing_code_detected">已识别代码</string>
     <string name="internet_intro_body">Wooosh 也可以通过互联网连接不在此网络中的设备。获取一个代码，然后交给要发送文件的设备。</string>
     <string name="internet_relay_note">获取代码时会连接公共中继，让两台设备找到彼此。只要存在直连路径，文件仍会在两台设备之间直接传输。</string>
     <string name="internet_preparing">正在准备代码，需要几秒钟。</string>

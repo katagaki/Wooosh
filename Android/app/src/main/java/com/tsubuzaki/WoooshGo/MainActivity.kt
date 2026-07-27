@@ -160,6 +160,14 @@ private fun AppRoot(viewModel: MainViewModel) {
 
         screen == Screen.OTHER_DEVICE -> {
             BackHandler { screen = Screen.MAIN }
+            // Redeeming *is* the whole receive flow: once it lands, the files are already
+            // on their way and the only thing worth looking at is the transfer list.
+            LaunchedEffect(Unit) {
+                viewModel.ticketRedeemed.collect {
+                    viewModel.ticketRedemptionHandled()
+                    screen = Screen.MAIN
+                }
+            }
             OtherDeviceScreen(
                 beginInternetTicket = viewModel::beginInternetTicket,
                 endInternetTicket = viewModel::endInternetTicket,
@@ -167,6 +175,7 @@ private fun AppRoot(viewModel: MainViewModel) {
                 redeemedPeerId = ticketRedeemedPeerId,
                 onRedeemed = viewModel::completeInternetSend,
                 onRedeemTicket = viewModel::pairWithQr,
+                scannerEnabled = pairingAttempt == null,
                 statusMessages = viewModel.statusMessages,
                 onBack = { screen = Screen.MAIN },
             )
@@ -177,6 +186,7 @@ private fun AppRoot(viewModel: MainViewModel) {
             PairingScreen(
                 beginPairingQr = viewModel::beginPairingQr,
                 onPairWithPayload = viewModel::pairWithQr,
+                scannerEnabled = pairingAttempt == null,
                 statusMessages = viewModel.statusMessages,
                 onBack = { screen = Screen.MAIN },
             )

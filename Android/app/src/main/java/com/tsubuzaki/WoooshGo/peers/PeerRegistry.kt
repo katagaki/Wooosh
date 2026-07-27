@@ -100,9 +100,19 @@ class PeerRegistry(private val scope: CoroutineScope) {
      * The device type is adopted only when it is a known platform: the core's HELLO type
      * arrives as [DeviceType.UNKNOWN], and letting that win would replace a correct
      * `android-phone` glyph from the TXT record with a neutral one.
+     *
+     * [viaTicket] marks a row whose connection came from a redeemed ticket (see
+     * [Peer.viaTicket]). The core emits `PeerConnected` *before* `TicketRedeemed` for an
+     * internet connection, so the plain call clearing the flag and the ticket call
+     * setting it arrive in that order and the flag ends up right.
      */
     @Synchronized
-    fun onConnected(peerId: String, displayName: String, deviceType: DeviceType?) {
+    fun onConnected(
+        peerId: String,
+        displayName: String,
+        deviceType: DeviceType?,
+        viaTicket: Boolean = false,
+    ) {
         val known = deviceType?.takeIf { it != DeviceType.UNKNOWN }
         helloByPeerId[peerId] = Hello(displayName, known)
         _peers.update { list ->
@@ -116,6 +126,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
                             displayName = displayName.ifBlank { peer.displayName },
                             deviceType = known ?: peer.deviceType,
                             isStale = false,
+                            viaTicket = viaTicket,
                         )
                     }
                 }
@@ -132,6 +143,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
                         peerId = peerId,
                         deviceType = known ?: it[adoptable].deviceType,
                         isStale = false,
+                        viaTicket = viaTicket,
                     )
                 }
             }
@@ -150,7 +162,33 @@ class PeerRegistry(private val scope: CoroutineScope) {
                 discoveredAt = SystemClock.elapsedRealtime(),
                 isStale = false,
                 peerId = peerId,
+                viaTicket = viaTicket,
             )
+        }
+    }
+
+    /**
+     * The transfer a ticket authorised has finished. The ticket was single-use, so a
+     * connection-only row has nothing left to offer: it greys out in place, disabled,
+     * like any peer that went away (DESIGN.md §5). A row backed by an mDNS sighting is
+     * still reachable on this network and stays live.
+     *
+     * [Peer.viaTicket] is deliberately left set. The row keeps its history until the peer
+     * connects again for real, so it cannot re-acquire a paired badge it never earned.
+     */
+    @Synchronized
+    fun onTicketSessionEnded(peerId: String) {
+        _peers.update { list ->
+            list.map { peer ->
+                if (peer.peerId == peerId &&
+                    peer.viaTicket &&
+                    peer.rid.startsWith(CORE_RID_PREFIX)
+                ) {
+                    peer.copy(isStale = true)
+                } else {
+                    peer
+                }
+            }
         }
     }
 

@@ -220,7 +220,10 @@ fun MainScreen(
                 items(peers, key = { it.rid }) { peer ->
                     PeerRow(
                         peer = peer,
-                        isPaired = peer.peerId != null && peer.peerId in pairedDeviceIds,
+                        // A ticket row is never paired, whatever the trust store says: the
+                        // pin admitted nothing on the internet path (DESIGN.md §9).
+                        isPaired = !peer.viaTicket &&
+                            peer.peerId != null && peer.peerId in pairedDeviceIds,
                         armedToSend = stagedShare != null,
                         onClick = {
                             if (stagedShare != null) {
@@ -409,6 +412,9 @@ private fun PeerRow(
                     when {
                         peer.isStale -> R.string.peer_state_away
                         armedToSend -> R.string.peer_state_tap_to_send
+                        // Said plainly, because the row is otherwise indistinguishable
+                        // from a device on this network and it is not one.
+                        peer.viaTicket -> R.string.peer_state_ready_internet
                         isPaired -> R.string.peer_state_ready_paired
                         else -> R.string.peer_state_ready
                     }

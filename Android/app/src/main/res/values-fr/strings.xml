@@ -35,6 +35,7 @@
     <string name="action_discard_shared">Abandonner les fichiers partagés</string>
     <string name="peer_state_ready">Prêt</string>
     <string name="peer_state_ready_paired">Prêt · Associé</string>
+    <string name="peer_state_ready_internet">Prêt · Par Internet</string>
     <string name="peer_state_away">Absent</string>
     <string name="peer_state_tap_to_send">Touchez pour envoyer</string>
     <string name="peer_badge_paired">Associé</string>
@@ -243,6 +244,7 @@
     </plurals>
     <string name="pairing_tab_internet">Internet</string>
     <string name="pairing_scan_accepts">Les codes d\'association et les codes Internet fonctionnent tous les deux ici.</string>
+    <string name="pairing_code_detected">Code détecté</string>
     <string name="internet_intro_body">Wooosh peut aussi se connecter par Internet, pour un appareil qui n\'est pas sur ce réseau. Obtenez un code, puis donnez-le à l\'appareil qui enverra les fichiers.</string>
     <string name="internet_relay_note">Obtenir un code contacte un relais public pour que les deux appareils se trouvent. Les fichiers circulent toujours directement entre eux dès qu\'une route directe existe.</string>
     <string name="internet_preparing">Préparation d\'un code. Cela prend quelques secondes.</string>

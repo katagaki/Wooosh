@@ -79,6 +79,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Non-null while a pairing ceremony is running or has just resolved. */
     val pairingAttempt: StateFlow<PairingManager.Attempt?> = app.pairingManager.attempt
 
+    /** Fires when a ticket *this* device redeemed has connected (PROTOCOL.md §9.4). */
+    val ticketRedeemed: SharedFlow<Unit> = app.pairingManager.ticketRedeemed
+
     /** Snackbar channel: pairing outcomes plus transfer failures with no card yet. */
     val statusMessages: SharedFlow<String> = merge(
         app.pairingManager.messages,
@@ -192,6 +195,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Set when someone redeems a ticket this device published. */
     val ticketRedeemedPeerId: StateFlow<String?> = app.transferManager.ticketRedeemedPeerId
+
+    /**
+     * The redeeming side is finished the moment the connection lands: nothing is staged to
+     * send back. Clearing the id keeps a redemption *this* device made from being replayed
+     * as an outgoing send the next time the user opens the send tab.
+     */
+    fun ticketRedemptionHandled() = app.transferManager.clearTicketRedeemedPeer()
 
     /**
      * Hands the staged files to whoever redeemed. The core refuses this unless that peer

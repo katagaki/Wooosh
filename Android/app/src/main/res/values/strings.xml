@@ -75,6 +75,7 @@
     <string name="peer_state_ready">Ready</string>
     <!-- Device row subtitle: reachable and already paired. -->
     <string name="peer_state_ready_paired">Ready · Paired</string>
+    <string name="peer_state_ready_internet">Ready · Over the Internet</string>
     <!-- Device row subtitle: the device stopped answering and cannot be used. -->
     <string name="peer_state_away">Away</string>
     <!-- Device row subtitle while files are waiting to be sent. -->
@@ -429,6 +430,7 @@
     </plurals>
     <string name="pairing_tab_internet">Internet</string>
     <string name="pairing_scan_accepts">Pairing codes and internet codes both work here.</string>
+    <string name="pairing_code_detected">Code Detected</string>
     <string name="internet_intro_body">Wooosh can also connect over the internet, for a device that is not on this network. Get a code, then give it to the device that will send the files.</string>
     <string name="internet_relay_note">Getting a code contacts a public relay so the two devices can find each other. Files still travel straight between them whenever a direct route exists.</string>
     <string name="internet_preparing">Getting a code ready. This takes a few seconds.</string>

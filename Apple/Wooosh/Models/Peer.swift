@@ -55,6 +55,17 @@ struct Peer: Identifiable {
     var knownDeviceID: String?
     /// Whether the core reports the live connection as trusted (pinned key).
     var isTrusted: Bool = false
+    /// The live connection behind this row was authorised by a redeemed QR
+    /// ticket (PROTOCOL.md §9.4), not by a pinned key. The internet path never
+    /// pairs, so such a row must never wear the paired badge even when the peer
+    /// *is* in the trust store: the pin played no part in admitting this
+    /// connection, and the authorisation dies with the transfer.
+    ///
+    /// Sticky until the peer connects again for real. Cleared on
+    /// `PeerConnected`, not on disconnect — a greyed row that re-grew a
+    /// checkmark the moment the internet session dropped is the same wrong
+    /// claim, just quieter.
+    var isTicketOnly: Bool = false
 
     var id: String { rid }
     var isConnected: Bool { corePeerID != nil }

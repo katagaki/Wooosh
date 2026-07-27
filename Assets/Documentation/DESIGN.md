@@ -305,12 +305,17 @@ On Apple and Android the entry point is a synthetic row in the device list, pinn
 
 **Pairing is same-network only.** The internet path never pairs (PROTOCOL.md §9.4): a QR is required for every internet transfer, the sender presents it, the recipient scans and downloads, and the code dies with the transfer. Nothing is written to the trust store.
 
-Two rules the shells follow here:
+Three rules the shells follow here:
 
 - **One scanner, both code types.** `wooosh-pair:` and `wooosh-net:` payloads look identical to a camera, so the Scan tab takes either and dispatches on the scheme. Asking the user to pre-classify a code somebody else generated is a question they cannot answer.
 - **Nothing is published until the user presses.** Getting a code is the only action in Wooosh that contacts a server of any kind, so the tab explains what will happen and waits. The ticket is invalidated when the user leaves the screen, not when it expires.
+- **Redeeming hands off to the transfer list.** Scanning *is* the receive flow: nothing is pinned, so there is no outcome to read and no second consent to give. The moment the connection lands the shell leaves the scanner — Apple dismisses the sheet, Android pops to the main screen — and the incoming transfer appears where every other transfer does. Leaving the user on a spent viewfinder while the files arrived somewhere they could not see read as a hang.
+
+The scanner **stays armed across a failed code**. Expired, malformed, and unanswerable codes are the common case, and a scanner that reads exactly one payload per visit leaves a frozen preview behind after every one of them, which is indistinguishable from a crash. The camera pauses only while a ceremony is in flight and reads again the moment that ceremony's alert is dismissed. Detection is acknowledged by the scanner itself, with a haptic and a visible state change, rather than by whatever the payload turns out to trigger: parsing, dialling, and hole punching each take long enough that a viewfinder which merely stopped moving looked broken.
 
 A peer reached this way has no mDNS record behind it, so it enters the device list from `PeerConnected` alone, as a connection-only row (append-only like every other row, DESIGN.md §5). Sending to such a row skips `connect_peer`: the connection is already up and is identified by DeviceID.
+
+**A ticket row is never shown as Paired, and it is spent when the transfer ends.** The row says **Ready · Over the Internet** and carries no checkmark, even when the peer *is* in the trust store from an earlier same-network pairing. The core will report that connection as `trusted` — the key was authenticated and it is a genuine pin match — but the pin admitted nothing here: the single-use ticket did, and it is the only thing `run_send` gates on. Badging the row Paired would claim the same standing as a device the user deliberately pinned and can send to at will, for a row that in fact authorises one transfer and then nothing. Once that transfer settles, succeeded or failed, a connection-only row greys out in place, disabled, like any peer that went away. The shells hold the ticket origin on the row itself and clear it only when the peer connects again for real — not on disconnect, since a greyed row that re-grew a checkmark the moment the session dropped would be the same wrong claim, just quieter.
 
 Because the ticket carries the publisher's identity key out of band, the internet path inherits the QR ceremony's MITM resistance; SAS (PROTOCOL.md §4.3) is also available over iroh, deriving from the same TLS exporter, for anyone who wants to compare digits.
 

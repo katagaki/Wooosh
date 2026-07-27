@@ -62,14 +62,16 @@ fun OtherDeviceScreen(
     redeemedPeerId: String?,
     onRedeemed: (String) -> Unit,
     onRedeemTicket: (String) -> Unit,
+    /** False while a redemption is in flight; re-arms the camera once it has been dismissed. */
+    scannerEnabled: Boolean,
     statusMessages: SharedFlow<String>,
     onBack: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
-    // The screen stays put after redeeming, as the pairing screen does. Navigating away on
-    // the press would drop whatever the core says next: `statusMessages` has no replay, so
-    // a failure emitted with no collector attached is gone.
+    // The screen stays put until the redemption actually lands: `statusMessages` has no
+    // replay, so a failure emitted with no collector attached is gone. On success the
+    // caller navigates away, and the main screen picks the messages up from there.
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         statusMessages.collect { snackbarHostState.showSnackbar(it) }
@@ -119,7 +121,7 @@ fun OtherDeviceScreen(
                     onRedeemed = onRedeemed,
                 )
 
-                else -> ReceiveOverInternetTab(onRedeemTicket)
+                else -> ReceiveOverInternetTab(onRedeemTicket, scannerEnabled)
             }
         }
     }
@@ -134,7 +136,7 @@ fun OtherDeviceScreen(
  * against.
  */
 @Composable
-private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit) {
+private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit, scannerEnabled: Boolean) {
     var pastedCode by rememberSaveable { mutableStateOf("") }
 
     Column(
@@ -149,6 +151,7 @@ private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit) {
         // the moment the code is read, rather than after a scanner activity closes.
         QrScanner(
             onScanned = onRedeemTicket,
+            enabled = scannerEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)

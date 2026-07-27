@@ -80,6 +80,8 @@ import kotlinx.coroutines.withContext
 fun PairingScreen(
     beginPairingQr: () -> String,
     onPairWithPayload: (String) -> Unit,
+    /** False while a ceremony is in flight; re-arms the camera once it has been dismissed. */
+    scannerEnabled: Boolean,
     statusMessages: SharedFlow<String>,
     onBack: () -> Unit,
 ) {
@@ -125,7 +127,7 @@ fun PairingScreen(
             }
             when (tab) {
                 0 -> ShowCodeTab(beginPairingQr)
-                else -> ScanTab(onPairWithPayload)
+                else -> ScanTab(onPairWithPayload, scannerEnabled)
             }
         }
     }
@@ -221,7 +223,7 @@ private fun ShowCodeTab(beginPairingQr: () -> String) {
 }
 
 @Composable
-private fun ScanTab(onPairWithPayload: (String) -> Unit) {
+private fun ScanTab(onPairWithPayload: (String) -> Unit, scannerEnabled: Boolean) {
     var pastedPayload by rememberSaveable { mutableStateOf("") }
 
     Column(
@@ -236,6 +238,7 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit) {
         // it the instant a code is read.
         QrScanner(
             onScanned = onPairWithPayload,
+            enabled = scannerEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)

@@ -140,6 +140,11 @@ struct QRScannerView: UIViewControllerRepresentable {
                   object.type == .qr,
                   let payload = object.stringValue else { return }
             didDeliver = true
+            // Acknowledged here rather than by whatever the payload triggers:
+            // parsing, dialling and hole punching each take long enough that a
+            // viewfinder which merely stopped moving reads as a jam. Neutral
+            // impact, not `.success` — the code may still turn out to be stale.
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             sessionQueue.async { [session] in
                 if session.isRunning { session.stopRunning() }
             }

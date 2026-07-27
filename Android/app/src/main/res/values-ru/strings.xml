@@ -35,6 +35,7 @@
     <string name="action_discard_shared">Отменить выбранные файлы</string>
     <string name="peer_state_ready">Готово</string>
     <string name="peer_state_ready_paired">Готово · Связано</string>
+    <string name="peer_state_ready_internet">Готово · Через интернет</string>
     <string name="peer_state_away">Не в сети</string>
     <string name="peer_state_tap_to_send">Нажмите, чтобы отправить</string>
     <string name="peer_badge_paired">Связано</string>
@@ -255,6 +256,7 @@
     </plurals>
     <string name="pairing_tab_internet">Интернет</string>
     <string name="pairing_scan_accepts">Здесь подходят и коды сопряжения, и интернет-коды.</string>
+    <string name="pairing_code_detected">Код распознан</string>
     <string name="internet_intro_body">Wooosh может подключаться и через интернет, к устройству вне этой сети. Получите код и передайте его устройству, которое будет отправлять файлы.</string>
     <string name="internet_relay_note">При получении кода выполняется обращение к публичному ретранслятору, чтобы устройства нашли друг друга. Файлы по-прежнему идут напрямую, когда прямой маршрут доступен.</string>
     <string name="internet_preparing">Готовим код. Это займёт несколько секунд.</string>

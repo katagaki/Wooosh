@@ -57,12 +57,20 @@ final class PeerRegistry {
     /// `deviceType` is the peer's own HELLO value, or nil when it did not
     /// report one — in which case an existing row keeps whatever mDNS said
     /// rather than being overwritten with a guess.
-    func connected(peerID: String, displayName: String, deviceType: DeviceType?, trusted: Bool) {
+    ///
+    /// `viaTicket` marks a row whose connection came from a redeemed ticket
+    /// (see `Peer.isTicketOnly`). The core emits `PeerConnected` *before*
+    /// `TicketRedeemed` for an internet connection, so the plain call clearing
+    /// the flag and the ticket call setting it arrive in that order and the
+    /// flag ends up right.
+    func connected(peerID: String, displayName: String, deviceType: DeviceType?,
+                   trusted: Bool, viaTicket: Bool = false) {
         // Match on DeviceID first — including rows that were connected earlier
         // in the session and dropped, so a reconnect reuses the same row.
         if let index = peers.firstIndex(where: { $0.knownDeviceID == peerID }) {
             peers[index].corePeerID = peerID
             peers[index].isTrusted = trusted
+            peers[index].isTicketOnly = viaTicket
             peers[index].isStale = false
             if !displayName.isEmpty { peers[index].displayName = displayName }
             if let deviceType { peers[index].coreDeviceType = deviceType }
@@ -76,6 +84,7 @@ final class PeerRegistry {
             peers[index].corePeerID = peerID
             peers[index].knownDeviceID = peerID
             peers[index].isTrusted = trusted
+            peers[index].isTicketOnly = viaTicket
             peers[index].isStale = false
             if let deviceType { peers[index].coreDeviceType = deviceType }
             return
@@ -92,8 +101,25 @@ final class PeerRegistry {
             isStale: false,
             corePeerID: peerID,
             knownDeviceID: peerID,
-            isTrusted: trusted
+            isTrusted: trusted,
+            isTicketOnly: viaTicket
         ))
+    }
+
+    /// The transfer a ticket authorised has finished. The ticket was
+    /// single-use, so a connection-only row has nothing left to offer: it grays
+    /// out in place, disabled, like any peer that went away (DESIGN.md §5). A
+    /// row backed by an mDNS sighting is still reachable on this network and
+    /// stays live.
+    ///
+    /// `isTicketOnly` is deliberately left set. The row keeps its history until
+    /// the peer connects again for real, so it cannot re-acquire a paired badge
+    /// it never earned.
+    func ticketSessionEnded(peerID: String) {
+        guard let index = peers.firstIndex(where: {
+            $0.knownDeviceID == peerID && $0.isTicketOnly && $0.rid.hasPrefix("core:")
+        }) else { return }
+        peers[index].isStale = true
     }
 
     func disconnected(peerID: String) {

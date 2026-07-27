@@ -35,6 +35,7 @@
     <string name="action_discard_shared">捨棄已分享的檔案</string>
     <string name="peer_state_ready">就緒</string>
     <string name="peer_state_ready_paired">就緒 · 已配對</string>
+    <string name="peer_state_ready_internet">就緒 · 透過網際網路</string>
     <string name="peer_state_away">已離開</string>
     <string name="peer_state_tap_to_send">點一下即可傳送</string>
     <string name="peer_badge_paired">已配對</string>
@@ -219,6 +220,7 @@
     </plurals>
     <string name="pairing_tab_internet">網際網路</string>
     <string name="pairing_scan_accepts">配對碼與網際網路代碼在這裡都可以使用。</string>
+    <string name="pairing_code_detected">已辨識代碼</string>
     <string name="internet_intro_body">Wooosh 也可以透過網際網路連線到不在此網路中的裝置。取得一個代碼，然後交給要傳送檔案的裝置。</string>
     <string name="internet_relay_note">取得代碼時會連線公共中繼，讓兩台裝置找到彼此。只要有直連路徑，檔案仍會在兩台裝置之間直接傳輸。</string>
     <string name="internet_preparing">正在準備代碼，需要幾秒鐘。</string>

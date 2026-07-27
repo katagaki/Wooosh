@@ -35,6 +35,7 @@
     <string name="action_discard_shared">공유한 파일 취소</string>
     <string name="peer_state_ready">준비됨</string>
     <string name="peer_state_ready_paired">준비됨 · 페어링됨</string>
+    <string name="peer_state_ready_internet">준비됨 · 인터넷 연결</string>
     <string name="peer_state_away">응답 없음</string>
     <string name="peer_state_tap_to_send">탭하여 보내기</string>
     <string name="peer_badge_paired">페어링됨</string>
@@ -219,6 +220,7 @@
     </plurals>
     <string name="pairing_tab_internet">인터넷</string>
     <string name="pairing_scan_accepts">페어링 코드와 인터넷 코드 모두 사용할 수 있습니다.</string>
+    <string name="pairing_code_detected">코드를 인식했습니다</string>
     <string name="internet_intro_body">Wooosh는 같은 네트워크에 없는 기기와도 인터넷으로 연결할 수 있습니다. 코드를 받아 파일을 보낼 기기에 전달하세요.</string>
     <string name="internet_relay_note">코드를 받을 때 두 기기가 서로를 찾을 수 있도록 공개 릴레이에 연결합니다. 직접 경로가 있으면 파일은 여전히 두 기기 사이를 바로 오갑니다.</string>
     <string name="internet_preparing">코드를 준비하고 있습니다. 몇 초 걸립니다.</string>

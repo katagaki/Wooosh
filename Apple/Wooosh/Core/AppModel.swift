@@ -96,6 +96,10 @@ final class AppModel {
     /// screen knows to hand over its staged files.
     private(set) var ticketRedeemedPeerID: String?
 
+    /// Peer behind each running transfer, so a completion can be attributed.
+    @ObservationIgnored
+    private var transferPeerIDs: [TransferID: String] = [:]
+
     /// Files staged for an internet send, waiting for someone to scan the code.
     @ObservationIgnored
     private var internetOutbox: [URL] = []
@@ -314,8 +318,13 @@ final class AppModel {
             // somewhere to show, and is remembered for this session only so its
             // offer can skip a consent sheet the user already gave by scanning.
             ticketPeers.insert(peer.id)
+            // `viaTicket` on top of `trusted: false`: a previously pinned peer
+            // is still in the trust store, and `isPaired` would otherwise find
+            // it there and badge the row. The pin admitted nothing here — the
+            // single-use ticket did (DESIGN.md §9).
             registry.connected(peerID: peer.id, displayName: peer.displayName,
-                               deviceType: peer.deviceType, trusted: false)
+                               deviceType: peer.deviceType, trusted: false,
+                               viaTicket: true)
             ticketRedeemedPeerID = peer.id
 
         case .incomingOffer(let tid, let from, let trusted, let manifest) where ticketPeers.contains(from.id):
@@ -333,9 +342,32 @@ final class AppModel {
                 expectedFingerprint: core.fingerprintPhrase(forPublicKey: expected) ?? "",
                 presentedFingerprint: presented.flatMap { core.fingerprintPhrase(forPublicKey: $0) }
             )
+        case .transferStarted(let tid, let peerID, _, _):
+            // `transferDone` does not name its peer, and the ticket rows need
+            // to know which one settled.
+            transferPeerIDs[tid] = peerID
+            transfers.handle(event: event)
+
+        case .transferDone(let tid, _):
+            endTicketSession(transferID: tid)
+            transfers.handle(event: event)
+
+        case .transferError(let tid, _, _):
+            endTicketSession(transferID: tid)
+            transfers.handle(event: event)
+
         default:
             transfers.handle(event: event)
         }
+    }
+
+    /// A ticket authorises exactly one transfer, so its row stops being a place
+    /// to send things the moment that transfer settles — whether it succeeded
+    /// or not. Waiting for the connection to close instead would leave a
+    /// live-looking row for as long as iroh kept the link open.
+    private func endTicketSession(transferID: TransferID) {
+        guard let peerID = transferPeerIDs.removeValue(forKey: transferID) else { return }
+        registry.ticketSessionEnded(peerID: peerID)
     }
 
     // MARK: - Pairing intents
@@ -570,6 +602,11 @@ final class AppModel {
     /// never by display name or discovery id. A row the shell has not yet
     /// connected to has no DeviceID, so it shows no checkmark until it does.
     func isPaired(_ peer: Peer) -> Bool {
+        // A ticket row short-circuits both tests. The peer may well be pinned,
+        // and the core may well report the connection as trusted, but neither
+        // fact authorised this session: the single-use ticket did, and it dies
+        // with the transfer (DESIGN.md §9).
+        if peer.isTicketOnly { return false }
         if let deviceID = peer.knownDeviceID, trustStore.isPaired(deviceID: deviceID) {
             return true
         }

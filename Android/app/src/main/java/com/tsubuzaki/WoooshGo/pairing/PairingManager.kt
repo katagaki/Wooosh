@@ -86,6 +86,14 @@ class PairingManager(
     val attempt: StateFlow<Attempt?> = _attempt.asStateFlow()
 
     /**
+     * Fires on the *redeeming* device once its scan has landed a connection. Scanning was
+     * the whole job (PROTOCOL.md §9.4), so the scanner has nothing left to show and the
+     * caller sends the user back to the transfer list.
+     */
+    private val _ticketRedeemed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val ticketRedeemed: SharedFlow<Unit> = _ticketRedeemed.asSharedFlow()
+
+    /**
      * Whether the in-flight attempt is a ticket redemption. Decides which event settles
      * it: the ticket path succeeds with `TicketRedeemed`, never `PairingResult`.
      */
@@ -146,6 +154,10 @@ class PairingManager(
                         attemptIsTicket = false
                         watchdog?.cancel()
                         _attempt.value = null
+                        // Guarded by `attemptIsTicket`, so only the side that scanned is
+                        // sent onward: the publisher gets this event too, and it is still
+                        // waiting on its own send tab.
+                        _ticketRedeemed.emit(Unit)
                     }
 
                     is CoreEvent.KeyChanged -> _keyChanged.value = KeyChangedAlert(
