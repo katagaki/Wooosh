@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "Wooosh (Package)": {
+      "commandName": "MsixPackage"
+    }
+  }
+}
