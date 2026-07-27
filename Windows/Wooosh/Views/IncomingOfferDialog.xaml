@@ -11,10 +11,7 @@
     PrimaryButtonClick="OnPrimaryButtonClick"
     mc:Ignorable="d">
 
-    <!--
-        DefaultButton is None on purpose. Accepting files from an unpaired device is a
-        security confirmation and must take a deliberate press: it is never bound to Enter.
-    -->
+    <!-- DefaultButton is None: a security confirmation takes a deliberate press and is never bound to Enter. -->
 
     <StackPanel Spacing="12" MaxWidth="440">
         <TextBlock
@@ -28,7 +25,6 @@
             Style="{ThemeResource BodyTextBlockStyle}"
             TextWrapping="Wrap" />
 
-        <!-- Paired senders get a plain confirmation; unpaired ones get the phrase. -->
         <TextBlock
             x:Name="PairedLabel"
             Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
@@ -41,11 +37,7 @@
                 Style="{ThemeResource BodyTextBlockStyle}"
                 Text="{loc:Localize Key=OfferUnpairedWarning}"
                 TextWrapping="Wrap" />
-            <!--
-                The sender's six-word phrase, exactly as the core derives it. Never
-                translated: it is a shared artifact that has to read identically on both
-                devices, and the sender is looking at the same words right now.
-            -->
+            <!-- Never translated: the phrase must read identically on both devices. -->
             <TextBlock
                 x:Name="FingerprintText"
                 IsTextSelectionEnabled="True"

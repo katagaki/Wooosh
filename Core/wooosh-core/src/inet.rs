@@ -1,14 +1,11 @@
 //! Internet path: iroh endpoint + tickets (PROTOCOL.md §9, DESIGN.md §9.1).
 //!
 //! The iroh node secret key **is** the Wooosh identity key (PROTOCOL.md §2),
-//! so an iroh `EndpointId` is byte-for-byte the public key already in the
-//! trust store. A peer paired on the LAN is therefore authenticated over the
-//! internet with no extra ceremony, and `device_id_for` /
-//! `fingerprint_phrase_for` render the same DeviceID and phrase on both paths.
+//! so an `EndpointId` is byte-for-byte the key already in the trust store and
+//! a LAN pairing authenticates over the internet with no extra ceremony.
 //!
-//! The endpoint is bound **lazily**, on the first ticket operation. Binding it
-//! at `start` would have every Wooosh install contact n0's relay servers on
-//! launch, which is wrong for a LAN-first app that promises no servers.
+//! The endpoint is bound **lazily**, on the first ticket operation: binding at
+//! `start` would have every install contact n0's relays on launch.
 
 use crate::error::WoooshError;
 use crate::identity::Identity;
@@ -17,8 +14,8 @@ use base64::Engine as _;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use subtle::ConstantTimeEq;
 
-/// Ticket lifetime. Matches the QR token TTL (PROTOCOL.md §4.2): a ticket is
-/// a capability handed to one other human in the moment, not a bookmark.
+/// Matches the QR token TTL (PROTOCOL.md §4.2): a ticket is a capability
+/// handed over in the moment, not a bookmark.
 pub const TICKET_TTL: Duration = Duration::from_secs(120);
 
 fn b64() -> base64::engine::GeneralPurpose {
@@ -29,27 +26,24 @@ fn now_unix() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-/// A redeemable internet ticket (PROTOCOL.md §9.2).
-///
-/// Wire form, one line, QR- and chat-safe:
+/// A redeemable internet ticket (PROTOCOL.md §9.2). Wire form, one line, QR-
+/// and chat-safe:
 /// `wooosh-net:1?nid=<b64 32B>&tok=<b64 32B>&dn=<name>&relay=<url>&addrs=<ip:port,…>&exp=<unix>`
 ///
-/// `nid` is the publisher's Ed25519 identity key delivered **out of band**,
-/// exactly like `pk` in a pairing QR — which is what makes the internet path
-/// MITM-proof without any additional ceremony.
+/// `nid` is delivered **out of band** like `pk` in a pairing QR, which is what
+/// makes the internet path MITM-proof without extra ceremony.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NetTicket {
     pub version: u64,
-    /// Publisher's Ed25519 identity key == iroh EndpointId.
+    /// Ed25519 identity key == iroh EndpointId.
     pub node_id: [u8; 32],
-    /// Single-use pairing token, same rules as the QR token (§4.2 step 3).
+    /// Single-use, same rules as the QR token (§4.2 step 3).
     pub token: [u8; 32],
-    /// Display-name hint (unauthenticated, UI label only).
+    /// Unauthenticated, UI label only.
     pub dn: Option<String>,
-    /// Home relay URL, so the redeemer can reach the publisher before any
-    /// hole punch succeeds.
+    /// Reaches the publisher before any hole punch succeeds.
     pub relay: Option<String>,
-    /// Directly reachable `ip:port` candidates, best-effort.
+    /// Best-effort `ip:port` candidates.
     pub direct: Vec<String>,
     pub expires_unix: u64,
 }
@@ -151,7 +145,6 @@ impl NetTicket {
         now_unix() > self.expires_unix
     }
 
-    /// The iroh dial target this ticket describes.
     pub fn endpoint_addr(&self) -> Result<iroh::EndpointAddr, WoooshError> {
         let id = iroh::PublicKey::from_bytes(&self.node_id)
             .map_err(|e| WoooshError::InvalidQrPayload(format!("ticket: bad node id: {e}")))?;
@@ -171,12 +164,9 @@ impl NetTicket {
     }
 }
 
-/// Publisher-side state for an outstanding ticket.
-///
-/// A ticket is a capability: it is single-use, TTL-bound and compared in
-/// constant time, exactly like the QR token (PROTOCOL.md §4.2 step 3). Expiry
-/// is what stops a ticket pasted into a chat months ago from silently
-/// connecting a stranger.
+/// Publisher-side state for an outstanding ticket: single-use, TTL-bound and
+/// compared in constant time, like the QR token (PROTOCOL.md §4.2 step 3).
+/// Expiry is what stops a ticket pasted into a chat months ago from working.
 pub struct TicketPending {
     token: [u8; 32],
     issued_at: Instant,
@@ -210,18 +200,13 @@ pub fn new_expiry_unix() -> u64 {
     now_unix() + TICKET_TTL.as_secs()
 }
 
-/// Bind an iroh endpoint on the Wooosh identity key.
+/// Our Ed25519 secret becomes the node secret, so `endpoint.id()` equals
+/// `identity.public_key_bytes()` and every existing pin keeps working
+/// (DESIGN.md §9.1).
 ///
-/// The key mapping is the whole point of choosing iroh (DESIGN.md §9.1): our
-/// Ed25519 secret becomes the node secret, so `endpoint.id()` equals
-/// `identity.public_key_bytes()` and every existing pin keeps working.
-///
-/// `relays` mirrors `Config.relay_urls`:
-/// - `None` — n0's free public relays (the default DESIGN.md §9.1 promises).
-/// - `Some(&[])` — no relays and no address lookup: direct/hole-punched
-///   connections only, from the addresses in the ticket. Nothing leaves the
-///   local network unless the ticket says so.
-/// - `Some(urls)` — a self-hosted or chosen relay set.
+/// `relays` mirrors `Config.relay_urls`: `None` = n0's public relays,
+/// `Some(&[])` = no relays and no address lookup (only ticket addresses),
+/// `Some(urls)` = a chosen set.
 pub async fn bind_endpoint(
     identity: &Identity,
     relays: Option<&[String]>,
@@ -312,8 +297,7 @@ mod tests {
 
     #[test]
     fn ticket_node_id_is_the_identity_key() {
-        // The property the whole internet path rests on: the value in the
-        // ticket is the same 32 bytes the trust store pins.
+        // The ticket carries the same 32 bytes the trust store pins.
         let id = Identity::generate();
         let sk = iroh::SecretKey::from_bytes(&id.secret_bytes());
         assert_eq!(sk.public().as_bytes(), &id.public_key_bytes());

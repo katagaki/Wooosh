@@ -2,19 +2,12 @@ using System.Globalization;
 
 namespace Wooosh.Localization;
 
-/// <summary>
-/// Byte sizes and durations. One place, because COPY_STYLE.md §5 forbids hand-built size
-/// and rate strings scattered through views.
-/// </summary>
+/// <summary>One place: COPY_STYLE.md §5 forbids hand-built size and rate strings in views.</summary>
 public static class Formatters
 {
     /// <summary>
-    /// Human-readable byte size, for example "12 MB".
-    ///
-    /// The number goes through the current culture's number formatter. The unit is the SI
-    /// symbol, which is not translated in any of Wooosh's target locales. Neither .NET nor
-    /// WinRT ships a localized byte-size formatter, so this is the substitute: if one
-    /// appears, this method is the only thing that has to change.
+    /// Neither .NET nor WinRT ships a localized byte-size formatter. The number goes
+    /// through the current culture; the SI symbol is untranslated in every target locale.
     /// </summary>
     public static string ByteSize(long bytes)
     {
@@ -31,7 +24,6 @@ public static class Formatters
         return $"{value.ToString("N" + decimals, CultureInfo.CurrentCulture)} {units[unit]}";
     }
 
-    /// <summary>Remaining time, "m:ss" or "h:mm:ss".</summary>
     public static string Duration(long seconds) =>
         TimeSpan.FromSeconds(Math.Max(seconds, 0))
             .ToString(seconds >= 3600 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.CurrentCulture);

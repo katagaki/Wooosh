@@ -4,7 +4,6 @@ using Wooosh.ViewModels;
 
 namespace Wooosh.Views;
 
-/// <summary>One transfer card: header, progress bar, status line, cancel.</summary>
 public sealed partial class TransferProgressControl : UserControl
 {
     public static readonly DependencyProperty TransferProperty = DependencyProperty.Register(

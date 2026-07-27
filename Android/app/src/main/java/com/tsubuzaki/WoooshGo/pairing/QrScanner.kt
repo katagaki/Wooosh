@@ -60,21 +60,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 /**
- * Live QR scanner, composed **inside** the screen that owns the ceremony.
- *
- * Deliberately not ZXing's `CaptureActivity`: a separate activity gives Wooosh no UI
- * surface at all between "code detected" and "activity finished", so the progress and
- * failure alerts could not appear until after the scanner had closed and the main
- * activity had resumed. Anything slow in that window — and on the internet path that is
- * a network dial — left the user staring at a camera that had already stopped scanning.
- * Composed here, detection happens with the alert host already on screen.
- *
- * Reads either code type. A pairing code and an internet ticket look identical to a
- * camera, so the caller dispatches on the scheme (PROTOCOL.md §4.2 / §9.2).
- *
- * [enabled] is the caller's "I am not busy with a code" signal: false while a ceremony is
- * in flight, true again once it has been settled and dismissed. It is what re-arms the
- * scanner, so a failed or expired code leaves a live camera rather than a frozen one.
+ * Composed in place, not via ZXing's `CaptureActivity`, which leaves no UI surface between
+ * detection and finishing. [enabled] re-arms the scanner after a failed code.
  */
 @Composable
 fun QrScanner(
@@ -93,8 +80,7 @@ fun QrScanner(
         ActivityResultContracts.RequestPermission()
     ) { granted = it }
 
-    // Asked on arrival rather than behind a button: the whole tab is the scanner, so
-    // there is nothing else here to do while the question goes unanswered.
+    // Asked on arrival: the whole tab is the scanner, so there is nothing else to do here.
     LaunchedEffect(Unit) {
         if (!granted) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
@@ -120,26 +106,20 @@ fun QrScanner(
 
     val onScannedNow by rememberUpdatedState(onScanned)
 
-    // One payload per arming, whatever the camera does next. Decoding is continuous, so
-    // the same code is read several times a second, and the callback can be reached again
-    // while the view is being torn down; either way a second delivery would start a
-    // second ceremony.
+    // One payload per arming: decoding is continuous and the callback also fires during
+    // teardown, and a second delivery starts a second ceremony.
     val delivered = remember { AtomicBoolean(false) }
 
-    /** Set the instant a code is read, so feedback does not wait on the caller. */
     var detected by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     val haptics = LocalHapticFeedback.current
 
     val scanner = remember {
         DecoratedBarcodeView(context).apply {
-            // The library's own status line duplicates the caller's instructions.
             setStatusText("")
             barcodeView.decoderFactory = DefaultDecoderFactory(
                 listOf(BarcodeFormat.QR_CODE),
-                // The viewfinder is a fixed square held over a single code, so paying more
-                // CPU per frame is the right trade against a code that the cheap pass keeps
-                // missing — which is what a scanner that "does nothing" actually is.
+                // A fixed square held over one code, so CPU per frame is the cheap trade.
                 mapOf(DecodeHintType.TRY_HARDER to true),
                 null,
                 0,
@@ -147,18 +127,14 @@ fun QrScanner(
         }
     }
 
-    // Continuous, not `decodeSingle`: a single decode clears its own callback and mode on
-    // the first hit, so nothing short of re-registering could ever make the view scan
-    // again — a failed code left a dead camera. Continuous decoding survives pause/resume,
-    // which makes [enabled] the only thing that has to be right.
+    // Continuous, not `decodeSingle`: a single decode clears its own callback on the first
+    // hit, leaving a dead camera after a failed code. Continuous survives pause/resume.
     DisposableEffect(scanner) {
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
                 if (!delivered.compareAndSet(false, true)) return
                 detected = true
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                // Stop the camera before handing over: the ceremony owns the screen from
-                // here, and a live preview under a modal alert is just a battery drain.
                 scanner.pause()
                 onScannedNow(result.text)
             }
@@ -168,10 +144,8 @@ fun QrScanner(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, enabled) {
-        // Camera ownership follows the host's lifecycle *and* [enabled]: held only while
-        // this is the visible screen with no code in flight, so backgrounding Wooosh
-        // releases it. `resume()` is documented as safe to call repeatedly, and it
-        // restarts the decoder thread by itself.
+        // Camera ownership follows the lifecycle and [enabled], so backgrounding releases
+        // it. `resume()` is safe to call repeatedly and restarts the decoder.
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> if (enabled) scanner.resume()
@@ -180,7 +154,6 @@ fun QrScanner(
             }
         }
         if (enabled) {
-            // Re-arming: the caller has finished with the previous code, so forget it.
             delivered.set(false)
             detected = false
             scanner.resume()
@@ -234,9 +207,7 @@ fun QrScanner(
             )
         }
 
-        // Detection has to read as instant. Everything downstream — parsing the payload,
-        // dialling the peer, raising the progress dialog — takes long enough that a
-        // viewfinder which merely froze looked like the scanner had jammed.
+        // Downstream is slow enough that a frozen viewfinder reads as a jammed scanner.
         if (detected) {
             Column(
                 modifier = Modifier
@@ -259,24 +230,16 @@ fun QrScanner(
 }
 
 /**
- * Tap to focus, which the on-screen hint has always promised. A pairing QR is small and
- * held close, which is exactly where a whole-frame autofocus hunts and never settles.
- *
- * Only the areas are set. Switching to `FOCUS_MODE_AUTO` here would be worse than doing
- * nothing: the library's `AutoFocusManager` decides once, when the preview starts,
- * whether to drive focus passes at all, so a mode changed underneath it can leave nobody
- * calling `autoFocus()`. The mode it already picked re-reads these areas on its next pass.
+ * Only the areas are set: `AutoFocusManager` decides at preview start whether to drive
+ * focus passes, so setting `FOCUS_MODE_AUTO` here can leave nobody calling `autoFocus()`.
  */
-// Camera1 throughout: zxing-android-embedded is built on it, so `Camera.Area` is the only
-// focus API reachable from here.
 @Suppress("DEPRECATION")
 private fun focusAt(view: BarcodeView, nx: Float, ny: Float) {
     if (!view.isPreviewActive) return
     val rotation = view.cameraInstance?.cameraRotation ?: return
     if (rotation < 0) return
 
-    // Camera1 focus areas live in the *sensor's* frame, which `setDisplayOrientation`
-    // does not touch, so the display rotation has to be undone before mapping.
+    // Focus areas live in the sensor's frame, untouched by `setDisplayOrientation`.
     val (sx, sy) = when (rotation) {
         90 -> ny to (1f - nx)
         180 -> (1f - nx) to (1f - ny)
@@ -293,8 +256,7 @@ private fun focusAt(view: BarcodeView, nx: Float, ny: Float) {
         bound(sx, FOCUS_AREA_HALF),
         bound(sy, FOCUS_AREA_HALF),
     )
-    // A degenerate rectangle is rejected by the camera HAL, and clamping at an edge can
-    // produce one.
+    // The camera HAL rejects a degenerate rectangle, which clamping at an edge can produce.
     if (rect.width() <= 0 || rect.height() <= 0) return
 
     view.changeCameraParameters { parameters ->
@@ -305,7 +267,7 @@ private fun focusAt(view: BarcodeView, nx: Float, ny: Float) {
     }
 }
 
-/** Half-width of the focus box, as a fraction of the frame. */
+/** Fraction of the frame. */
 private const val FOCUS_AREA_HALF = 0.1f
 
 private const val FOCUS_INDICATOR_MS = 700L

@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 import UIKit
 #endif
 
-/// Shell-side view state for one transfer, fed by the core event stream.
 @MainActor
 @Observable
 final class Transfer: Identifiable {
@@ -40,7 +39,7 @@ final class Transfer: Identifiable {
             case pending
             case transferring
             case completed
-            /// Incoming only: routed to final storage ("Photos", "Downloads", …).
+            /// Routed to final storage ("Photos", "Downloads", …).
             case saved(destination: String)
             case failed(String)
         }
@@ -51,8 +50,7 @@ final class Transfer: Identifiable {
         let mime: String
         var bytes: Int64 = 0
         var status: Status = .pending
-        /// Final on-disk location after routing, when there is one (Photos
-        /// insertions have no path the app may keep).
+        /// nil for Photos insertions: no path the app may keep.
         var savedURL: URL?
 
         var fraction: Double { size > 0 ? Double(bytes) / Double(size) : 0 }
@@ -66,7 +64,6 @@ final class Transfer: Identifiable {
     /// Aggregate instantaneous rate (bytes/s) and ETA from the core.
     var rate: Double = 0
     var eta: TimeInterval?
-    /// Whether the sender was paired at offer time (drives consent UI).
     let peerWasPaired: Bool
 
     init(id: TransferID, peer: PeerRef, direction: Direction, files: [File],
@@ -102,27 +99,22 @@ final class Transfer: Identifiable {
 }
 
 extension Transfer: Equatable {
-    /// Identity equality — used by SwiftUI onChange for sheet presentation.
     nonisolated static func == (lhs: Transfer, rhs: Transfer) -> Bool {
         lhs === rhs
     }
 }
 
-/// Owns all transfer view state, applies core transfer events, routes
-/// verified files to storage (DESIGN.md §6), and holds keep-awake while any
-/// transfer is active.
+/// Routes verified files to storage (DESIGN.md §6) and holds keep-awake.
 @MainActor
 @Observable
 final class TransferCenter {
     private(set) var transfers: [Transfer] = []
-    /// Incoming offer currently awaiting user consent (one at a time).
     var pendingOffer: Transfer?
 
     @ObservationIgnored private weak var core: (any WoooshCore)?
     @ObservationIgnored private let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "transfers")
     #if os(iOS)
     @ObservationIgnored private let backgroundTask = BackgroundTransferTask()
-    /// Transfers whose receipt notification has been posted — see `maybeNotifyReceived`.
     @ObservationIgnored private var notifiedReceipts: Set<TransferID> = []
     #endif
 
@@ -182,8 +174,7 @@ final class TransferCenter {
         switch event {
         case .ticketRedeemed, .peerConnected, .peerDisconnected, .pairingSAS,
              .pairingResult, .keyChanged:
-            // Owned by AppModel; listed explicitly so a new core event cannot
-            // be silently swallowed here.
+            // Owned by AppModel; listed so a new event cannot be swallowed here.
             break
 
         case .incomingOffer(let tid, let from, let trusted, let manifest):
@@ -212,8 +203,7 @@ final class TransferCenter {
         }
     }
 
-    /// The core resolved the manifest for an outgoing transfer (real sizes,
-    /// real file ids — the shell's provisional ids were only positional).
+    /// Real sizes and file ids; the shell's provisional ids were positional.
     private func handleTransferStarted(tid: TransferID, manifest: [FileMeta]) {
         guard let transfer = transfer(for: tid), !manifest.isEmpty else { return }
         transfer.files = manifest.map {
@@ -227,20 +217,14 @@ final class TransferCenter {
         let files = manifest.map {
             Transfer.File(id: $0.id, name: $0.name, size: $0.size, mime: $0.mime)
         }
-        // `trusted` is the core's verdict (the sender's key is pinned), not a
-        // shell-side guess against a discovery id.
+        // `trusted` is the core's verdict, not a guess against a discovery id.
         let transfer = Transfer(id: tid, peer: from, direction: .incoming,
                                 files: files, state: .awaitingConsent,
                                 peerWasPaired: trusted)
-        // Pairing already *is* the consent (PROTOCOL.md §4). Asking again for
-        // every transfer from a device the user deliberately pinned turns the
-        // prompt into something to dismiss without reading, which is worse for
-        // the case that actually matters: the unpaired sender, who still gets
-        // the full sheet with the fingerprint to verify.
+        // Pairing already *is* the consent (PROTOCOL.md §4); re-prompting trains
+        // the user to dismiss the sheet that matters, the unpaired sender's.
         if trusted {
-            // Not `accept(offer:)`: that clears `pendingOffer`, which here could
-            // belong to a *different*, unpaired sender whose sheet is on screen
-            // and unanswered.
+            // Not `accept(offer:)`: that would clear another sender's live sheet.
             transfer.state = .transferring
             transfers.append(transfer)
             core?.respondToOffer(transferID: tid, acceptedFileIDs: manifest.map(\.id))
@@ -248,8 +232,7 @@ final class TransferCenter {
             updateKeepAwake()
             return
         }
-        // One consent sheet at a time; a second simultaneous offer replaces
-        // nothing — it is silently declined (rate limiting is core's job).
+        // One sheet at a time; a second offer is declined (rate limiting is core's).
         if pendingOffer == nil {
             pendingOffer = transfer
         } else {
@@ -273,16 +256,14 @@ final class TransferCenter {
             transfer.files[index].status = .transferring
         }
         #if os(iOS)
-        // Not `updateKeepAwake()`: this fires per progress event, and the set of
-        // active transfers has not changed.
+        // Not `updateKeepAwake()`: the active set has not changed.
         if let snapshot = receiveSnapshot() { backgroundTask.update(snapshot) }
         #endif
     }
 
     private func handleFileReady(tid: TransferID, fileID: UInt32, stagedURL: URL, kind: FileKind) {
         guard let transfer = transfer(for: tid) else { return }
-        // Matched on the manifest `fid`, never on the staged file name:
-        // staging names are `<fid>.part`-derived and need not match.
+        // Matched on the manifest `fid`: staging names need not match.
         let index = transfer.files.firstIndex { $0.id == fileID }
         guard transfer.direction == .incoming else {
             // Outgoing: per-file completion signal only — nothing to route.
@@ -302,24 +283,19 @@ final class TransferCenter {
                     transfer.files[index].status = .failed(L.t("error_save_failed"))
                 }
             }
-            // Routing is async, so the last file can settle after transferDone
-            // has already landed. Whichever happens second posts.
+            // Routing is async: whichever of this and transferDone is second posts.
             maybeNotifyReceived(transfer)
         }
     }
 
-    /// Asked when files are actually about to arrive rather than at launch, so
-    /// the prompt lands next to the thing it is for. Wooosh's own copy in the
-    /// consent sheet has already explained what is happening.
+    /// Asked when files are about to arrive, so the prompt has visible cause.
     private func requestNotificationAuthorization() {
         #if os(iOS)
         ReceiptNotifier.shared.requestAuthorizationIfNeeded()
         #endif
     }
 
-    /// Posts the "files arrived" notification once the transfer is both
-    /// finished and fully routed. A notification that opened a file still
-    /// sitting in staging would be a lie.
+    /// Only once finished *and* routed: opening a file still in staging is a lie.
     private func maybeNotifyReceived(_ transfer: Transfer) {
         #if os(iOS)
         guard transfer.direction == .incoming, case .done = transfer.state else { return }
@@ -336,26 +312,19 @@ final class TransferCenter {
 
     // MARK: - Keep-awake and background execution (DESIGN.md §7)
 
-    /// Called on every state edge: a transfer starting, ending, failing or
-    /// being cancelled.
     private func updateKeepAwake() {
         KeepAwake.setActive(transfers.contains { $0.isActive })
         #if os(iOS)
         guard let snapshot = receiveSnapshot() else {
-            // Per-file outcomes are reported on the transfer card; `success`
-            // only tells the scheduler that the session it granted time for
-            // ended in an orderly way rather than being torn out from under us.
+            // `success` reports only that the session ended in an orderly way.
             backgroundTask.finish(nil, success: true)
             return
         }
         backgroundTask.begin(snapshot) { [weak self] in
             guard let self else { return }
-            // Expiration and the Stop button in the system UI are
-            // indistinguishable through this API. On screen, the user is
-            // watching the transfer and cannot have pressed anything on the
-            // Lock Screen, so all that was lost is the assertion: keep going.
-            // Backgrounded without it, the transfer cannot progress anyway, so
-            // stop it for real rather than leave a card that will never move.
+            // Expiry and the system Stop button are indistinguishable here. In the
+            // foreground only the assertion was lost, so keep going; backgrounded
+            // nothing can progress, so stop rather than leave a dead card.
             guard UIApplication.shared.applicationState == .background else { return }
             for transfer in transfers where transfer.direction == .incoming && transfer.isActive {
                 cancel(transfer)
@@ -365,7 +334,6 @@ final class TransferCenter {
     }
 
     #if os(iOS)
-    /// Aggregate of everything being received right now, or nil when nothing is.
     private func receiveSnapshot() -> BackgroundTransferTask.Snapshot? {
         let incoming = transfers.filter { $0.direction == .incoming && $0.isActive }
         guard let first = incoming.first else { return nil }

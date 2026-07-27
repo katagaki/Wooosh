@@ -69,12 +69,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Pairing UX (PROTOCOL.md §4 and §9): "My code" shows this device's `wooosh-pair:1?...`
- * QR + copyable payload; "Scan" covers the camera path and a pasted payload, for either
- * kind of code; "Internet" publishes a `wooosh-net:1?...` ticket for a device that is not
- * on this network.
- */
+/** Pairing UX (PROTOCOL.md §4 and §9). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PairingScreen(
@@ -175,7 +170,7 @@ private fun ShowCodeTab(beginPairingQr: () -> String) {
                 CircularProgressIndicator()
             }
         } else {
-            // Always black-on-white so any scanner can read it, regardless of theme.
+            // Always black-on-white so any scanner can read it, whatever the theme.
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
@@ -233,9 +228,7 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit, scannerEnabled: Boolean
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // The camera is the screen, not something behind a button: detection has to
-        // happen with this Compose tree on screen so the pairing alert can appear over
-        // it the instant a code is read.
+        // Scanning inside this tree lets the pairing alert appear the instant a code is read.
         QrScanner(
             onScanned = onPairWithPayload,
             enabled = scannerEnabled,
@@ -260,8 +253,6 @@ private fun ScanTab(onPairWithPayload: (String) -> Unit, scannerEnabled: Boolean
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
-        // The scanner takes both kinds of code and picks the path itself, so say so
-        // rather than making the user work out which tab a code they were sent belongs to.
         Text(
             text = stringResource(R.string.pairing_scan_accepts),
             style = MaterialTheme.typography.bodySmall,

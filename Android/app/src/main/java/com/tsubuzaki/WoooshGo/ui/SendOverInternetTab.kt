@@ -47,15 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Sending to a device that is not on this network (PROTOCOL.md §9.4), shown as the Send
- * tab of [OtherDeviceScreen].
- *
- * The sender presents a code and waits; the recipient scans it and downloads. **Nothing
- * is paired.** The code authorises one transfer and dies with it, so no fingerprint is
- * shown: there is no prior relationship to check one against, and asking the user to
- * verify something they cannot is worse than asking nothing.
- */
+/** Nothing is paired: one-shot code, so no fingerprint to check (PROTOCOL.md §9.4). */
 @Composable
 fun SendOverInternetTab(
     beginInternetTicket: suspend () -> String,
@@ -74,7 +66,6 @@ fun SendOverInternetTab(
     // The code is a live capability, so it dies with the tab.
     DisposableEffect(Unit) { onDispose { if (ticket != null || minting) endInternetTicket() } }
 
-    // The whole point of the tab: someone scanned, so hand the files over.
     LaunchedEffect(redeemedPeerId) {
         val id = redeemedPeerId ?: return@LaunchedEffect
         if (!sent) {

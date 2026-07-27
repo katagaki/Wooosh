@@ -4,14 +4,7 @@ import android.content.Context
 import com.tsubuzaki.WoooshGo.R
 import uniffi.wooosh_core.relayMaxFileBytes
 
-/**
- * Turns a core failure into something a person can act on.
- *
- * The core reports outcomes as short internal English tokens ("cancelled", "declined by
- * receiver", "timed out waiting for DECISION"). Never show those verbatim: they cannot be
- * translated and they read like a log line. Map them to real copy; the raw text stays in
- * the log.
- */
+/** The core's outcome tokens are untranslatable and log-shaped; never shown verbatim. */
 fun transferErrorMessage(context: Context, raw: String?): String {
     val text = raw?.lowercase().orEmpty()
     // The limit comes from the core so the copy cannot drift from the rule.
@@ -40,7 +33,6 @@ fun transferErrorMessage(context: Context, raw: String?): String {
     )
 }
 
-/** The same treatment for a failure reported while pairing. */
 fun pairingErrorMessage(context: Context, raw: String?): String {
     val text = raw?.lowercase().orEmpty()
     return context.getString(

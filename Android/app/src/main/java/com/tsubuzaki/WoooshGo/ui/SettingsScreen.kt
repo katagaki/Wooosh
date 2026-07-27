@@ -61,8 +61,7 @@ fun SettingsScreen(
     relayError: String?,
     onBack: () -> Unit,
 ) {
-    // Local edit buffer so persistence (and the discovery re-registration debounce)
-    // doesn't fight the text field cursor.
+    // Local edit buffer so persistence does not fight the text field cursor.
     var displayName by rememberSaveable { mutableStateOf(settings.displayName) }
     var relayUrl by rememberSaveable { mutableStateOf(settings.relayUrl) }
 
@@ -132,9 +131,6 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
-            // Worth showing rather than hiding behind a default: the three options
-            // differ in who has to be available for an internet transfer to work, and
-            // this is the only place Wooosh says a relay never carries file data.
             Text(
                 text = stringResource(R.string.settings_section_relay),
                 style = MaterialTheme.typography.titleMedium,
@@ -193,8 +189,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                // Straight from the core's trust store: DeviceID is the identity and the
-                // display name is only a label.
+                // DeviceID is the identity; the display name is only a label.
                 pairedDevices.forEach { device ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

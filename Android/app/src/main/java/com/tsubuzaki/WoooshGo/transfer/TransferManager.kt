@@ -45,10 +45,9 @@ data class FileState(
     /** True only once the file is routed to its final location (DESIGN.md §6). */
     val routed: Boolean = false,
     val error: String? = null,
-    /** Content URI of the routed file, when one could be obtained — see [RoutedFile]. */
     val savedUri: Uri? = null,
 ) {
-    /** Routing has run and either placed the file or given up on it. */
+    /** Routing has run and either placed the file or given up. */
     val isSettled: Boolean get() = routed || error != null
 }
 
@@ -61,7 +60,7 @@ data class TransferUi(
     val etaSeconds: Long = -1,
     val status: TransferStatus = TransferStatus.RUNNING,
     val message: String? = null,
-    /** Wall-clock duration reported by the core on TransferDone; 0 while running. */
+    /** Reported by the core on TransferDone; 0 while running. */
     val durationMs: Long = 0,
 ) {
     val totalBytes: Long get() = files.sumOf { it.meta.size }
@@ -69,13 +68,8 @@ data class TransferUi(
 }
 
 /**
- * An outgoing OFFER on the wire, waiting for the receiver's DECISION (PROTOCOL.md §5).
- * The core only emits `TransferStarted` after the receiver accepts, so this is the only
- * send-side state during that window.
- *
- * That window is the verification ceremony: an unpaired receiver is told to compare the
- * sender's fingerprint (PROTOCOL.md §4.4), so the sender must be showing it at the same
- * moment. [peerIsPaired] gates that — for a paired peer the phrase is noise.
+ * An unpaired receiver is told to compare the sender's fingerprint (PROTOCOL.md §4.4), so
+ * [peerIsPaired] false means the sender must display it during this window.
  */
 data class OutgoingOffer(
     val transferId: TransferId,
@@ -84,10 +78,6 @@ data class OutgoingOffer(
     val fileCount: Int,
 )
 
-/**
- * App-scoped transfer orchestration: consumes the core event stream, exposes UI state,
- * routes finished files (DESIGN.md §6), and drives the foreground service (DESIGN.md §7).
- */
 class TransferManager(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -99,17 +89,12 @@ class TransferManager(
     private val storageRouter = StorageRouter(context)
     private val receivedNotifier = ReceivedNotifier(context)
 
-    /** Transfers whose "files arrived" notification has been posted — see [maybeNotifyReceived]. */
     private val notifiedReceived = ConcurrentHashMap.newKeySet<TransferId>()
 
     private val _transfers = MutableStateFlow<List<TransferUi>>(emptyList())
     val transfers: StateFlow<List<TransferUi>> = _transfers.asStateFlow()
 
-    /**
-     * Transfers requested but whose TransferStarted has not arrived: a connect plus an
-     * OFFER/consent round trip sits in between, and the other user may take a while. The
-     * foreground service must stay up across it.
-     */
+    /** A connect plus a consent round trip, across which the service must stay up. */
     private val pendingStarts = ConcurrentHashMap.newKeySet<String>()
     private val _pending = MutableStateFlow(0)
     private val pendingSeq = AtomicInteger(0)
@@ -118,7 +103,6 @@ class TransferManager(
         .map { list -> list.any { it.status == TransferStatus.RUNNING } }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
-    /** Drives the foreground service: real running transfers OR a request in flight. */
     val serviceNeeded: StateFlow<Boolean> = _transfers
         .combine(_pending) { list, pending ->
             pending > 0 || list.any { it.status == TransferStatus.RUNNING }
@@ -128,38 +112,25 @@ class TransferManager(
     private val _pendingOffer = MutableStateFlow<CoreEvent.IncomingOffer?>(null)
     val pendingOffer: StateFlow<CoreEvent.IncomingOffer?> = _pendingOffer.asStateFlow()
 
-    /** Outgoing OFFERs waiting on the receiver's DECISION — see [OutgoingOffer]. */
     private val _outgoingOffers = MutableStateFlow<List<OutgoingOffer>>(emptyList())
     val outgoingOffers: StateFlow<List<OutgoingOffer>> = _outgoingOffers.asStateFlow()
 
-    /** User-presentable failures that have no transfer card to attach to. */
     private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val errors: SharedFlow<String> = _errors.asSharedFlow()
 
-    /** Display names supplied at send() time — nicer than the core's peer ids. */
     private val requestedPeerNames = ConcurrentHashMap<TransferId, String>()
 
-    /**
-     * Peers authorised for this session by an internet ticket (PROTOCOL.md §9.4).
-     * Session-scoped on purpose: the internet path never pairs, so this must not outlive
-     * the process and is never written to disk.
-     */
+    /** Never written to disk: the internet path does not pair (PROTOCOL.md §9.4). */
     private val ticketPeers = ConcurrentHashMap.newKeySet<String>()
 
-    /** Set when someone redeems a ticket this device published. */
     private val _ticketRedeemedPeerId = MutableStateFlow<String?>(null)
     val ticketRedeemedPeerId: StateFlow<String?> = _ticketRedeemedPeerId.asStateFlow()
 
-    /**
-     * Drops a recorded redemption. A ticket is single-use, so this id is only ever
-     * meaningful for the code it arrived against; left set, the next visit to the send
-     * tab would fire immediately against a dead code and silently send nothing.
-     */
+    /** A ticket is single-use; left set, the next send tab visit fires against a dead code. */
     fun clearTicketRedeemedPeer() {
         _ticketRedeemedPeerId.value = null
     }
 
-    /** manifest lookup for FileReady routing (name + MIME). */
     private val manifests = ConcurrentHashMap<TransferId, Map<FileId, FileMeta>>()
 
     /** `TransferDone` does not name its peer, and the ticket rows need to know. */
@@ -174,17 +145,9 @@ class TransferManager(
         }
     }
 
-    // ---------------------------------------------------------------- commands
-
-    /**
-     * Tap-to-send on a discovered row. Everything blocking happens off the main thread
-     * inside the core adapter.
-     */
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
         val addr = peer.address
-        // A row reached over the internet (PROTOCOL.md §9) has no mDNS address and never
-        // will: its connection is already up and is identified by DeviceID alone. Only a
-        // row with neither an address nor a live peer id is genuinely unreachable.
+        // An internet row (PROTOCOL.md §9) never has an mDNS address, only a DeviceID.
         val established = peer.peerId?.takeIf { addr == null }
         if (addr == null && established == null) {
             scope.launch {
@@ -196,9 +159,7 @@ class TransferManager(
         beginPending(pendingKey)
         scope.launch(Dispatchers.IO) {
             try {
-                // Always pin: the core's address-based fallback only covers reconnects to
-                // the same ip:port, so passing the key is what covers a peer that moved
-                // (PROTOCOL.md §4.5).
+                // Always pin: the core's address fallback misses a peer that moved.
                 val pinnedKey = trustStore.pinnedKeyFor(peer.peerId)
                 Log.i(
                     TAG,
@@ -210,9 +171,7 @@ class TransferManager(
                 persistReadGrants(uris)
                 val transferId = core.send(peerId, uris)
                 requestedPeerNames[transferId] = peer.displayName
-                // The core now sits on DECISION for up to two minutes. Hold the pending
-                // slot on the transfer id, not the throwaway send key, so the foreground
-                // service survives that wait.
+                // DECISION can take two minutes; the service must survive that wait.
                 beginPending(transferId)
                 val paired = trustStore.find(peerId) != null
                 Log.i(TAG, "offer $transferId to ${peer.displayName} paired=$paired")
@@ -226,7 +185,7 @@ class TransferManager(
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "send to ${peer.displayName} ($addr) failed", t)
-                // Core failures are internal English; never surface them raw.
+                // Core failures are internal English; never surfaced raw.
                 _errors.emit(context.getString(R.string.error_send_failed_body))
             } finally {
                 endPending(pendingKey)
@@ -234,10 +193,7 @@ class TransferManager(
         }
     }
 
-    /**
-     * Sends to an already-connected peer identified by DeviceID alone — the internet
-     * path, where there is no mDNS row and no address to dial.
-     */
+    /** The internet path: no mDNS row and no address to dial, only a DeviceID. */
     fun sendToPeerId(peerId: String, uris: List<Uri>) {
         beginPending(peerId)
         scope.launch(Dispatchers.IO) {
@@ -252,8 +208,7 @@ class TransferManager(
                     offers.filterNot { it.transferId == transferId } + OutgoingOffer(
                         transferId = transferId,
                         peerName = requestedPeerNames[transferId].orEmpty(),
-                        // Never pinned on this path, and the receiver already
-                        // consented by scanning, so no fingerprint is shown.
+                        // The receiver consented by scanning, so no fingerprint is shown.
                         peerIsPaired = true,
                         fileCount = uris.size,
                     )
@@ -278,20 +233,13 @@ class TransferManager(
             subfolders[offer.transferId] =
                 "Wooosh/${LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)}"
         }
-        // The manifest is needed for FileReady routing even though TransferStarted
-        // repeats it — the first FileReady can race that event on a tiny file.
+        // Also stored on TransferStarted, which a tiny file's FileReady can beat.
         manifests[offer.transferId] = offer.manifest.associateBy { it.id }
         beginPending(offer.transferId)
         core.respondToOffer(offer.transferId, acceptedFileIds)
     }
 
-    /**
-     * Accepts a paired sender's offer without a prompt.
-     *
-     * Deliberately not routed through [acceptOffer]: that reads and clears
-     * [_pendingOffer], which here could belong to a *different*, unpaired sender whose
-     * sheet is on screen and unanswered.
-     */
+    /** Not via [acceptOffer]: [_pendingOffer] may belong to another, unpaired sender. */
     private fun autoAccept(offer: CoreEvent.IncomingOffer) {
         val ids = offer.manifest.map { it.id }
         if (ids.size > FILES_PER_SUBFOLDER_THRESHOLD) {
@@ -309,39 +257,29 @@ class TransferManager(
         core.respondToOffer(offer.transferId, emptyList())
     }
 
-    /**
-     * Cancels a running transfer or withdraws an offer the receiver has not answered.
-     * The waiting card is dropped immediately rather than on the core's echo, so the
-     * fingerprint stops being displayed the moment the user withdraws the offer.
-     */
+    /** Drops the card at once, not on the core's echo, so the fingerprint stops showing. */
     fun cancel(transferId: TransferId) {
         clearOutgoingOffer(transferId)
         core.cancel(transferId)
     }
 
     fun cancelAll() {
-        // Offers still waiting on a DECISION count as in-flight work too.
         _outgoingOffers.value.forEach { cancel(it.transferId) }
         _transfers.value
             .filter { it.status == TransferStatus.RUNNING }
             .forEach { core.cancel(it.id) }
     }
 
-    /** Removes a finished/failed card from the UI. */
     fun dismiss(transferId: TransferId) {
         _transfers.update { list ->
             list.filterNot { it.id == transferId && it.status != TransferStatus.RUNNING }
         }
     }
 
-    // ---------------------------------------------------------------- events
-
     private fun onEvent(event: CoreEvent) {
         when (event) {
             is CoreEvent.TransferStarted -> {
                 endPending(event.transferId)
-                // DECISION arrived: the comparison is over, so the fingerprint stops
-                // being displayed.
                 clearOutgoingOffer(event.transferId)
                 manifests[event.transferId] = event.manifest.associateBy { it.id }
                 peerIdByTransfer[event.transferId] = event.peer.id
@@ -367,30 +305,21 @@ class TransferManager(
             }
 
             is CoreEvent.TicketRedeemed -> {
-                // Not a pairing: nothing is pinned and the authorisation dies with the
-                // connection. Remembered for this process only, so the peer's offer can
-                // skip a consent sheet the user already gave by scanning.
+                // Lets the peer's offer skip a consent sheet already given by scanning.
                 ticketPeers.add(event.peer.id)
                 registry.onConnected(
                     peerId = event.peer.id,
                     displayName = event.peer.displayName,
                     deviceType = event.peer.deviceType,
-                    // The row must not claim to be paired. A previously pinned peer is
-                    // still in the trust store and the core still reports the connection
-                    // as trusted, but the pin admitted nothing here: the single-use
-                    // ticket did (DESIGN.md §9).
+                    // A pin may exist, but the ticket is what admitted this peer.
                     viaTicket = true,
                 )
                 _ticketRedeemedPeerId.value = event.peer.id
             }
 
             is CoreEvent.IncomingOffer ->
-                // Pairing already *is* the consent (PROTOCOL.md §4). Asking again for
-                // every transfer from a device the user deliberately pinned turns the
-                // prompt into something to dismiss without reading, which is worse for
-                // the case that actually matters: the unpaired sender, who still gets
-                // the full sheet with the fingerprint to verify. `paired` is the core's
-                // verdict on the pinned key, not a shell-side guess.
+                // Pairing already is the consent (PROTOCOL.md §4), and prompting anyway
+                // trains the user to dismiss the unpaired sender's sheet too.
                 if (event.from.paired || event.from.id in ticketPeers) {
                     autoAccept(event)
                 } else {
@@ -429,15 +358,13 @@ class TransferManager(
 
             is CoreEvent.TransferError -> {
                 endPending(event.transferId)
-                // Declined, timed out or cancelled while waiting — the card goes away
-                // either way; the message is surfaced below.
                 clearOutgoingOffer(event.transferId)
                 var known = false
                 updateTransfer(event.transferId) { transfer ->
                     known = true
                     transfer.copy(status = TransferStatus.FAILED, message = event.message)
                 }
-                // Failures before TransferStarted have no card to update — surface them.
+                // Failures before TransferStarted have no card to update.
                 if (!known) scope.launch {
                     _errors.emit(
                         transferErrorMessage(context, event.message)
@@ -446,8 +373,7 @@ class TransferManager(
                 endTicketSession(event.transferId)
             }
 
-            // HELLO is authoritative for identity and device type; the mDNS TXT the row
-            // was created from is only a hint.
+            // HELLO is authoritative for identity and device type; the mDNS TXT is a hint.
             is CoreEvent.PeerConnected -> registry.onConnected(
                 peerId = event.peer.id,
                 displayName = event.peer.displayName,
@@ -456,29 +382,22 @@ class TransferManager(
 
             is CoreEvent.PeerDisconnected -> registry.onDisconnected(event.peerId)
 
-            else -> Unit // pairing events handled by PairingManager
+            else -> Unit // handled by PairingManager
         }
     }
 
-    /**
-     * A ticket authorises exactly one transfer, so its row stops being a place to send
-     * things the moment that transfer settles — whether it succeeded or not. Waiting for
-     * the connection to close instead would leave a live-looking row for as long as iroh
-     * kept the link open.
-     */
+    /** A ticket authorises exactly one transfer, however long iroh keeps the link open. */
     private fun endTicketSession(transferId: TransferId) {
         val peerId = peerIdByTransfer.remove(transferId) ?: return
         registry.onTicketSessionEnded(peerId)
     }
 
-    /** Completion line for the card; every number comes from the core's `TransferDone`. */
     private fun summaryOf(event: CoreEvent.TransferDone, direction: TransferDirection): String {
         val sent = direction == TransferDirection.SEND
         val elapsed = formatDuration(context, event.durationMs)
         val res = context.resources
         return when {
-            // Counts go through the platform's plural machinery and the elapsed time is a
-            // placeholder in the same format string: translators never get a fragment.
+            // Counts and elapsed time share one format string, never a fragment.
             event.okFiles == 0 && event.failedFiles > 0 -> res.getQuantityString(
                 R.plurals.transfer_done_failed, event.failedFiles, event.failedFiles,
             )
@@ -536,16 +455,12 @@ class TransferManager(
                     },
                 )
             }
-            // Routing runs off the event thread, so the last file can settle after
-            // TransferDone has already landed. Whichever happens second posts.
+            // Routing runs off the event thread and can settle after TransferDone.
             maybeNotifyReceived(event.transferId)
         }
     }
 
-    /**
-     * Posts the "files arrived" notification once the transfer is both finished and fully
-     * routed — a notification that opened a file still sitting in staging would be a lie.
-     */
+    /** Only once routing has finished: a notification opening a staged file would be a lie. */
     private fun maybeNotifyReceived(transferId: TransferId) {
         val transfer = _transfers.value.firstOrNull { it.id == transferId } ?: return
         if (transfer.direction != TransferDirection.RECEIVE) return
@@ -556,8 +471,7 @@ class TransferManager(
     }
 
     private fun persistReadGrants(uris: List<Uri>) {
-        // Best effort: only ACTION_OPEN_DOCUMENT grants are persistable. Photo Picker and
-        // share-sheet grants are not, so those items are copied out promptly instead.
+        // Only ACTION_OPEN_DOCUMENT grants are persistable; the rest are copied out.
         uris.forEach { uri ->
             runCatching {
                 context.contentResolver.takePersistableUriPermission(
@@ -567,7 +481,6 @@ class TransferManager(
         }
     }
 
-    /** Drops the waiting card for [transferId]; returns it when there was one. */
     private fun clearOutgoingOffer(transferId: TransferId): OutgoingOffer? {
         val removed = _outgoingOffers.value.firstOrNull { it.transferId == transferId }
         if (removed != null) {

@@ -3,12 +3,8 @@ import Foundation
 import UIKit
 #endif
 
-/// The platform-explicit device vocabulary carried in the mDNS TXT `dt` field
-/// (PROTOCOL.md §3.1).
-///
-/// Form factor alone cannot pick a correct icon — an Android phone and an
-/// iPhone are both "a phone", and drawing an iPhone glyph for a Pixel is
-/// wrong. Anything not in this list is *unknown*, never guessed at.
+/// The TXT `dt` vocabulary (PROTOCOL.md §3.1). Form factor alone cannot pick an
+/// icon, so anything not in this list is *unknown*, never guessed at.
 enum DeviceKind: String, Sendable, CaseIterable {
     case iphone
     case ipad
@@ -17,17 +13,13 @@ enum DeviceKind: String, Sendable, CaseIterable {
     case androidPhone = "android-phone"
     case androidTablet = "android-tablet"
 
-    /// Parses a TXT `dt` value. Returns nil for an absent, empty or
-    /// unrecognized value — including peers still advertising the retired
-    /// `phone`/`tablet`/`laptop`/`desktop` vocabulary, which degrade to the
-    /// neutral glyph rather than to a confidently wrong one. New values added
-    /// to the protocol later land here too, by construction.
+    /// nil for absent, empty, unrecognised, or retired vocabulary, which degrades
+    /// to the neutral glyph rather than to a confidently wrong one.
     init?(wire: String?) {
         guard let wire, let kind = DeviceKind(rawValue: wire) else { return nil }
         self = kind
     }
 
-    /// What this device advertises.
     static var current: DeviceKind {
         #if os(iOS)
         UIDevice.current.userInterfaceIdiom == .pad ? .ipad : .iphone
@@ -37,14 +29,10 @@ enum DeviceKind: String, Sendable, CaseIterable {
     }
 }
 
-/// The single place that turns a device type into an SF Symbol. Two sources
-/// feed it: the TXT `dt` vocabulary above (authoritative), and the core's
-/// coarser form-factor enum arriving on `PeerConnected` / `IncomingOffer`. If
-/// the core's enum is ever aligned with PROTOCOL.md §3.1,
-/// `symbol(forCoreType:)` is the only edit.
+/// The single place a device type becomes an SF Symbol, fed by the authoritative
+/// TXT `dt` and by the core's coarser enum. Aligning the two is one edit here.
 enum DeviceIcon {
-    /// Used whenever the device type is unknown or ambiguous. A generic icon
-    /// is always acceptable; a confidently wrong one is not (PROTOCOL.md §3.1).
+    /// A generic icon is always acceptable; a confidently wrong one is not.
     static let neutral = "questionmark.square.dashed"
 
     static func symbol(for kind: DeviceKind?) -> String {
@@ -55,17 +43,14 @@ enum DeviceIcon {
         case .windows: "pc"
         // The user's explicit ask: non-Apple phones get the generic handset.
         case .androidPhone: "smartphone"
-        // No neutral tablet glyph ships in this SDK (`tablet` does not exist),
-        // and `ipad` would be a lie, so this falls back to neutral.
+        // No neutral tablet glyph in this SDK, and `ipad` would be a lie.
         case .androidTablet: neutral
         case nil: neutral
         }
     }
 
-    /// Conservative bridge for the core's form-factor enum. `phone` and
-    /// `tablet` are ambiguous between Apple and Android hardware, so they get
-    /// the neutral glyph; `laptop` and `desktop` map to platform-neutral
-    /// computer glyphs, which are honest for any vendor.
+    /// `phone` and `tablet` are ambiguous between Apple and Android, so they go
+    /// neutral; `laptop` and `desktop` have honest vendor-neutral glyphs.
     static func symbol(forCoreType type: DeviceType?) -> String {
         switch type {
         case .laptop: "laptopcomputer"
@@ -74,10 +59,8 @@ enum DeviceIcon {
         }
     }
 
-    /// Spoken name for the glyph. The glyph is the only place a row states
-    /// what kind of device it is, so VoiceOver has to be told in words. An
-    /// unrecognised device is "Device", never a plausible-looking guess, for
-    /// exactly the reason `neutral` exists.
+    /// The glyph is the only place a row states its device kind, so VoiceOver
+    /// needs it in words. Unrecognised reads as "Device", never a guess.
     static func label(for kind: DeviceKind?) -> String {
         switch kind {
         case .iphone: L.t("device_kind_iphone")

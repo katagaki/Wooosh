@@ -8,16 +8,7 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!--
-                Wooosh has no brand colour. Everything tinted reaches for the system accent
-                theme resources at the point of use: AccentFillColorDefaultBrush,
-                AccentTextFillColorPrimaryBrush and AccentButtonStyle (DESIGN.md §5), so the
-                app follows the user's Windows accent for free.
-
-                They are deliberately NOT aliased into this dictionary: a StaticResource
-                alias to a theme resource resolves once at load and then stops following a
-                light/dark switch.
-            -->
+            <!-- Accent theme resources are used at the point of use, never aliased here: a StaticResource alias resolves once and stops following light/dark switches. -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

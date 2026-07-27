@@ -5,12 +5,7 @@ using Wooosh.Localization;
 
 namespace Wooosh.Views;
 
-/// <summary>
-/// Consent for an incoming offer (DESIGN.md §5). A paired sender gets a plain Accept; an
-/// unpaired one additionally shows its verification phrase and offers "Accept Once" beside
-/// "Pair &amp; Accept", so the user can take the files without writing a pin
-/// (PROTOCOL.md §4.4).
-/// </summary>
+/// <summary>An unpaired sender must show its verification phrase, and "Accept Once" must let the user take files without pinning (PROTOCOL.md §4.4).</summary>
 public sealed partial class IncomingOfferDialog : ContentDialog
 {
     private readonly CoreEvent.IncomingOffer _offer;
@@ -40,7 +35,7 @@ public sealed partial class IncomingOfferDialog : ContentDialog
         }
     }
 
-    /// <summary>File ids the user agreed to receive. Empty means the whole offer was declined.</summary>
+    /// <summary>Empty means the whole offer was declined.</summary>
     public IReadOnlyList<FileId> AcceptedFileIds { get; private set; } = [];
 
     private void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args) =>

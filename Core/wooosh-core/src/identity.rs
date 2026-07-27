@@ -11,7 +11,6 @@ pub struct Identity {
 }
 
 impl Identity {
-    /// Load an identity from 32 secret-key bytes, or generate a new one.
     pub fn from_secret_bytes(bytes: &[u8]) -> Result<Self, WoooshError> {
         let arr: [u8; 32] = bytes
             .try_into()
@@ -36,7 +35,7 @@ impl Identity {
         self.signing_key.verifying_key().to_bytes()
     }
 
-    /// PKCS#8 v2 DER of the private key (for rcgen / rustls).
+    /// PKCS#8 v2 DER, the form rcgen / rustls expect.
     pub fn pkcs8_der(&self) -> Result<Vec<u8>, WoooshError> {
         let doc = self
             .signing_key
@@ -54,7 +53,6 @@ impl Identity {
         device_id_string_for(&self.public_key_bytes())
     }
 
-    /// 6-word fingerprint phrase from BLAKE3(pubkey)[0..6].
     pub fn fingerprint_phrase(&self) -> String {
         fingerprint_phrase_for(&self.public_key_bytes())
     }
@@ -67,7 +65,7 @@ pub fn device_id_for(pubkey: &[u8; 32]) -> [u8; 16] {
     id
 }
 
-/// Base32 (RFC 4648, no padding, upper-case) rendering, grouped by 4 with dashes.
+/// Base32 (RFC 4648, no padding, upper-case), grouped by 4 with dashes.
 pub fn render_device_id(id: &[u8; 16]) -> String {
     let raw = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, id);
     raw.as_bytes()
@@ -98,7 +96,6 @@ mod tests {
         assert_eq!(a, b);
         assert_eq!(a.len(), 16);
         let s = id.device_id_string();
-        // 16 bytes -> 26 base32 chars -> 7 groups
         assert_eq!(s.replace('-', "").len(), 26);
         assert!(s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '-'));
     }

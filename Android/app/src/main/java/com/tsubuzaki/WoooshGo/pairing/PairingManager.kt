@@ -19,24 +19,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * App-scoped holder for pairing UI state, fed by the core event stream so SAS requests
- * and KEY_CHANGED alerts are not lost while no screen is composed.
- *
- * The core emits a single `PairingResult` for both the QR and SAS paths (DESIGN.md §4).
- * The shell never records a pairing itself: it re-reads `trustedPeers()`, which the core
- * has already written by the time the event fires.
- */
+/** App-scoped so SAS and KEY_CHANGED alerts survive with no screen composed. */
 class PairingManager(
     private val context: Context,
     private val scope: CoroutineScope,
     private val core: WoooshCore,
     private val trustStore: TrustStore,
-    /**
-     * Whether the internet path is switched on (DESIGN.md §9.1). A lambda rather than a
-     * stored value: the setting changes while this manager lives, and reading it at the
-     * moment of use is the only way to be right.
-     */
+    /** A lambda, not a stored value: the setting changes while this manager lives. */
     private val internetEnabled: () -> Boolean = { true },
 ) {
 
@@ -45,26 +34,17 @@ class PairingManager(
     enum class AttemptState { CONNECTING, FAILED, SUCCEEDED }
 
     /**
-     * A pairing ceremony the user is waiting on.
-     *
-     * Pairing dials each QR address hint in turn and then waits for PAIR_ACCEPT, so tens
-     * of seconds is normal, not an anomaly — and silence for that long is indistinguishable
-     * from pairing being broken. Every path that starts a ceremony must publish
-     * [AttemptState.CONNECTING], and every path that ends one must settle it.
+     * Tens of seconds of silence is normal and reads as breakage, so every path that
+     * starts a ceremony must publish CONNECTING and every path that ends one must settle it.
      */
     data class Attempt(
         val deviceName: String,
         val state: AttemptState,
         val message: String? = null,
-        /**
-         * Whether this is a ticket redemption rather than a pairing ceremony. The
-         * internet path never pairs (PROTOCOL.md §9.4), so its wait must not be
-         * labelled "Pairing" or resolved as "Paired with" — nothing is pinned.
-         */
+        /** The internet path never pairs (PROTOCOL.md §9.4), so its wait is worded differently. */
         val isTicket: Boolean = false,
     )
 
-    /** A pinned peer presenting a different key: both phrases, so the user can compare. */
     data class KeyChangedAlert(
         val peer: PeerRef,
         val expectedFingerprint: String,
@@ -74,33 +54,23 @@ class PairingManager(
     private val _pendingSas = MutableStateFlow<SasRequest?>(null)
     val pendingSas: StateFlow<SasRequest?> = _pendingSas.asStateFlow()
 
-    /** Non-null while a KEY_CHANGED warning must be shown (PROTOCOL.md §4.5). */
     private val _keyChanged = MutableStateFlow<KeyChangedAlert?>(null)
     val keyChanged: StateFlow<KeyChangedAlert?> = _keyChanged.asStateFlow()
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
-    /** Non-null while a pairing ceremony is running, or has just ended. */
     private val _attempt = MutableStateFlow<Attempt?>(null)
     val attempt: StateFlow<Attempt?> = _attempt.asStateFlow()
 
-    /**
-     * Fires on the *redeeming* device once its scan has landed a connection. Scanning was
-     * the whole job (PROTOCOL.md §9.4), so the scanner has nothing left to show and the
-     * caller sends the user back to the transfer list.
-     */
+    /** Fires only on the redeeming device; scanning was the whole job (PROTOCOL.md §9.4). */
     private val _ticketRedeemed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val ticketRedeemed: SharedFlow<Unit> = _ticketRedeemed.asSharedFlow()
 
-    /**
-     * Whether the in-flight attempt is a ticket redemption. Decides which event settles
-     * it: the ticket path succeeds with `TicketRedeemed`, never `PairingResult`.
-     */
+    /** The ticket path settles on `TicketRedeemed`, never `PairingResult`. */
     @Volatile
     private var attemptIsTicket = false
 
-    /** Client-side deadline for the current attempt — the "no event ever arrives" net. */
     private var watchdog: Job? = null
 
     init {
@@ -115,7 +85,7 @@ class PairingManager(
                         watchdog?.cancel()
                         if (event.success) {
                             attemptIsTicket = false
-                            // The core pinned it before emitting; re-read rather than guess.
+                            // The core pinned it before emitting; re-read, do not guess.
                             val peers = trustStore.refreshNow()
                             val name = peers.firstOrNull { it.deviceId == event.peerId }
                                 ?.displayName
@@ -132,8 +102,7 @@ class PairingManager(
                             val name = event.peer?.displayName
                                 ?: _attempt.value?.deviceName
                                 ?: event.peerId
-                            // Only a ceremony this device started gets the modal. The
-                            // QR-*showing* side asked for no dialog, just a snackbar.
+                            // Only a ceremony this device started gets the modal.
                             if (_attempt.value != null) {
                                 settle(AttemptState.FAILED, name, message)
                             } else {
@@ -142,21 +111,12 @@ class PairingManager(
                         }
                     }
 
-                    // The internet path never pairs (PROTOCOL.md §9.4), so a redeemed
-                    // ticket succeeds with this event and no `PairingResult` ever
-                    // arrives. Without settling here the ceremony would hang until the
-                    // watchdog reported a timeout for a transfer that is running fine.
-                    //
-                    // Nothing is pinned, so there is no "Paired with" outcome to show.
-                    // Redeeming is itself the consent (DESIGN.md §9.1) and the transfer
-                    // UI takes over from here, so the wait simply ends.
+                    // No `PairingResult` arrives: the internet path never pairs.
                     is CoreEvent.TicketRedeemed -> if (attemptIsTicket) {
                         attemptIsTicket = false
                         watchdog?.cancel()
                         _attempt.value = null
-                        // Guarded by `attemptIsTicket`, so only the side that scanned is
-                        // sent onward: the publisher gets this event too, and it is still
-                        // waiting on its own send tab.
+                        // Guarded: the publisher gets this event too but must stay put.
                         _ticketRedeemed.emit(Unit)
                     }
 
@@ -166,8 +126,7 @@ class PairingManager(
                         presentedFingerprint = event.presentedFingerprint,
                     )
 
-                    // Re-authentication updates last_seen in the core's store; re-read it
-                    // so the Settings list is not stale.
+                    // Re-authentication updates last_seen in the core's store.
                     is CoreEvent.PeerConnected -> if (event.peer.paired) trustStore.refresh()
 
                     else -> Unit
@@ -176,15 +135,7 @@ class PairingManager(
         }
     }
 
-    // ------------------------------------------------------------- starting a ceremony
-
-    /**
-     * QR path (PROTOCOL.md §4.2). Malformed and expired codes are rejected locally: they
-     * need no round trip, so do not make the user wait to be told the code was stale.
-     *
-     * `core.pairWithQr` returns at once and blocks on an IO dispatcher, so nothing here
-     * touches the main thread.
-     */
+    /** Stale and malformed codes are rejected locally rather than after a round trip. */
     fun pairWithQr(payload: String) {
         val info = core.parsePairingCode(payload)
         val name = info?.deviceName?.takeIf { it.isNotBlank() }
@@ -209,19 +160,13 @@ class PairingManager(
         }
     }
 
-    /**
-     * One entry point for every code the user can scan or paste. A pairing code and an
-     * internet ticket look identical to a camera, so the scheme decides which path runs
-     * rather than asking the user to classify a code they did not author.
-     */
+    /** A pairing code and a ticket look identical to a camera, so the scheme decides. */
     fun pairWithScannedCode(payload: String) {
         if (!payload.trim().startsWith(TICKET_SCHEME)) {
             pairWithQr(payload)
             return
         }
-        // A ticket scanned while the internet path is off: say so rather than dial. The
-        // user is holding a code that would work if they turned it on, which a generic
-        // pairing failure would not tell them.
+        // A generic pairing failure would not tell the user the code works once enabled.
         if (!internetEnabled()) {
             failNow(
                 context.getString(R.string.peer_unnamed),
@@ -233,11 +178,7 @@ class PairingManager(
         redeemTicket(payload)
     }
 
-    /**
-     * Internet path, sender side (PROTOCOL.md §9). Same shape as [pairWithQr]: reject a
-     * stale or malformed ticket locally, then hand the rest to the core and wait on its
-     * `PairingResult`.
-     */
+    /** Internet path, sender side (PROTOCOL.md §9). */
     fun redeemTicket(payload: String) {
         val info = core.parseTicket(payload)
         val name = info?.deviceName?.takeIf { it.isNotBlank() }
@@ -270,23 +211,18 @@ class PairingManager(
         val request = _pendingSas.value ?: return
         core.confirmSas(request.peer.id, accepted)
         _pendingSas.value = null
-        // "Codes match" is not the end: PAIR_CONFIRM still crosses the network both ways.
-        // Leaving the SAS sheet up would let its own 60 s timer abort what was just
-        // confirmed.
+        // PAIR_CONFIRM still crosses the network, and the SAS sheet's own 60 s timer
+        // would abort what was just confirmed.
         if (accepted) beginAttempt(request.peer.displayName)
     }
 
-    /** Camera-less pairing with a peer we are already connected to (PROTOCOL.md §4.3). */
+    /** Camera-less pairing, requires an existing connection (PROTOCOL.md §4.3). */
     fun requestSasPairing(peerId: String) {
         beginAttempt(peerId)
         core.requestSasPairing(peerId)
     }
 
-    /**
-     * User gave up on the wait. The blocking core call cannot be interrupted, so this
-     * stops the UI waiting rather than aborting the handshake; a late `PairingResult` is
-     * then ignored (the snackbar still reports it).
-     */
+    /** The blocking core call cannot be interrupted; this only stops the UI waiting. */
     fun cancelAttempt() {
         val abandoned = _attempt.value ?: return
         Log.i(TAG, "pairing attempt with ${abandoned.deviceName} cancelled by the user")
@@ -295,7 +231,6 @@ class PairingManager(
         _attempt.value = null
     }
 
-    /** Dismisses a settled (failed or succeeded) attempt. */
     fun dismissAttempt() {
         if (_attempt.value?.state != AttemptState.CONNECTING) _attempt.value = null
     }
@@ -310,7 +245,6 @@ class PairingManager(
         _attempt.value = Attempt(deviceName, AttemptState.CONNECTING, isTicket = isTicket)
         watchdog = scope.launch {
             delay(timeoutMs)
-            // Only fires when the core produced neither a result nor an error.
             if (_attempt.value?.state == AttemptState.CONNECTING) {
                 Log.w(TAG, "pairing with $deviceName timed out in the shell after ${timeoutMs}ms")
                 settle(
@@ -325,11 +259,7 @@ class PairingManager(
         }
     }
 
-    /**
-     * Terminal state for an attempt that is still on screen. Deliberately a no-op when
-     * there is none: a `PairingResult` also reaches the device that merely *displayed*
-     * the QR, and that user asked for no dialog — the snackbar is their feedback.
-     */
+    /** A no-op with no attempt on screen: the QR-showing device gets a snackbar instead. */
     private fun settle(state: AttemptState, deviceName: String, message: String?) {
         val current = _attempt.value ?: return
         watchdog?.cancel()
@@ -341,7 +271,6 @@ class PairingManager(
         )
     }
 
-    /** Raises a failed attempt with no prior CONNECTING state (pre-flight rejections). */
     private fun failNow(deviceName: String, message: String, isTicket: Boolean = false) {
         watchdog?.cancel()
         _attempt.value = Attempt(deviceName, AttemptState.FAILED, message, isTicket = isTicket)
@@ -351,14 +280,13 @@ class PairingManager(
         _keyChanged.value = null
     }
 
-    /** "Re-pair" from the KEY_CHANGED dialog: drop the stale pin; caller navigates to pairing. */
     fun revokeForRepair() {
         val alert = _keyChanged.value ?: return
         revoke(alert.peer.id)
         _keyChanged.value = null
     }
 
-    /** Revokes in the core — the only trust store there is — then re-reads the list. */
+    /** The core is the only trust store there is. */
     fun revoke(deviceId: String) {
         scope.launch {
             val key = trustStore.pinnedKeyFor(deviceId)
@@ -376,19 +304,10 @@ class PairingManager(
     private companion object {
         const val TAG = "WoooshPairing"
 
-        /**
-         * Shell-side backstop only; the core normally reports failure by throwing out of
-         * `pairWithQr`. Must stay above the core's worst case (address hints dialled in
-         * turn at ~10 s each, then a 20 s wait for PAIR_ACCEPT) so it never turns a slow
-         * but working handshake into a false failure.
-         */
+        /** Backstop; above the core's worst case of hints at ~10 s each plus a 20 s wait. */
         const val ATTEMPT_TIMEOUT_MS = 45_000L
 
-        /**
-         * The internet path gets its own, longer ceiling: redeeming a ticket can spend
-         * ~30 s hole punching before the 20 s wait for PAIR_ACCEPT even starts, so the
-         * LAN budget would report a working connection as a failure.
-         */
+        /** Redeeming can spend ~30 s hole punching before the PAIR_ACCEPT wait starts. */
         const val TICKET_TIMEOUT_MS = 75_000L
 
         const val TICKET_SCHEME = "wooosh-net:"

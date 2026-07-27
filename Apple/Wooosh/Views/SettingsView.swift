@@ -8,8 +8,7 @@ struct SettingsView: View {
 
     var body: some View {
         #if os(macOS)
-        // Presented as the ⌘, Settings scene: the window supplies the chrome,
-        // so no NavigationStack, no title bar of our own, no Done button.
+        // The ⌘, Settings scene supplies its own chrome: no NavigationStack, no Done.
         form
             .formStyle(.grouped)
             .frame(width: 520)
@@ -90,8 +89,7 @@ struct SettingsView: View {
         }
     }
 
-    /// The footer describes whichever option is selected, so the consequence
-    /// of the choice is on screen instead of only in the option list.
+    /// The footer describes the selected option, so its consequence is on screen.
     private var visibilityFooter: String {
         switch model.visibility {
         case .everyone: L.t("settings_visibility_everyone_desc")
@@ -100,12 +98,7 @@ struct SettingsView: View {
         }
     }
 
-    /// Relay selection for the internet path (DESIGN.md §9.1), including
-    /// turning it off entirely.
-    ///
-    /// Worth a Settings section rather than a hidden default because the three
-    /// options differ in who has to be reachable for an internet transfer to
-    /// work, and one of them switches the path off.
+    /// Relay selection for the internet path (DESIGN.md §9.1), including switching it off.
     @ViewBuilder
     private var relaySection: some View {
         @Bindable var model = model
@@ -131,8 +124,6 @@ struct SettingsView: View {
         } header: {
             Text(L.t("settings_section_relay"))
         } footer: {
-            // The picker is one row, so the footer is the only place the
-            // selected option gets to explain itself.
             Text(relayFooter)
         }
     }
@@ -149,7 +140,6 @@ struct SettingsView: View {
     private var pairedDevicesSection: some View {
         if !model.trustStore.devices.isEmpty {
             Section {
-                // The list is the core's `trustedPeers()`, keyed by DeviceID.
                 ForEach(model.trustStore.devices) { device in
                     PairedDeviceRow(
                         device: device,
@@ -184,8 +174,7 @@ private struct PairedDeviceRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 } else {
-                    // The phrase itself is a shared verification artifact and
-                    // is never translated; only the label around it is.
+                    // The phrase is a shared artifact and is never translated.
                     Text(device.fingerprint)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)

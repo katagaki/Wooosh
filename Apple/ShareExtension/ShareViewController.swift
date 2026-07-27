@@ -7,12 +7,8 @@ import UIKit
 import AppKit
 #endif
 
-/// Share extension entry point (DESIGN.md §8).
-///
-/// The extension never transfers by itself (iOS extension memory is tight):
-/// it copies the shared items into the App Group container, then opens the
-/// main app via `wooosh://send?batch=<id>` so the device list appears
-/// pre-armed to send the batch on tap.
+/// Never transfers by itself (extension memory is tight): copies into the App
+/// Group container, then opens the main app pre-armed to send (DESIGN.md §8).
 #if os(iOS)
 final class ShareViewController: UIViewController {
     private let exporter = ShareBatchExporter()
@@ -54,8 +50,7 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    /// UIApplication.open is NS_EXTENSION_UNAVAILABLE; the standard
-    /// workaround walks the responder chain and performs `openURL:`.
+    /// `UIApplication.open` is NS_EXTENSION_UNAVAILABLE; walk the responder chain.
     private func openMainApp(url: URL) {
         let selector = sel_registerName("openURL:")
         var responder: UIResponder? = self
@@ -112,9 +107,8 @@ final class ShareViewController: NSViewController {
 }
 #endif
 
-/// Copies every shared attachment into a new App Group batch directory.
 final class ShareBatchExporter {
-    /// Calls back with the batch id, or nil when nothing could be staged.
+    /// Calls back with nil when nothing could be staged.
     func export(extensionContext: NSExtensionContext?,
                 completion: @escaping (String?) -> Void) {
         let providers = (extensionContext?.inputItems ?? [])
@@ -182,11 +176,9 @@ final class ShareBatchExporter {
     }
 
     private func preferredTypeIdentifier(for provider: NSItemProvider) -> String? {
-        // Prefer concrete file-backed types; fall back to anything data-like.
         for candidate in [UTType.movie, .image, .fileURL, .data] {
             if provider.hasItemConformingToTypeIdentifier(candidate.identifier) {
-                // loadFileRepresentation needs the registered identifier, not
-                // the abstract parent, to get the original filename.
+                // The registered identifier, not the parent, keeps the original name.
                 if let registered = provider.registeredTypeIdentifiers.first(where: {
                     UTType($0)?.conforms(to: candidate) == true
                 }) {

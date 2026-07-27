@@ -41,20 +41,9 @@ import uniffi.wooosh_core.Visibility as FfiVisibility
 import uniffi.wooosh_core.WoooshCore as FfiCore
 
 /**
- * The real engine: adapts the UniFFI-generated `uniffi.wooosh_core.WoooshCore` onto the
- * app-side [WoooshCore] seam (DESIGN.md §4).
- *
- * Threading contract:
- *  - The core delivers events on its own "wooosh-events" thread. [FfiListener.onEvent]
- *    therefore only does a non-blocking `trySend` into a conflation-free channel; every
- *    consumer of [events] is dispatched off that thread by the flow machinery.
- *  - `connectPeer` / `send` / `revokePeer` / `trustedPeers` block inside the core (they
- *    `block_on` a tokio future or touch the trust file), so they are `suspend` here and
- *    always run on [Dispatchers.IO].
- *
- * Identity: the core owns it (PROTOCOL.md §2). [IdentityManager] is passed in as the
- * `KeyStore` platform adapter, so there is exactly one Ed25519 keypair per install.
- * Fingerprint and DeviceID derivation are the core's too — never re-implement them here.
+ * The core delivers events on its own thread, so [FfiListener.onEvent] only does a
+ * non-blocking `trySend`; the `suspend` members `block_on` a tokio future and always run
+ * on [Dispatchers.IO]. Identity belongs to the core (PROTOCOL.md §2).
  */
 class RealCore(
     context: Context,
@@ -68,21 +57,17 @@ class RealCore(
     private val _events = MutableSharedFlow<CoreEvent>(replay = 0, extraBufferCapacity = 256)
     override val events: Flow<CoreEvent> = _events.asSharedFlow()
 
-    /** peer_id -> last known peer (name, key, type), so sparse events can be enriched. */
     private val peerCache = ConcurrentHashMap<String, PeerRef>()
 
     @Volatile
     private var started = false
-
-    // ---------------------------------------------------------------- lifecycle
 
     override fun start(config: CoreConfig) {
         if (started) return
         File(config.stagingDir).mkdirs()
         File(config.trustStorePath).parentFile?.mkdirs()
 
-        // callbackFlow bridges the core's callback thread into Flow: trySend never
-        // blocks, so a slow collector can never stall the core.
+        // trySend never blocks, so a slow collector cannot stall the core.
         val ready = CountDownLatch(1)
         var failure: Throwable? = null
 
@@ -93,7 +78,6 @@ class RealCore(
                         Log.e(TAG, "failed to adapt core event $event", error)
                         null
                     } ?: return
-                    // Progress is high-rate; everything else is worth a breadcrumb.
                     if (mapped !is CoreEvent.Progress) Log.i(TAG, "event: $mapped")
                     if (trySend(mapped).isFailure) {
                         Log.w(TAG, "dropped core event (buffer full): $mapped")
@@ -131,14 +115,11 @@ class RealCore(
             }
             awaitClose { runCatching { ffi.stop() } }
         }
-            // The core bursts Progress far faster than the UI consumes it, and no event
-            // may be dropped silently.
             .buffer(EVENT_BUFFER)
             .onEach { _events.emit(it) }
             .launchIn(scope)
 
-        // start() must block: the shell needs listen_addr() and the identity the moment
-        // it returns (discovery TXT `p`, Settings screen).
+        // Must block: the shell needs listen_addr() and the identity the moment it returns.
         if (!ready.await(START_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             throw CoreException("Timed out starting the Wooosh core")
         }
@@ -157,8 +138,6 @@ class RealCore(
             .onFailure { Log.w(TAG, "setVisibility failed", it) }
     }
 
-    // ---------------------------------------------------------------- identity
-
     override fun deviceId(): String? =
         if (!started) null else runCatching { ffi.deviceId() }.getOrNull()
 
@@ -168,7 +147,7 @@ class RealCore(
     override fun listenAddr(): String? =
         if (!started) null else runCatching { ffi.listenAddr() }.getOrNull()
 
-    /** Pure core function — available before `start()` and independent of our identity. */
+    /** Pure core function — available before `start()`. */
     override fun fingerprintPhraseFor(publicKey: ByteArray): String? =
         runCatching { ffiFingerprintPhraseFor(publicKey) }
             .onFailure { Log.w(TAG, "fingerprintPhraseFor failed", it) }
@@ -179,15 +158,12 @@ class RealCore(
             .onFailure { Log.w(TAG, "deviceIdFor failed", it) }
             .getOrNull()
 
-    // ---------------------------------------------------------------- trust
-
     override suspend fun trustedPeers(): List<TrustedPeerInfo> = withContext(Dispatchers.IO) {
         if (!started) return@withContext emptyList()
         runCatching { ffi.trustedPeers().map(::adaptTrustedPeer) }
             .onFailure { Log.w(TAG, "trustedPeers failed", it) }
             .getOrDefault(emptyList())
             .also { peers ->
-                // Keep the enrichment cache honest about who is pinned right now.
                 peers.forEach { peer ->
                     peerCache[peer.deviceId] = PeerRef(
                         id = peer.deviceId,
@@ -215,11 +191,9 @@ class RealCore(
             }
     }
 
-    // ---------------------------------------------------------------- pairing
-
     override fun beginPairingQr(): String = ffi.beginPairingQr()
 
-    /** Pure core function: no engine, no I/O, safe to call from anywhere. */
+    /** Pure core function: no engine, no I/O. */
     override fun parsePairingCode(payload: String): PairingCodeInfo? =
         runCatching { parsePairingQr(payload.trim()) }
             .getOrNull()
@@ -234,19 +208,15 @@ class RealCore(
 
     override fun pairWithQr(payload: String) {
         scope.launch(Dispatchers.IO) {
-            // Parsed only for the failure path: on success the core's own PairingResult
-            // carries the pinned key.
+            // Parsed only for the failure path.
             val info = runCatching { parsePairingQr(payload.trim()) }.getOrNull()
             Log.i(TAG, "pairWithQr: parsed=${info != null} peer=${info?.deviceId} hints=${info?.hints}")
             val startedAt = SystemClock.elapsedRealtime()
             try {
                 val peerId = ffi.pairWithQr(payload.trim())
-                // No synthetic success event: the core's own PairingResult carries the
-                // key, and emitting one here would pin twice with less data.
                 Log.i(TAG, "pairWithQr: paired with $peerId after ${elapsed(startedAt)}")
             } catch (e: Throwable) {
-                // The core emits no PairingResult when the blocking call throws, so this
-                // is the only failure signal and it must carry actionable wording.
+                // The core emits no PairingResult when the blocking call throws.
                 Log.w(TAG, "pairWithQr failed after ${elapsed(startedAt)}", e)
                 _events.emit(
                     CoreEvent.PairingResult(
@@ -282,8 +252,7 @@ class RealCore(
     override fun confirmSas(peerId: String, accepted: Boolean) {
         scope.launch(Dispatchers.IO) {
             runCatching { ffi.confirmSas(peerId, accepted) }.onFailure { error ->
-                // The UI is sitting on a "confirming…" state waiting for a
-                // PairingResult that the core will never emit if this threw.
+                // The UI waits on a PairingResult the core will never emit if this threw.
                 Log.w(TAG, "confirmSas($peerId, $accepted) failed", error)
                 if (accepted) {
                     _events.emit(
@@ -294,10 +263,7 @@ class RealCore(
         }
     }
 
-    // ---------------------------------------------------------------- internet path
-
     override suspend fun beginInternetTicket(): String = withContext(Dispatchers.IO) {
-        // Binds the iroh endpoint and blocks on a home relay for as long as ~15 s.
         try {
             ffi.beginInternetTicket()
         } catch (e: Throwable) {
@@ -307,8 +273,7 @@ class RealCore(
     }
 
     override suspend fun setRelayUrls(urls: List<String>?) = withContext(Dispatchers.IO) {
-        // Closing the bound iroh endpoint is an asynchronous shutdown the core drives
-        // with block_on, so this never belongs on the main thread.
+        // Closing the bound iroh endpoint is a block_on shutdown; never the main thread.
         try {
             ffi.setRelayUrls(urls)
         } catch (e: Throwable) {
@@ -324,7 +289,7 @@ class RealCore(
         }
     }
 
-    /** Pure core function: no engine, no I/O, safe to call from anywhere. */
+    /** Pure core function: no engine, no I/O. */
     override fun parseTicket(ticket: String): TicketInfo? =
         runCatching { parseInternetTicket(ticket.trim()) }
             .getOrNull()
@@ -340,8 +305,7 @@ class RealCore(
 
     override fun redeemTicket(ticket: String) {
         scope.launch(Dispatchers.IO) {
-            // Parsed only for the failure path: on success the core's own PairingResult
-            // carries the pinned key.
+            // Parsed only for the failure path.
             val info = parseTicket(ticket)
             Log.i(TAG, "redeemTicket: parsed=${info != null} peer=${info?.deviceId} relay=${info?.relay}")
             val startedAt = SystemClock.elapsedRealtime()
@@ -349,8 +313,7 @@ class RealCore(
                 val peerId = ffi.redeemTicket(ticket.trim())
                 Log.i(TAG, "redeemTicket: paired with $peerId after ${elapsed(startedAt)}")
             } catch (e: Throwable) {
-                // The core emits no PairingResult when the blocking call throws, so this
-                // is the only failure signal.
+                // The core emits no PairingResult when the blocking call throws.
                 Log.w(TAG, "redeemTicket failed after ${elapsed(startedAt)}", e)
                 _events.emit(
                     CoreEvent.PairingResult(
@@ -372,8 +335,6 @@ class RealCore(
         }
     }
 
-    // ---------------------------------------------------------------- transfers
-
     override suspend fun connectPeer(addr: String, expectedPublicKey: ByteArray?): String =
         withContext(Dispatchers.IO) {
             val expected = expectedPublicKey?.takeIf { it.size == PUBKEY_SIZE_BYTES }
@@ -387,8 +348,7 @@ class RealCore(
 
     override suspend fun send(peerId: String, uris: List<Uri>): TransferId =
         withContext(Dispatchers.IO) {
-            // The core cannot read a ContentResolver, so content:// URIs are copied into
-            // an app-private outbox first.
+            // The core cannot read a ContentResolver, so content:// URIs are copied first.
             val paths = materialise(uris)
             if (paths.isEmpty()) throw CoreException("Nothing to send")
             try {
@@ -415,9 +375,7 @@ class RealCore(
         }
     }
 
-    // ---------------------------------------------------------------- outgoing staging
-
-    /** Copies content:// items into app-private storage; file:// items are used in place. */
+    /** file:// items are used in place; content:// is copied. */
     private fun materialise(uris: List<Uri>): List<String> {
         if (uris.isEmpty()) return emptyList()
         val outbox = File(appContext.filesDir, "outbox/${UUID.randomUUID()}")
@@ -464,8 +422,6 @@ class RealCore(
         return candidate
     }
 
-    // ---------------------------------------------------------------- event adaptation
-
     private fun adapt(event: FfiEvent): CoreEvent? = when (event) {
         is FfiEvent.PeerConnected -> {
             val peer = PeerRef(
@@ -489,7 +445,7 @@ class RealCore(
                 id = event.peerId,
                 displayName = event.deviceName.ifBlank { event.peerId },
                 fingerprint = fingerprintPhraseFor(event.peerPubkey).orEmpty(),
-                // Never pinned: the internet path does not pair (PROTOCOL.md §9.4).
+                // The internet path does not pair (PROTOCOL.md §9.4).
                 paired = false,
                 publicKey = event.peerPubkey,
                 deviceType = peerCache[event.peerId]?.deviceType,
@@ -608,7 +564,6 @@ class RealCore(
         lastSeenMillis = peer.lastSeen.toLong() * 1000,
     )
 
-    /** Enrichment for the events that carry only a `peer_id` (PairingSas, TransferStarted). */
     private fun peerRef(peerId: String, paired: Boolean? = null): PeerRef {
         val cached = peerCache[peerId]
         return PeerRef(
@@ -621,17 +576,9 @@ class RealCore(
         )
     }
 
-    // ---------------------------------------------------------------- errors
-
     private fun elapsed(startedAt: Long) = "${SystemClock.elapsedRealtime() - startedAt} ms"
 
-    /**
-     * Pairing-specific wording: the user is standing through the ceremony, so the
-     * message has to say what to do next, not just what went wrong.
-     *
-     * The core reports every pairing sub-case as one `Pairing` variant distinguished by
-     * message text (PROTOCOL.md §4.2), hence the substring matching.
-     */
+    /** Every pairing sub-case is one `Pairing` variant, distinguished only by message text. */
     private fun pairingMessage(error: Throwable): String = appContext.getString(
         when {
             error is WoooshException.Connect || error is WoooshException.Io ->
@@ -666,10 +613,7 @@ class RealCore(
     private fun userMessage(error: Throwable): String =
         appContext.getString(messageRes(error))
 
-    /**
-     * The core's exception types and detail strings are not copy: untranslatable and
-     * log-shaped. Every case resolves to a real sentence; `error.message` stays in the log.
-     */
+    /** The core's exception detail strings are untranslatable and log-shaped, never copy. */
     private fun messageRes(error: Throwable): Int = when (error) {
         is WoooshException.RelayFileTooLarge -> R.string.error_relay_file_too_large
         is WoooshException.PairingRequired -> R.string.error_pairing_required
@@ -697,28 +641,17 @@ class RealCore(
         CoreVisibility.OFF -> FfiVisibility.OFF
     }
 
-    /**
-     * The core's `DeviceType` is form-factor only (phone/tablet/laptop/desktop) while
-     * PROTOCOL.md §3.1 is platform-explicit. These two functions are the whole bridge.
-     *
-     * Outbound collapses to the nearest form factor — lossy but harmless, since it only
-     * ever says "phone" about a device that really is one.
-     */
+    /** The FFI type is form-factor only, so outbound collapses to the nearest one. */
     private fun DeviceType.toFfi() = when (this) {
         DeviceType.IPHONE, DeviceType.ANDROID_PHONE -> FfiDeviceType.PHONE
         DeviceType.IPAD, DeviceType.ANDROID_TABLET -> FfiDeviceType.TABLET
         DeviceType.MAC -> FfiDeviceType.LAPTOP
         DeviceType.WINDOWS -> FfiDeviceType.DESKTOP
-        // Unreachable for our own device (always an android-* value); the FFI enum has
-        // no unknown member, so pick the most likely rather than throw.
+        // The FFI enum has no unknown member, so pick the likeliest rather than throw.
         DeviceType.UNKNOWN -> FfiDeviceType.PHONE
     }
 
-    /**
-     * Inbound is deliberately never a guess: "phone" over the FFI could be an iPhone or a
-     * Pixel, and a wrong glyph is worse than a generic one (PROTOCOL.md §3.1). Every core
-     * value becomes UNKNOWN so the row keeps whatever the TXT record said.
-     */
+    /** Never a guess: a wrong glyph is worse than a generic one, so the TXT `dt` wins. */
     private fun FfiDeviceType.toApp() = DeviceType.UNKNOWN
 
     private companion object {

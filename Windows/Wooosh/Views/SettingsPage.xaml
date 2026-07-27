@@ -26,7 +26,6 @@
                     Text="{loc:Localize Key=ActionSettings}" />
             </StackPanel>
 
-            <!-- Device name -->
             <StackPanel Spacing="4">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionDevice}" />
                 <TextBox
@@ -40,7 +39,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- Visibility (PROTOCOL.md §3.1 `vis`, DESIGN.md §10) -->
             <StackPanel Spacing="4">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionWhoCanSee}" />
                 <RadioButton
@@ -78,7 +76,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- Minimize to the notification area (DESIGN.md §7) -->
             <StackPanel Spacing="4">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionBackground}" />
                 <ToggleSwitch
@@ -92,7 +89,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- Paired devices: rendered from the core's trust store, never from a mirror. -->
             <StackPanel Spacing="4">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionPairedDevices}" />
                 <TextBlock
@@ -107,7 +103,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- This device's identity, straight from the core (PROTOCOL.md §2). -->
             <StackPanel Spacing="4">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=SettingsSectionThisDevice}" />
                 <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Text="{loc:Localize Key=SettingsDeviceId}" />

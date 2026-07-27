@@ -1,34 +1,14 @@
 import SwiftUI
 
-/// The action row every sheet pins to its bottom edge.
-///
-/// One place decides what a sheet's primary action looks like, and it decides
-/// it *per platform* — the two conventions are genuinely different and the
-/// same layout cannot serve both:
-///
-/// - **iOS**: stacked, full width (`.buttonSizing(.flexible)`), `.extraLarge`
-///   control size — around 55 pt tall at the default type size, well over the
-///   44 pt minimum, and thumb-reachable at the bottom of the sheet. Primary on
-///   top.
-/// - **macOS**: a trailing-aligned row of normally-sized Mac buttons, primary
-///   rightmost, secondary to its left — the standard AppKit sheet footer.
-///   Full-width extra-large buttons look like a phone on a Mac.
-///
-/// Nothing hard-codes a height, so buttons grow with Dynamic Type instead of
-/// clipping their labels. The roles are explicit parameters rather than a flat
-/// builder precisely because the two platforms order them differently.
+/// The action row every sheet pins to its bottom edge. iOS stacks full-width `.extraLarge`
+/// buttons (~55 pt, over the 44 pt minimum), primary on top; macOS uses a trailing AppKit
+/// footer row. No hard-coded heights, so labels grow with Dynamic Type.
 struct SheetActions<Primary: View, Secondary: View>: View {
     @ViewBuilder var primary: Primary
     @ViewBuilder var secondary: Secondary
 
-    /// Whether the primary button is also the sheet's default (Return) action.
-    ///
-    /// True for ordinary sheets, where Return doing the obvious thing is a
-    /// convenience. **False for security confirmations.** A sheet the user did
-    /// not ask for — an inbound SAS request arrives from the *other* device and
-    /// presents itself the instant the event lands — must not inherit a Return
-    /// keystroke that was aimed at whatever was on screen a moment earlier. See
-    /// `SASSheet`.
+    /// Whether the primary button is also the sheet's default (Return) action. False for
+    /// security confirmations: an unrequested sheet must not inherit a stray keystroke.
     var defaultAction: Bool = true
 
     init(defaultAction: Bool = true,
@@ -71,12 +51,9 @@ struct SheetActions<Primary: View, Secondary: View>: View {
 
 // MARK: - Standard-role buttons
 //
-// The label-less `Button(role:action:)` lets the system supply the standard
-// title/glyph and Liquid Glass treatment. Scoped to iOS on purpose: on macOS
-// these sit in a sheet footer or window toolbar, which are rows of spelled-out
-// titles, and a system glyph there reads as a different control.
+// Label-less `Button(role:action:)` lets the system supply the title, glyph and glass.
+// iOS only: macOS sheet footers and toolbars are rows of spelled-out titles.
 
-/// The bare confirmation button — "Done".
 struct DoneButton: View {
     private let action: () -> Void
 
@@ -91,11 +68,8 @@ struct DoneButton: View {
     }
 }
 
-/// The bare cancel button.
-///
-/// `.cancel` also carries the semantics assistive technology and the system
-/// expect of a cancel button (Escape on macOS), which a plain titled button
-/// does not.
+/// `.cancel` carries the system and assistive-technology semantics (Escape on macOS)
+/// that a plain titled button does not.
 struct CancelButton: View {
     private let action: () -> Void
 
@@ -110,8 +84,6 @@ struct CancelButton: View {
     }
 }
 
-/// The bare dismissal button for a sheet that neither confirms nor cancels
-/// anything — "Close".
 struct CloseButton: View {
     private let action: () -> Void
 

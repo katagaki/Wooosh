@@ -28,23 +28,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Foreground service for active transfers (DESIGN.md §7): `dataSync` type, progress
- * notification with a cancel action, and a partial wake lock held only while at least
- * one transfer is running.
- */
+/** `dataSync` foreground type, with a partial wake lock while transfers run (DESIGN.md §7). */
 class TransferService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
-    /**
-     * The service starts before TransferStarted arrives: a connect plus an OFFER/consent
-     * round trip sits in between. `serviceNeeded` covers both that window and running
-     * transfers, and the service only stops once it has gone false after having been true
-     * (or the startup grace expires).
-     */
+    /** The service starts before TransferStarted, so it stops only after work was seen. */
     private var sawWork = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -112,8 +103,6 @@ class TransferService : Service() {
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
-
-    // ---------------------------------------------------------------- notification
 
     private fun createChannel() {
         val channel = NotificationChannel(
@@ -195,14 +184,12 @@ class TransferService : Service() {
         }
     }
 
-    // ---------------------------------------------------------------- wake lock
-
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wooosh:transfer").apply {
             setReferenceCounted(false)
-            // Safety timeout: released explicitly when transfers finish; this is a backstop.
+            // Backstop; released explicitly when transfers finish.
             acquire(30 * 60 * 1000L)
         }
     }

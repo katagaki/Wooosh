@@ -45,14 +45,7 @@ import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.pairing.QrScanner
 import kotlinx.coroutines.flow.SharedFlow
 
-/**
- * Transfers with a device that is not on this network (PROTOCOL.md §9).
- *
- * Sending and receiving are two directions of one job, so they are two tabs of a single
- * screen rather than a question asked before the screen opens. Asking first made the user
- * commit to a direction while looking at nothing; here both are visible and switching
- * costs a tap.
- */
+/** Transfers with a device that is not on this network (PROTOCOL.md §9). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtherDeviceScreen(
@@ -69,9 +62,7 @@ fun OtherDeviceScreen(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
-    // The screen stays put until the redemption actually lands: `statusMessages` has no
-    // replay, so a failure emitted with no collector attached is gone. On success the
-    // caller navigates away, and the main screen picks the messages up from there.
+    // `statusMessages` has no replay: a failure emitted with no collector attached is gone.
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         statusMessages.collect { snackbarHostState.showSnackbar(it) }
@@ -110,8 +101,7 @@ fun OtherDeviceScreen(
                     text = { Text(stringResource(R.string.other_device_receive)) },
                 )
             }
-            // Leaving the Send tab tears its content down, which is what ends a live
-            // code: it authorises one transfer and must not outlive the screen showing it.
+            // Leaving the Send tab tears it down, which is what ends the live code.
             when (tab) {
                 0 -> SendOverInternetTab(
                     beginInternetTicket = beginInternetTicket,
@@ -127,14 +117,7 @@ fun OtherDeviceScreen(
     }
 }
 
-/**
- * The receiving half (PROTOCOL.md §9.4): scan the code the sender is showing, and the
- * files follow.
- *
- * Scanning *is* the consent, so the incoming offer never raises a second prompt. Nothing
- * is paired, and no fingerprint is shown: there is no prior relationship to check one
- * against.
- */
+/** Scanning *is* the consent: no second prompt, nothing paired, no fingerprint to check. */
 @Composable
 private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit, scannerEnabled: Boolean) {
     var pastedCode by rememberSaveable { mutableStateOf("") }
@@ -146,9 +129,7 @@ private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit, scannerEnab
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Redeeming dials over the internet, which is slow enough that the wait must be
-        // visible immediately. Scanning inside this tree is what lets the alert appear
-        // the moment the code is read, rather than after a scanner activity closes.
+        // Scanning inside this tree lets the alert appear the moment the code is read.
         QrScanner(
             onScanned = onRedeemTicket,
             enabled = scannerEnabled,
@@ -181,8 +162,6 @@ private fun ReceiveOverInternetTab(onRedeemTicket: (String) -> Unit, scannerEnab
             Text(stringResource(R.string.action_pair_with_pasted))
         }
         Spacer(Modifier.height(24.dp))
-        // Hole punching before the reply is slower than the LAN, and silence for that
-        // long reads as a hang.
         Text(
             text = stringResource(R.string.other_device_connecting_body),
             style = MaterialTheme.typography.bodySmall,

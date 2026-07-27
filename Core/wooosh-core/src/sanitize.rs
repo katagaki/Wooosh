@@ -1,9 +1,5 @@
-//! Receiver-side filename / rel_path sanitization (PROTOCOL.md §5).
-//!
-//! - `name`: path separators stripped, `..` rejected, control chars rejected,
-//!   reserved Windows names rejected.
-//! - `rel_path`: only honored beneath a single transfer root; every component
-//!   is validated; absolute paths, drive letters and `..` are rejected.
+//! Receiver-side filename / rel_path sanitization (PROTOCOL.md §5). `rel_path`
+//! is only ever honored beneath a single transfer root.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -41,7 +37,6 @@ fn is_reserved_windows(name: &str) -> bool {
     WINDOWS_RESERVED.iter().any(|r| stem.eq_ignore_ascii_case(r))
 }
 
-/// Sanitize a bare file name. Strips path separators, then validates.
 pub fn sanitize_name(name: &str) -> Result<String, SanitizeError> {
     // PROTOCOL.md §5 says strip separators, not reject the whole name.
     let stripped: String = name.chars().filter(|c| *c != '/' && *c != '\\').collect();
@@ -64,9 +59,7 @@ pub fn sanitize_name(name: &str) -> Result<String, SanitizeError> {
     Ok(stripped)
 }
 
-/// Validate a relative path (forward-slash separated on the wire) and return
-/// a safe relative `PathBuf`. Never contains `..`, absolute roots or drive
-/// letters; each component passes the same rules as `sanitize_name`.
+/// Paths are forward-slash separated on the wire; the result never escapes.
 pub fn sanitize_rel_path(rel: &str) -> Result<PathBuf, SanitizeError> {
     if rel.is_empty() {
         return Err(SanitizeError::Empty);
@@ -104,7 +97,7 @@ pub fn sanitize_rel_path(rel: &str) -> Result<PathBuf, SanitizeError> {
     Ok(out)
 }
 
-/// Join a sanitized rel_path under `root`, with a lexical containment check.
+/// Containment is checked lexically, without touching the filesystem.
 pub fn join_under_root(root: &Path, rel: &Path) -> Result<PathBuf, SanitizeError> {
     let joined = root.join(rel);
     for c in joined.components() {

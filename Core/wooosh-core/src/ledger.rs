@@ -1,9 +1,5 @@
-//! Persistent resume ledger (PROTOCOL.md §6).
-//!
-//! Lives at `staging/<tid_hex>/ledger.json` next to the `.part` files.
-//! `verified_off` = bytes written + flushed for that file. Hasher state is
-//! deliberately not serialized — blake3 exposes no stable checkpoint format —
-//! so a cold resume re-hashes the `.part` prefix, which PROTOCOL.md allows.
+//! Resume ledger (PROTOCOL.md §6). blake3 has no stable checkpoint format, so a
+//! cold resume re-hashes the `.part` prefix, which PROTOCOL.md allows.
 
 use crate::error::WoooshError;
 use serde::{Deserialize, Serialize};
@@ -12,7 +8,6 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Disambiguates concurrent atomic-write temp files (see `Ledger::save`).
 static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,12 +45,8 @@ impl Ledger {
         Ok(Some(ledger))
     }
 
-    /// Atomic write + fsync.
-    ///
-    /// The temp name must stay unique per call: several slot streams persist
-    /// concurrently for one transfer, and a shared `ledger.tmp` would let them
-    /// truncate each other's partial writes into a corrupt `ledger.json` and
-    /// race on the rename, where the loser gets ENOENT.
+    /// The temp name must be unique per call: slot streams persist concurrently
+    /// and a shared `ledger.tmp` would corrupt writes and race on the rename.
     pub fn save(&self, staging_tid_dir: &Path) -> Result<(), WoooshError> {
         std::fs::create_dir_all(staging_tid_dir)?;
         let p = Self::path_for(staging_tid_dir);
@@ -82,9 +73,7 @@ impl Ledger {
     }
 }
 
-/// Re-hash the first `len` bytes of a `.part` file, returning the primed
-/// hasher. This is what makes the ledger's `verified_off` trustworthy on a
-/// cold resume; a short `.part` is an error, never a silent truncation.
+/// A short `.part` is an error, never a silent truncation.
 pub fn rehash_prefix(part_path: &Path, len: u64) -> Result<blake3::Hasher, WoooshError> {
     let mut hasher = blake3::Hasher::new();
     if len == 0 {

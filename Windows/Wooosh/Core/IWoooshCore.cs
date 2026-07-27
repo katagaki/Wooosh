@@ -1,156 +1,85 @@
 namespace Wooosh.Core;
 
-/// <summary>
-/// Shell-side seam over the wooosh-core FFI surface (DESIGN.md §4).
-///
-/// The contract is deliberately coarse: commands in, an event stream out. The shell never
-/// sees a socket or a key.
-///
-/// <para><b>Threading (normative, DESIGN.md §4).</b> Every exported core call is
-/// synchronous and blocking, and none of them may run on the UI thread. The blocking ones
-/// are exposed as Task-returning members here and are expected to be awaited off a
-/// background thread; the cheap ones (visibility, respond-to-offer, cancel) are plain
-/// synchronous calls. <see cref="StartAsync"/> in particular blocks on the platform key store,
-/// which can take arbitrarily long behind a Windows Hello prompt.</para>
-///
-/// <para><b>Implementations.</b> <see cref="NativeWoooshCore"/> is the only one, and it
-/// talks to <c>wooosh_core.dll</c>. There is deliberately no mock or fake implementation:
-/// a shell that can invent peers and transfers is a shell whose screenshots and demos stop
-/// meaning anything. If the native core is missing, the app must say so, not pretend.</para>
-/// </summary>
+/// <summary>Shell-side seam over the wooosh-core FFI surface (DESIGN.md §4). Threading is
+/// normative: every exported core call is synchronous and blocking and none may run on the
+/// UI thread, so the blocking ones are Task-returning here.</summary>
 public interface IWoooshCore : IDisposable
 {
-    /// <summary>
-    /// Core to shell event stream. Raised on the core's event thread; handlers must
-    /// marshal to the UI thread themselves.
-    /// </summary>
+    /// <summary>Raised on the core's event thread; handlers must marshal to the UI thread.</summary>
     event Action<CoreEvent>? EventReceived;
 
-    /// <summary>Blocking. Boots the engine, loads the identity key, binds the QUIC socket.</summary>
+    /// <summary>Blocking on the platform key store, possibly behind a Windows Hello prompt.</summary>
     Task StartAsync(CoreConfig config, CancellationToken cancellationToken = default);
 
-    /// <summary>Blocking (roughly 2 s of runtime shutdown plus joining the event thread).</summary>
+    /// <summary>Blocking (~2 s of runtime shutdown plus joining the event thread).</summary>
     Task StopAsync();
 
     void SetVisibility(CoreVisibility mode);
 
-    // ---- identity: the core is the single source of truth (PROTOCOL.md §2) ----
-
-    /// <summary><c>Q7KM-3PXA-…</c> DeviceID = BLAKE3(pubkey)[0..16]. Null before Start.</summary>
+    /// <summary>BLAKE3(pubkey)[0..16] (PROTOCOL.md §2). Null before Start.</summary>
     string? DeviceId { get; }
 
-    /// <summary>This device's six-word verification phrase. Null before Start.</summary>
     string? FingerprintPhrase { get; }
 
     /// <summary>Bound "ip:port" of the QUIC listener, for the mDNS TXT <c>p</c> field.</summary>
     string? ListenAddr { get; }
 
-    /// <summary>
-    /// The core's own phrase derivation for any peer key. Shells never reimplement the
-    /// wordlist: a divergence here is a verification step the user cannot actually perform.
-    /// </summary>
+    /// <summary>Shells never reimplement the wordlist: a divergence makes the verification
+    /// step unperformable.</summary>
     string? FingerprintPhraseFor(byte[] publicKey);
 
-    /// <summary>The core's own DeviceID derivation. Equals the peer id in every event.</summary>
     string? DeviceIdFor(byte[] publicKey);
 
-    // ---- trust (PROTOCOL.md §4.5) ----
-
-    /// <summary>
-    /// The core's pinned peer set, read straight from its trust store. Re-read at launch,
-    /// after every successful pairing, and after a revoke. Never mirrored.
-    /// </summary>
+    /// <summary>Read straight from the core's trust store (PROTOCOL.md §4.5), never mirrored.</summary>
     Task<IReadOnlyList<TrustedPeerInfo>> TrustedPeersAsync();
 
-    /// <summary>Drops the core's pin. False when the key was not pinned to begin with.</summary>
+    /// <summary>False when the key was not pinned to begin with.</summary>
     Task<bool> RevokePeerAsync(byte[] publicKey);
 
-    // ---- pairing (PROTOCOL.md §4) ----
-
-    /// <summary>Returns the <c>wooosh-pair:1?…</c> payload to render as a QR code.</summary>
+    /// <summary>Returns the <c>wooosh-pair:1?…</c> payload (PROTOCOL.md §4).</summary>
     string BeginPairingQr();
 
-    /// <summary>
-    /// Parses a scanned or pasted payload locally: no network, no blocking. Null when the
-    /// text is not a Wooosh pairing code at all.
-    /// </summary>
+    /// <summary>Local parse only, no network. Null when the text is not a Wooosh pairing code.</summary>
     PairingCodeInfo? ParsePairingCode(string payload);
 
-    /// <summary>
-    /// Sender-side QR path. Blocking, and slow: address hints are raced but a dead network
-    /// still costs the connect deadline, and the reply timeout is 20 s. The outcome always
-    /// arrives as <see cref="CoreEvent.PairingResult"/>, including on failure, so the
-    /// pairing UI is driven by the event and not by this call returning.
-    /// </summary>
+    /// <summary>Blocking, 20 s reply timeout. Every outcome arrives as
+    /// <see cref="CoreEvent.PairingResult"/>, so the UI is driven by the event.</summary>
     Task PairWithQrAsync(string payload);
 
-    /// <summary>Camera-less path: start SAS numeric comparison with a connected peer.</summary>
     void RequestSasPairing(string peerId);
 
-    /// <summary>
-    /// Confirms or rejects the six-digit comparison. Must be driven by a deliberate press
-    /// and never bound to a default or Enter action.
-    /// </summary>
+    /// <summary>Must be driven by a deliberate press, never bound to a default or Enter action.</summary>
     void ConfirmSas(string peerId, bool accepted);
 
-    // ---- connections and transfers ----
-
-    /// <summary>
-    /// Connects to an address the native mDNS browser resolved (DESIGN.md §4).
-    ///
-    /// <paramref name="expectedPublicKey"/> pins the TLS handshake to that exact key;
-    /// always pass the pinned key when the shell holds one. Passing null does not opt out
-    /// of pinning: the core re-applies its own pin whenever it can resolve the identity
-    /// behind the address (PROTOCOL.md §4.5). It only leaves the very first reconnect to a
-    /// brand-new address unpinned.
-    ///
-    /// Returns the core's peer id, which is the peer's DeviceID.
-    /// </summary>
+    /// <summary><paramref name="expectedPublicKey"/> pins the TLS handshake to that key; null
+    /// does not opt out, since the core re-applies its own pin whenever it can resolve the
+    /// identity behind the address (PROTOCOL.md §4.5).</summary>
     Task<string> ConnectPeerAsync(string addr, byte[]? expectedPublicKey = null);
 
-    /// <summary>
-    /// Begins an outgoing transfer. The resolved manifest arrives via TransferStarted.
-    ///
-    /// <paramref name="filePaths"/> are absolute paths the core reads directly. DESIGN.md §4
-    /// sketches a richer <c>StagedFile</c> here, but the core's exported <c>send</c> takes
-    /// plain paths and derives name and MIME itself, so the shell passes paths and never
-    /// renames anything on the way (original filenames are preserved).
-    /// </summary>
+    /// <summary>Absolute paths the core reads directly, deriving name and MIME itself, so
+    /// nothing is renamed on the way. The manifest arrives via TransferStarted.</summary>
     Task<TransferId> SendAsync(string peerId, IReadOnlyList<string> filePaths);
 
     /// <summary>An empty <paramref name="acceptedFileIds"/> declines the whole offer.</summary>
     void RespondToOffer(TransferId transferId, IReadOnlyList<FileId> acceptedFileIds);
 
-    // ---- the internet path (PROTOCOL.md §9) ----
-    //
-    // A code minted here authorises exactly one transfer and dies with it. Nothing is
-    // paired and no fingerprint is shown: there is no prior relationship to check one
-    // against, and asking the user to verify something they cannot is worse than asking
-    // nothing (DESIGN.md §9).
+    // The internet path (PROTOCOL.md §9). A ticket authorises exactly one transfer and dies
+    // with it: nothing is paired and no fingerprint is shown, because there is no prior
+    // relationship to check one against (DESIGN.md §9).
 
-    /// <summary>
-    /// Blocking. Publishes a <c>wooosh-net:1?…</c> ticket and returns it. Contacting the
-    /// relay is what makes it slow, so this is never called on the UI thread.
-    /// </summary>
+    /// <summary>Blocking: contacts the relay.</summary>
     Task<string> BeginInternetTicketAsync();
 
-    /// <summary>
-    /// Revokes the live ticket. Cheap and synchronous, and safe to call when there is no
-    /// ticket. The UI calls this whenever the screen showing a code goes away.
-    /// </summary>
+    /// <summary>Synchronous, and safe to call when there is no ticket.</summary>
     void EndInternetTicket();
 
-    /// <summary>
-    /// Redeems a ticket the other device minted. Blocking: hole punching before the reply
-    /// takes noticeably longer than a connection on the same network. Returns the peer id.
-    /// </summary>
+    /// <summary>Blocking: hole punching takes longer than a LAN connection.</summary>
     Task<string> RedeemTicketAsync(string ticket);
 
-    /// <summary>Cancels a whole transfer, or one file when <paramref name="fileId"/> is given.</summary>
     void Cancel(TransferId transferId, FileId? fileId = null);
 }
 
-/// <summary>Thrown by core calls with a message the UI may show to the user as-is.</summary>
+/// <summary>Message is user-presentable as-is.</summary>
 public sealed class CoreException : Exception
 {
     public CoreException(string message, Exception? inner = null) : base(message, inner)

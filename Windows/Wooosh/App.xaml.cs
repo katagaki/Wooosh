@@ -8,17 +8,10 @@ namespace Wooosh;
 
 public partial class App : Application
 {
-    /// <summary>
-    /// The single view model for the process. Held on the application, not the window,
-    /// because the window is closed and reopened when Wooosh minimises to the notification
-    /// area and the core, discovery and peer list must survive that.
-    /// </summary>
+    /// <summary>On the application, not the window: the core and peer list outlive a minimise to tray.</summary>
     public static MainViewModel? ViewModel { get; private set; }
 
-    /// <summary>
-    /// Owner window for the file and folder pickers, which are window-owned on WinUI 3 and
-    /// throw without an HWND. <see cref="IntPtr.Zero"/> before the window exists.
-    /// </summary>
+    /// <summary>WinUI 3 pickers are window-owned and throw without an HWND.</summary>
     public static IntPtr MainWindowHandle { get; private set; }
 
     private MainWindow? _window;
@@ -39,18 +32,13 @@ public partial class App : Application
 
         _window.Activate();
 
-        // Fire and forget by design: StartAsync does its blocking work on a background
-        // thread and reports failure through MainViewModel.StartupError, which the device
-        // list renders. Awaiting here would only delay the window.
+        // Fire and forget: failures surface through StartupError, and awaiting only delays the window.
         _ = ViewModel.StartAsync();
 
         HandleActivation();
     }
 
-    /// <summary>
-    /// Share Target entry point (DESIGN.md §8). Windows activates the already-running
-    /// instance, so this is also reached on a second launch from the share sheet.
-    /// </summary>
+    /// <summary>Share Target entry point (DESIGN.md §8); Windows reuses the running instance.</summary>
     private void HandleActivation()
     {
         var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
@@ -59,12 +47,8 @@ public partial class App : Application
             return;
         }
 
-        // TODO(share): pull the StorageItems out of
-        // ((ShareTargetActivatedEventArgs)activation.Data).ShareOperation, copy them into the
-        // app's local staging folder, and open the device list in "pick a device to send to"
-        // mode with the same ordering and staleness rules as the main list. The share
-        // operation must be reported complete once the files are staged, not once the
-        // transfer finishes, or Windows keeps the source app blocked for the whole send.
+        // TODO(share): stage the ShareOperation's items, then show the picker. Report complete
+        // on staging, not on transfer end, or Windows blocks the source app for the whole send.
         System.Diagnostics.Debug.WriteLine("[Wooosh] activated as a share target; not handled yet.");
     }
 }

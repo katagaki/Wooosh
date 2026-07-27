@@ -56,16 +56,11 @@ class WoooshApplication : Application() {
     @Volatile
     private var internetEnabled: Boolean = true
 
-    /** Set once the core booted; the UI shows "Starting…" until then. */
     @Volatile
     var coreStartError: String? = null
         private set
 
-    /**
-     * Non-null when the core refused the configured relay address. The core keeps its
-     * previous working configuration in that case, so this is a correction for the user
-     * to make, not a broken state.
-     */
+    /** Set when the core refused the relay address; it keeps its last working config. */
     private val _relayError = MutableStateFlow<String?>(null)
     val relayError: StateFlow<String?> = _relayError.asStateFlow()
 
@@ -74,8 +69,7 @@ class WoooshApplication : Application() {
 
         appScope.launch(Dispatchers.IO) {
             val settings = settingsRepository.settings.first()
-            // Staging + trust store live in app-private INTERNAL storage: staged bytes
-            // are unverified until FileReady, and the trust store is security state.
+            // App-private internal storage: staged bytes are unverified, trust is security state.
             val stagingDir = File(filesDir, "staging")
             try {
                 core.start(
@@ -108,9 +102,8 @@ class WoooshApplication : Application() {
 
             internetEnabled = settings.internetEnabled
             var appliedRelays: List<String>? = settings.relayUrls
-            // The core boots on its own default (n0's public relays), so push the stored
-            // preference before anything can mint a ticket. Free at this point: the iroh
-            // endpoint is not bound until the first ticket operation.
+            // The core boots on its own default, so push the stored preference before
+            // anything can mint a ticket.
             runCatching { core.setRelayUrls(appliedRelays) }
                 .onFailure {
                     _relayError.value = getString(R.string.error_relay_url_invalid)
@@ -120,8 +113,7 @@ class WoooshApplication : Application() {
             settingsRepository.settings.collect { current ->
                 core.setVisibility(current.visibility.toCore())
                 internetEnabled = current.internetEnabled
-                // Only on a real change: applying this tears the iroh endpoint down, and
-                // the settings flow re-emits for unrelated edits such as the device name.
+                // Only on a real change: applying this tears the iroh endpoint down.
                 if (current.relayUrls != appliedRelays) {
                     val wanted = current.relayUrls
                     runCatching { core.setRelayUrls(wanted) }
@@ -130,8 +122,6 @@ class WoooshApplication : Application() {
                             _relayError.value = null
                         }
                         .onFailure {
-                            // The core kept its previous working configuration; the
-                            // Settings screen shows the address is not valid.
                             _relayError.value = getString(R.string.error_relay_url_invalid)
                             Log.w(TAG, "setRelayUrls($wanted) rejected", it)
                         }
@@ -139,7 +129,6 @@ class WoooshApplication : Application() {
             }
         }
 
-        // Direct Share: keep sharing shortcuts in sync with the trust store (DESIGN.md §8).
         appScope.launch {
             trustStore.devices.collect { devices ->
                 ShortcutPublisher.publish(this@WoooshApplication, devices)
@@ -152,7 +141,6 @@ class WoooshApplication : Application() {
         super.onTerminate()
     }
 
-    /** Platform-explicit `dt` (PROTOCOL.md §3.1); form factor still comes from sw600dp. */
     private fun deviceType(): DeviceType =
         if (resources.configuration.smallestScreenWidthDp >= 600) {
             DeviceType.ANDROID_TABLET

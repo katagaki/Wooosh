@@ -1,13 +1,7 @@
 import SwiftUI
 
-/// This device's own 6-word fingerprint, shown to the *sender* while an
-/// unpaired receiver is deciding whether to accept.
-///
-/// The receiver's consent sheet asks its user to verify the sender's
-/// fingerprint (PROTOCOL.md §2), so the sending device must show the phrase at
-/// the same moment or the comparison is against nothing. Hence large,
-/// monospaced, selectable, readable across a desk. The phrase always comes from
-/// the core and is never re-derived in Swift.
+/// The receiver is asked to verify this phrase (PROTOCOL.md §2), so the sender must have
+/// it on screen at that moment, readable across a desk, and always sourced from the core.
 struct FingerprintCallout: View {
     let phrase: String
 
@@ -32,8 +26,7 @@ struct FingerprintCallout: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        // System semantic fill, not a hand-rolled material: it stays legible
-        // under Reduce Transparency and in both appearances.
+        // System semantic fill: stays legible under Reduce Transparency and both appearances.
         .background(.fill.quaternary, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(L.f("verify_your_phrase_a11y", phrase))

@@ -2,18 +2,9 @@ import Foundation
 import os
 import WoooshCoreFFI
 
-/// Adapts the UniFFI-generated `WoooshCoreFFI.WoooshCore` to the app's
-/// `WoooshCore` seam (DESIGN.md §4).
-///
-/// Threading contract: the Rust core delivers events on its own dedicated
-/// callback thread. `EventBridge` does the only thing that is safe there —
-/// a non-blocking `AsyncStream.yield` — and every translation into UI-facing
-/// types happens afterwards on the main actor. Nothing in the callback path
-/// takes a lock the UI holds, and nothing calls back into the core.
-///
-/// Blocking commands (`pair_with_qr`, `connect_peer` both `block_on` inside
-/// the core) are dispatched off the main actor; the fast ones (`send`,
-/// `respond_to_offer`, …) return immediately and are called inline.
+/// Adapts the generated FFI object to the app's seam (DESIGN.md §4). The core's
+/// callback thread only yields; translation happens after, on the main actor.
+/// Commands that `block_on` inside the core go off the main actor.
 @MainActor
 final class RealCore: WoooshCore {
     let events: AsyncStream<CoreEvent>
@@ -25,10 +16,7 @@ final class RealCore: WoooshCore {
 
     private var started = false
     private var translateTask: Task<Void, Never>?
-    /// Everything the shell has learned about a peer id, so events that carry
-    /// only `peer_id` can still produce a labelled `PeerRef`.
     private var peerInfo: [String: PeerRef] = [:]
-    /// Manifests of in-flight transfers, so `fileReady` can name its file.
     private var manifests: [String: [FileMeta]] = [:]
 
     private(set) var deviceID: String?
@@ -60,10 +48,8 @@ final class RealCore: WoooshCore {
             trustStorePath: config.trustStoreURL.path,
             listenAddr: config.listenAddress
         )
-        // Off the main actor: `start` binds the QUIC socket and invokes the
-        // host KeyStore synchronously on the calling thread. A Keychain read
-        // there is enough to freeze the UI (observed: SecItemCopyMatching
-        // putting an access prompt up with the main thread inside it).
+        // Off the main actor: `start` calls the KeyStore synchronously, and a
+        // Keychain prompt on the main thread freezes the UI.
         let ffi = self.ffi
         let keyStore = self.keyStore
         try await Task.detached(priority: .userInitiated) {
@@ -92,9 +78,7 @@ final class RealCore: WoooshCore {
         started = false
         translateTask?.cancel()
         translateTask = nil
-        // Synchronous by design: the core joins its callback thread here, and
-        // returning before that is done would let the tokio runtime be dropped
-        // from under an in-flight callback.
+        // Synchronous: the core joins its callback thread here.
         ffi.stop()
     }
 
@@ -110,9 +94,7 @@ final class RealCore: WoooshCore {
         (try? ffi.beginPairingQr()) ?? ""
     }
 
-    /// Parse-only: the QR is the only place the shell ever legitimately learns
-    /// a peer's public key (and its name, which the progress UI shows while
-    /// the connection is being made).
+    /// Parse-only: a QR is one of two places the shell may learn a peer's key.
     @discardableResult
     func peerHint(forPairingPayload payload: String) -> PeerRef? {
         guard let info = try? WoooshCoreFFI.parsePairingQr(payload: payload) else { return nil }
@@ -132,8 +114,6 @@ final class RealCore: WoooshCore {
         let ffi = self.ffi
         Task.detached(priority: .userInitiated) {
             do {
-                // Success arrives as the core's own PairingResult event on
-                // PAIR_ACCEPT; only the failure needs synthesizing here.
                 _ = try ffi.pairWithQr(payload: payload)
             } catch {
                 let message = coreErrorMessage(error)
@@ -164,8 +144,7 @@ final class RealCore: WoooshCore {
 
     func beginInternetTicket() async throws -> String {
         let ffi = self.ffi
-        // Off the main actor: binds the iroh endpoint and blocks on a home
-        // relay for as long as ~15 s.
+        // Off the main actor: blocks on a home relay for as long as ~15 s.
         return try await Task.detached(priority: .userInitiated) {
             try ffi.beginInternetTicket()
         }.value
@@ -177,8 +156,7 @@ final class RealCore: WoooshCore {
 
     func setRelayURLs(_ urls: [String]?) async throws {
         let ffi = self.ffi
-        // Off the main actor: closing the bound iroh endpoint is an
-        // asynchronous shutdown the core drives with `block_on`.
+        // Off the main actor: the core drives the endpoint shutdown with `block_on`.
         try await Task.detached(priority: .userInitiated) {
             try ffi.setRelayUrls(urls: urls)
         }.value
@@ -195,8 +173,6 @@ final class RealCore: WoooshCore {
         )
     }
 
-    /// Parse-only, the ticket twin of `peerHint(forPairingPayload:)`: a ticket
-    /// is the other place the shell legitimately learns a peer's public key.
     @discardableResult
     func peerHint(forTicket ticket: String) -> PeerRef? {
         guard let info = ticketInfo(for: ticket) else { return nil }
@@ -216,9 +192,7 @@ final class RealCore: WoooshCore {
         let ffi = self.ffi
         Task.detached(priority: .userInitiated) {
             do {
-                // Success arrives as TicketRedeemed, not PairingResult: this
-                // path never pairs (PROTOCOL.md §9.4). Only the failure needs
-                // synthesizing here.
+                // Success arrives as TicketRedeemed: this path never pairs (§9.4).
                 _ = try ffi.redeemTicket(ticket: ticket)
             } catch {
                 let message = coreErrorMessage(error)
@@ -248,8 +222,7 @@ final class RealCore: WoooshCore {
             let raw = try ffi.send(peerId: peerID, files: urls.map(\.path))
             return TransferID(raw: raw)
         } catch {
-            // Keep the UI's contract (a transfer row always appears) and fail
-            // it through the event stream like any other transfer error.
+            // A transfer row always appears, so fail through the event stream.
             let tid = TransferID(raw: UUID().uuidString)
             let message = coreErrorMessage(error)
             Task { [weak self] in
@@ -384,8 +357,7 @@ final class RealCore: WoooshCore {
 
         case .keyChanged(let peerId, let expectedPubkey, let presentedPubkey):
             var ref = peerRef(for: peerId)
-            // The pin is what identifies the peer the user trusted; the
-            // presented key belongs to whoever answered.
+            // The pin identifies the peer the user trusted, not the answerer.
             ref.publicKey = expectedPubkey
             ref.fingerprint = fingerprintPhrase(forPublicKey: expectedPubkey) ?? ref.fingerprint
             emit(.keyChanged(peer: ref, expectedPublicKey: expectedPubkey,
@@ -393,8 +365,6 @@ final class RealCore: WoooshCore {
         }
     }
 
-    /// Best label the shell can produce for a bare `peer_id`. Falls back to
-    /// the core's own trust store rather than deriving anything locally.
     private func peerRef(for peerID: String) -> PeerRef {
         if let known = peerInfo[peerID] { return known }
         if let pinned = trustedPeers().first(where: { $0.deviceID == peerID }) {
@@ -429,8 +399,7 @@ final class RealCore: WoooshCore {
 
 // MARK: - Event bridge (core thread → main actor)
 
-/// Runs on the core's dedicated callback thread. The only work it does is a
-/// non-blocking hand-off; blocking here would stall every subsequent event.
+/// On the core's callback thread: blocking here stalls every later event.
 private final class EventBridge: WoooshCoreFFI.CoreEventListener, @unchecked Sendable {
     private let continuation: AsyncStream<WoooshCoreFFI.CoreEvent>.Continuation
 
@@ -510,11 +479,8 @@ extension Visibility {
 
 // MARK: - Errors
 
-/// Maps the core's typed errors to user-facing text. Two reasons this mapping
-/// exists: reporting a close code such as `PAIRING_REQUIRED` (PROTOCOL.md
-/// §4.1.1) as a generic transport failure is a conformance bug, and the core's
-/// own messages are untranslatable internal English that must never reach the
-/// screen. The raw text stays in the log.
+/// Reporting a close code such as `PAIRING_REQUIRED` as a generic transport
+/// failure is a conformance bug. The raw text stays in the log.
 private enum RelayLimit {
     /// Formatted once: the value is a compile-time constant in the core.
     static let text = ByteCountFormatter.string(
@@ -536,7 +502,6 @@ func coreErrorMessage(_ error: Error) -> String {
     case .Pairing(let message):
         return message.contains("expired") ? L.t("error_pairing_expired") : L.t("error_pairing_failed")
     case .RelayFileTooLarge:
-        // The limit comes from the core so the copy cannot drift from the rule.
         return L.f("error_relay_file_too_large", RelayLimit.text)
     case .Connect: return L.t("error_connect")
     case .UnknownPeer: return L.t("error_unknown_peer")
@@ -550,9 +515,7 @@ func coreErrorMessage(_ error: Error) -> String {
     }
 }
 
-/// The core reports transfer outcomes as short English tokens, and they are the
-/// only description of why a transfer stopped. Recognised here and answered
-/// with real copy rather than shown raw.
+/// The core's outcome tokens are internal English; answer them with real copy.
 func transferErrorMessage(_ raw: String) -> String {
     let text = raw.lowercased()
     if text.contains("declined") || text.contains("rejected") {

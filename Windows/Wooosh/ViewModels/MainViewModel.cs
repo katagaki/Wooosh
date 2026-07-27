@@ -9,12 +9,7 @@ using Wooosh.Settings;
 
 namespace Wooosh.ViewModels;
 
-/// <summary>
-/// Owns the app's long-lived pieces and turns the core event stream into UI state.
-///
-/// Everything the core raises arrives on the core's own thread, so every handler here
-/// marshals to the UI thread before touching a bound collection (DESIGN.md §4).
-/// </summary>
+/// <summary>Core events arrive on the core's thread; every handler marshals to the UI thread before touching a bound collection (DESIGN.md §4).</summary>
 public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     private readonly DispatcherQueue _dispatcher;
@@ -43,23 +38,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     public SettingsRepository Settings { get; }
 
-    /// <summary>
-    /// The core. Exposed so pages can make the cheap, non-blocking calls (BeginPairingQr,
-    /// ConfirmSas, RespondToOffer) directly; anything blocking goes through a method on this
-    /// view model so the off-UI-thread rule stays in one place.
-    /// </summary>
+    /// <summary>Only non-blocking core calls belong on pages; blocking ones go through this view model so the off-UI-thread rule stays in one place.</summary>
     public IWoooshCore Core => _core;
 
     /// <summary>The device list. Append-only and never re-sorted; see <see cref="PeerRegistry"/>.</summary>
     public ObservableCollection<Peer> Peers => _discovery.Registry.Peers;
 
-    /// <summary>Finished transfers and the ones in flight, newest first.</summary>
     public ObservableCollection<TransferViewModel> Transfers { get; } = [];
 
-    /// <summary>
-    /// Set when the core could not start. The message is already localized and safe to
-    /// show: the technical reason goes to the debugger, never to the user.
-    /// </summary>
+    /// <summary>Already localized and safe to show; the technical reason goes to the debugger, never to the user.</summary>
     public string? StartupError
     {
         get => _startupError;
@@ -78,7 +65,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         private set => Set(ref _fingerprintPhrase, value);
     }
 
-    /// <summary>Which line the empty state shows about who can see this device.</summary>
     public string VisibilityExplanation => Settings.Current.Visibility switch
     {
         CoreVisibility.Everyone => Strings.Get("EmptyVisibilityEveryone"),
@@ -115,13 +101,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             StartupError = e.Message;
         }
 
-        // Discovery is native and independent of the core (DESIGN.md §2), so it runs even
-        // when the core did not come up: the device list is real either way, and Wooosh
-        // says plainly that it cannot transfer rather than showing an empty screen.
+        // Discovery is independent of the core (DESIGN.md §2), so the device list is real even when the core did not start.
         _discovery.Start();
     }
 
-    /// <summary>Pull to refresh. The only thing that clears the device list.</summary>
+    /// <summary>The only thing that clears the device list.</summary>
     public void Refresh() => _discovery.Refresh();
 
     public void SetVisibility(CoreVisibility visibility)
@@ -170,18 +154,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 Find(e.TransferId)?.ApplyError(e);
                 break;
 
-            // TODO(views): IncomingOffer, PairingSas, PairingResult and KeyChanged each own
-            // a dialog. The dialogs exist under Views/; wiring them needs the core actually
-            // delivering these events, which is blocked on the bindings.
+            // TODO(views): IncomingOffer, PairingSas, PairingResult and KeyChanged dialogs exist but need the core to deliver these events.
             default:
                 break;
         }
     });
 
-    /// <summary>
-    /// Storage routing (DESIGN.md §6). The file is only reported as received once it is in
-    /// Downloads: a transfer is never called complete for a file the user cannot find.
-    /// </summary>
+    /// <summary>A file is only reported as received once it is in Downloads (DESIGN.md §6), never while still staged.</summary>
     private async Task RouteAsync(CoreEvent.FileReady ready)
     {
         var transfer = Find(ready.TransferId);
@@ -211,7 +190,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    /// <summary>Extracts the port from the core's "ip:port", including the IPv6 form.</summary>
     private static int ParsePort(string? listenAddr)
     {
         if (string.IsNullOrEmpty(listenAddr))

@@ -1,12 +1,5 @@
-//! Loopback integration tests for wooosh-core.
-//!
-//! Covers: (a) QR pairing, (b) SAS pairing incl. relayed-MITM code mismatch,
-//! (c) 1x200 MiB + 500x100 KiB transfers with hash verification, (d) kill /
-//! restart receiver + resume without re-sending verified bytes, (e)
-//! untrusted-channel message restrictions, (f) KEY_CHANGED on pin mismatch,
-//! (g) core-side pinning of a SAS-paired peer when the caller passes no key,
-//! (h) the `trusted_peers()` trust list across pair + revoke, (i) the internet
-//! path (iroh tickets, PROTOCOL.md §9) end to end without any relay.
+//! Everything runs on 127.0.0.1 with no relay, so the suite is hermetic apart
+//! from the one `#[ignore]`d public-relay test.
 
 use rand::{RngCore, SeedableRng};
 use std::path::{Path, PathBuf};
@@ -39,14 +32,12 @@ impl Node {
         Node::start_with(base, name, vis, "127.0.0.1:0", None)
     }
 
-    /// Start a node whose internet path uses no relay and no address lookup,
-    /// so the whole iroh flow runs on loopback with nothing leaving the host.
+    /// No relay and no address lookup, so the iroh flow stays on loopback.
     fn start_offline_internet(base: &Path, name: &str, vis: Visibility) -> Node {
         Node::start_with(base, name, vis, "127.0.0.1:0", Some(Vec::new()))
     }
 
-    /// Start a node on a specific address. Used to let a second identity take
-    /// over the exact `ip:port` a paired peer used to occupy.
+    /// Lets a second identity take over the exact `ip:port` a paired peer held.
     fn start_on(base: &Path, name: &str, vis: Visibility, listen: &str) -> Node {
         Node::start_with(base, name, vis, listen, None)
     }
@@ -70,8 +61,7 @@ impl Node {
             listen_addr: Some(listen.to_string()),
             relay_urls,
         };
-        // Re-binding a port a just-stopped node released can lose a race with
-        // the OS reclaiming the socket; retry briefly.
+        // Re-binding a just-released port races the OS reclaiming the socket.
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
             let core = WoooshCore::new();
@@ -96,8 +86,7 @@ impl Node {
         self.dir.join("staging")
     }
 
-    /// Discard already-queued events so a later `wait_for` cannot be satisfied
-    /// by a stale event from an earlier phase of the test.
+    /// So a later `wait_for` cannot be satisfied by a stale event.
     fn drain(&self) {
         while self.rx.try_recv().is_ok() {}
     }
@@ -153,8 +142,6 @@ fn b3_of(path: &Path) -> String {
     hasher.finalize().to_hex().to_string()
 }
 
-// ---------------------------------------------------------------- (a) QR
-
 #[test]
 fn pair_via_qr() {
     let tmp = tempfile::tempdir().unwrap();
@@ -164,7 +151,6 @@ fn pair_via_qr() {
     let payload = r.core.begin_pairing_qr().unwrap();
     assert!(payload.starts_with("wooosh-pair:1?pk="));
 
-    // The shell-facing parse helper sees the dn hint.
     let info = parse_pairing_qr(payload.clone()).unwrap();
     assert_eq!(info.device_name.as_deref(), Some("receiver"));
     assert_eq!(info.device_id, r.core.device_id().unwrap());
@@ -173,7 +159,6 @@ fn pair_via_qr() {
     let peer_id = s.core.pair_with_qr(payload).unwrap();
     assert_eq!(peer_id, r.core.device_id().unwrap());
 
-    // Both sides conclude with PairingResult { success: true }.
     let ok = wait_for(&s.rx, Duration::from_secs(10), "sender PairingResult", |e| match e {
         CoreEvent::PairingResult { success, .. } => Some(*success),
         _ => None,
@@ -185,7 +170,6 @@ fn pair_via_qr() {
     });
     assert!(ok);
 
-    // Reconnect: now both sides see a trusted channel.
     let r_pk = r.core.public_key().unwrap();
     let pid2 = s.core.connect_peer(r.addr(), Some(r_pk)).unwrap();
     assert_eq!(pid2, peer_id);
@@ -207,18 +191,14 @@ fn pair_via_qr_rejects_bad_token_and_wrong_key() {
     let r = Node::start(tmp.path(), "receiver", Visibility::Everyone);
     let s = Node::start(tmp.path(), "sender", Visibility::Everyone);
 
-    // Wrong token.
     let payload = r.core.begin_pairing_qr().unwrap();
     let mut qr = wooosh_core::pairing::QrPayload::parse(&payload).unwrap();
     qr.token[0] ^= 0xFF;
     let err = s.core.pair_with_qr(qr.encode()).unwrap_err();
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
-    // Shells drive the pairing sheet off events, so the failure must also
-    // arrive as one — whether the PAIR_REJECT frame survived the close or only
-    // the TOKEN_INVALID close code did.
+    // Shells drive the sheet off events, so every failure must arrive as one.
     expect_pairing_failure(&s, "bad token");
 
-    // Wrong key: QR pk != presented cert key => QR_KEY_MISMATCH.
     let payload = r.core.begin_pairing_qr().unwrap();
     let mut qr = wooosh_core::pairing::QrPayload::parse(&payload).unwrap();
     qr.pubkey[0] ^= 0xFF;
@@ -226,7 +206,6 @@ fn pair_via_qr_rejects_bad_token_and_wrong_key() {
     assert!(matches!(err, WoooshError::QrKeyMismatch), "got {err:?}");
     expect_pairing_failure(&s, "wrong key");
 
-    // Expired QR: rejected without ever dialling — still an event.
     let payload = r.core.begin_pairing_qr().unwrap();
     let mut qr = wooosh_core::pairing::QrPayload::parse(&payload).unwrap();
     qr.expires_unix = 1;
@@ -234,14 +213,12 @@ fn pair_via_qr_rejects_bad_token_and_wrong_key() {
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
     expect_pairing_failure(&s, "expired QR");
 
-    // Unparseable payload: no peer identity to name, but still an event.
     let err = s.core.pair_with_qr("not-a-wooosh-qr".to_string()).unwrap_err();
     assert!(matches!(err, WoooshError::InvalidQrPayload(_)), "got {err:?}");
     expect_pairing_failure(&s, "garbage payload");
 }
 
-/// Assert the next `PairingResult` on this node reports failure, then clear
-/// the queue so the following phase cannot be satisfied by a stale event.
+/// Clears the queue afterwards so the next phase cannot see a stale event.
 fn expect_pairing_failure(node: &Node, what: &str) {
     let (success, message) = wait_for(
         &node.rx,
@@ -258,11 +235,8 @@ fn expect_pairing_failure(node: &Node, what: &str) {
     node.drain();
 }
 
-/// A dead hint ahead of the live one must not delay pairing.
-///
-/// The black holes are *bound* UDP sockets that never answer: bound, so the OS
-/// sends no ICMP port-unreachable to end the attempt early, and each one costs
-/// a whole pairing connect timeout if the hints are dialled in sequence.
+/// The black holes are *bound* UDP sockets, so the OS sends no ICMP
+/// port-unreachable and each one costs a full connect timeout if dialled serially.
 #[test]
 fn pair_via_qr_races_hints_so_a_dead_hint_first_does_not_stall() {
     let tmp = tempfile::tempdir().unwrap();
@@ -288,9 +262,8 @@ fn pair_via_qr_races_hints_so_a_dead_hint_first_does_not_stall() {
     eprintln!("[race] pair_with_qr with 2 dead hints ahead of the live one: {elapsed:?}");
 
     assert_eq!(peer_id, r.core.device_id().unwrap());
-    // Serially this costs two full connect timeouts before the live hint is
-    // even dialled. Racing bounds it by the live handshake, milliseconds on
-    // loopback; 5 s is generous but still fails loudly if serial comes back.
+    // Serial dialling costs two connect timeouts before the live hint is even
+    // tried; racing bounds it by the loopback handshake, so 5 s is generous.
     assert!(
         elapsed < Duration::from_secs(5),
         "hints look serial again: pairing took {elapsed:?}"
@@ -307,13 +280,11 @@ fn pair_via_qr_races_hints_so_a_dead_hint_first_does_not_stall() {
     });
     assert!(ok);
 
-    // Exactly one peer registered on the receiver: the losing dials must not
-    // have left a second connection behind.
+    // The losing dials must not leave a second connection behind.
     assert_eq!(r.core.trusted_peers().unwrap().len(), 1);
 }
 
-/// Every hint dead: bounded by one connect timeout, not the sum, and it still
-/// tells the shell that pairing is over.
+/// Bounded by one connect timeout, not the sum.
 #[test]
 fn pair_via_qr_all_hints_dead_fails_once_and_emits() {
     let tmp = tempfile::tempdir().unwrap();
@@ -342,8 +313,6 @@ fn pair_via_qr_all_hints_dead_fails_once_and_emits() {
     expect_pairing_failure(&s, "all hints dead");
 }
 
-// ---------------------------------------------------------------- (b) SAS
-
 #[test]
 fn pair_via_sas_and_mitm_codes_differ() {
     let tmp = tempfile::tempdir().unwrap();
@@ -351,7 +320,6 @@ fn pair_via_sas_and_mitm_codes_differ() {
     let m = Node::start(tmp.path(), "mallory", Visibility::Everyone);
     let b = Node::start(tmp.path(), "bob", Visibility::Everyone);
 
-    // Session 1: alice <-> mallory, the victim's session with the MITM.
     let pid_m = a.core.connect_peer(m.addr(), None).unwrap();
     a.core.request_sas_pairing(pid_m.clone()).unwrap();
     let code_a = wait_for(&a.rx, Duration::from_secs(10), "alice PairingSas", |e| match e {
@@ -362,14 +330,12 @@ fn pair_via_sas_and_mitm_codes_differ() {
         CoreEvent::PairingSas { code, .. } => Some(code.clone()),
         _ => None,
     });
-    // Both ends of the SAME TLS session derive the same 6-digit code.
     assert_eq!(code_a, code_m1);
     assert_eq!(code_a.len(), 6);
     assert!(code_a.chars().all(|c| c.is_ascii_digit()));
 
-    // Session 2: mallory <-> bob, the MITM's relayed session. The exporter
-    // binds each TLS transcript, so the two sessions cannot show the same
-    // code (up to the 1e-6 collision floor).
+    // Session 2, the MITM's relayed one: the exporter binds each TLS transcript,
+    // so the two sessions cannot show the same code (1e-6 collision floor).
     let pid_b = m.core.connect_peer(b.addr(), None).unwrap();
     m.core.request_sas_pairing(pid_b.clone()).unwrap();
     let code_m2 = wait_for(&m.rx, Duration::from_secs(10), "mallory PairingSas 2", |e| match e {
@@ -386,7 +352,6 @@ fn pair_via_sas_and_mitm_codes_differ() {
         "relayed MITM sessions must derive different SAS codes"
     );
 
-    // Complete alice <-> mallory pairing with mutual confirmation.
     let a_id = a.core.device_id().unwrap();
     a.core.confirm_sas(pid_m.clone(), true).unwrap();
     m.core.confirm_sas(a_id, true).unwrap();
@@ -401,8 +366,6 @@ fn pair_via_sas_and_mitm_codes_differ() {
     });
     assert!(ok);
 }
-
-// ------------------------------------------------------- (c) big + many
 
 #[test]
 fn transfer_200mib_and_500_small_files() {
@@ -421,7 +384,7 @@ fn transfer_200mib_and_500_small_files() {
         paths.push(p.to_string_lossy().to_string());
     }
 
-    // Unpaired accept-once transfer (visibility Everyone, PROTOCOL.md §4.4).
+    // Unpaired accept-once transfer, PROTOCOL.md §4.4.
     let pid = s.core.connect_peer(r.addr(), None).unwrap();
     let tid = s.core.send(pid, paths).unwrap();
 
@@ -452,8 +415,7 @@ fn transfer_200mib_and_500_small_files() {
     assert_eq!(offer_tid, tid);
     assert_eq!(fids.len(), 501);
     assert!(!trusted, "unpaired sender must be untrusted");
-    // The consent sheet gets everything it needs to identify (and pair with)
-    // an unknown sender without deriving crypto in the shell.
+    // The consent sheet identifies an unknown sender without deriving crypto.
     assert_eq!(offer_key, s.core.public_key().unwrap());
     assert_eq!(offer_fp, s.core.fingerprint_phrase().unwrap());
     assert!(matches!(offer_dt, Some(DeviceType::Desktop)));
@@ -518,8 +480,6 @@ fn transfer_200mib_and_500_small_files() {
     }
 }
 
-// ------------------------------------------------- (d) kill + resume
-
 #[test]
 fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     let tmp = tempfile::tempdir().unwrap();
@@ -527,7 +487,7 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     let r1 = Node::start(tmp.path(), "recv", Visibility::Everyone);
     let s = Node::start(tmp.path(), "send", Visibility::Everyone);
 
-    // Pair first (RESUME_Q requires a trusted channel).
+    // RESUME_Q requires a trusted channel, so pair first.
     let payload = r1.core.begin_pairing_qr().unwrap();
     let pid = s.core.pair_with_qr(payload).unwrap();
     let r_pubkey = r1.core.public_key().unwrap();
@@ -545,9 +505,8 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     });
     r1.core.respond_to_offer(offer_tid, fids).unwrap();
 
-    // Let it run until the receiver has demonstrably persisted progress
-    // (>40 MiB received => at least two 16 MiB ledger fsyncs), then kill the
-    // receiver abruptly.
+    // >40 MiB received means at least two 16 MiB ledger fsyncs have landed, so
+    // the abrupt kill below leaves persisted progress behind.
     wait_for(&r1.rx, Duration::from_secs(300), "mid-transfer progress", |e| match e {
         CoreEvent::Progress { bytes_done, .. } if *bytes_done >= 40 * MIB => Some(()),
         _ => None,
@@ -567,7 +526,7 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     );
     assert!(resumable);
 
-    // Same state dir (identity key, trust store, staging + ledger), new port.
+    // Same state dir (identity, trust store, staging + ledger), new port.
     let r2 = Node::start(tmp.path(), "recv", Visibility::Everyone);
     let pid2 = s.core.connect_peer(r2.addr(), Some(r_pubkey)).unwrap();
     s.core.resume_transfer(pid2, tid.clone()).unwrap();
@@ -610,23 +569,19 @@ fn resume_after_receiver_restart_does_not_resend_verified_bytes() {
     assert_eq!(b3_of(&received), src_hash);
 }
 
-// ------------------------------------- (e) untrusted-channel restrictions
-
 #[test]
 fn untrusted_channel_restrictions() {
     let tmp = tempfile::tempdir().unwrap();
 
-    // PairedOnly closes right after HELLO with PAIRING_REQUIRED, and the close
-    // code must surface as a typed error, not an opaque transport failure.
+    // PAIRING_REQUIRED must surface as a typed error, not a transport failure.
     let r = Node::start(tmp.path(), "paired-only", Visibility::PairedOnly);
     let s = Node::start(tmp.path(), "stranger", Visibility::Everyone);
     let err = s.core.connect_peer(r.addr(), None).unwrap_err();
     assert!(matches!(err, WoooshError::PairingRequired), "got {err:?}");
-    // The rejected connection is never registered as a peer.
     let r_pid = r.core.device_id().unwrap();
     assert!(!s.core.peer_connected(&r_pid));
 
-    // Everyone: OFFER is honored untrusted, but RESUME_Q is not.
+    // Under Everyone, OFFER is honored untrusted but RESUME_Q is not.
     let r2 = Node::start(tmp.path(), "everyone", Visibility::Everyone);
     let pid2 = s.core.connect_peer(r2.addr(), None).unwrap();
     assert!(s.core.peer_connected(&pid2));
@@ -643,13 +598,8 @@ fn untrusted_channel_restrictions() {
     assert!(!s.core.peer_connected(&pid2));
 }
 
-// ------------------- (g) core-side pinning without a caller-supplied key
-
-/// SAS pairing never hands the shell a public key at pairing time, so the
-/// natural reconnect call is `connect_peer(addr, None)`. The §4.5 pinning
-/// guarantee must still apply: the core re-derives the pin from its own trust
-/// store, and an imposter that takes over the paired peer's address is
-/// rejected with KEY_CHANGED.
+/// SAS pairing never hands the shell a public key, so §4.5 pinning has to work
+/// with the core re-deriving the pin from its own trust store.
 #[test]
 fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     let tmp = tempfile::tempdir().unwrap();
@@ -659,7 +609,6 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     let b_pubkey = b.core.public_key().unwrap();
     let b_id = b.core.device_id().unwrap();
 
-    // Pair over SAS; the caller never sees bob's key.
     let pid_b = a.core.connect_peer(b_addr.clone(), None).unwrap();
     a.core.request_sas_pairing(pid_b.clone()).unwrap();
     wait_for(&a.rx, Duration::from_secs(10), "alice PairingSas", |e| match e {
@@ -673,7 +622,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     let a_id = a.core.device_id().unwrap();
     a.core.confirm_sas(pid_b.clone(), true).unwrap();
     b.core.confirm_sas(a_id, true).unwrap();
-    // PairingResult carries the peer's raw key, so a shell can pin/revoke.
+    // PairingResult carries the raw key, so a shell can pin or revoke later.
     let (paired_key, paired_fp) =
         wait_for(&a.rx, Duration::from_secs(10), "alice PairingResult", |e| match e {
             CoreEvent::PairingResult { success: true, peer_pubkey, fingerprint, .. } => {
@@ -688,8 +637,7 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
         _ => None,
     });
 
-    // Reconnect with expected_pubkey = None: still pinned, still trusted.
-    a.drain(); // only judge events produced by the reconnect below
+    a.drain();
     let pid2 = a.core.connect_peer(b_addr.clone(), None).unwrap();
     assert_eq!(pid2, b_id);
     let (ev_key, ev_trusted, ev_dt) = wait_for(
@@ -709,14 +657,12 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     assert!(ev_trusted, "a pinned peer must reconnect as trusted");
     assert!(matches!(ev_dt, Some(DeviceType::Desktop)), "HELLO dt must reach the shell");
 
-    // An imposter takes over bob's exact address.
     b.core.stop();
     drop(b);
     let imposter = Node::start_on(tmp.path(), "imposter", Visibility::Everyone, &b_addr);
     let imposter_key = imposter.core.public_key().unwrap();
     assert_ne!(imposter_key, b_pubkey);
 
-    // The caller again passes no key — the core supplies the pin itself.
     let err = a.core.connect_peer(b_addr.clone(), None).unwrap_err();
     assert!(matches!(err, WoooshError::KeyChanged), "got {err:?}");
     let (peer_id, expected, presented) =
@@ -729,14 +675,11 @@ fn sas_paired_peer_is_pinned_on_reconnect_without_caller_key() {
     assert_eq!(peer_id, b_id);
     assert_eq!(expected, b_pubkey);
     assert_eq!(presented, Some(imposter_key), "the offending key must be reported");
-    // No silent re-pin: the imposter is not in the trust store and bob's pin
-    // is untouched.
+    // No silent re-pin: bob's pin is untouched and the imposter is not stored.
     let pinned: Vec<Vec<u8>> =
         a.core.trusted_peers().unwrap().into_iter().map(|p| p.pubkey).collect();
     assert_eq!(pinned, vec![b_pubkey]);
 }
-
-// ------------------------------------ (h) trust list: pair, read, revoke
 
 #[test]
 fn trusted_peers_reflects_pair_and_revoke() {
@@ -759,7 +702,6 @@ fn trusted_peers_reflects_pair_and_revoke() {
         _ => None,
     });
 
-    // Sender's trust list describes the receiver, straight from trust.json.
     let list = s.core.trusted_peers().unwrap();
     assert_eq!(list.len(), 1);
     let p = &list[0];
@@ -771,19 +713,16 @@ fn trusted_peers_reflects_pair_and_revoke() {
     assert_eq!(p.fingerprint, fingerprint_phrase_for(r_pubkey.clone()).unwrap());
     assert!(p.paired_at > 0 && p.last_seen >= p.paired_at);
 
-    // The QR-*displaying* side gets a usable entry too.
     let r_list = r.core.trusted_peers().unwrap();
     assert_eq!(r_list.len(), 1);
     assert_eq!(r_list[0].pubkey, s.core.public_key().unwrap());
     assert_eq!(r_list[0].device_name, "sender");
 
-    // Revoke by the key the accessor handed us.
     assert!(s.core.revoke_peer(p.pubkey.clone()).unwrap());
     assert!(s.core.trusted_peers().unwrap().is_empty());
     assert!(!s.core.revoke_peer(r_pubkey.clone()).unwrap(), "second revoke is a no-op");
 
-    // Revocation also drops the core's pin memory: reconnecting without a key
-    // is untrusted again, not KEY_CHANGED.
+    // Revoking drops the pin memory too: untrusted again, not KEY_CHANGED.
     s.drain();
     let pid = s.core.connect_peer(r.addr(), None).unwrap();
     let trusted = wait_for(
@@ -798,8 +737,6 @@ fn trusted_peers_reflects_pair_and_revoke() {
     assert!(!trusted, "revoked peer must come back untrusted");
 }
 
-// ------------------------------------------------- (f) KEY_CHANGED
-
 #[test]
 fn key_changed_on_pin_mismatch() {
     let tmp = tempfile::tempdir().unwrap();
@@ -807,8 +744,6 @@ fn key_changed_on_pin_mismatch() {
     let imposter = Node::start(tmp.path(), "imposter", Visibility::Everyone);
     let s = Node::start(tmp.path(), "sender", Visibility::Everyone);
 
-    // Victim's key pinned, imposter's key presented: hard KEY_CHANGED, and
-    // never a silent re-pin.
     let victim_key = victim.core.public_key().unwrap();
     let err = s.core.connect_peer(imposter.addr(), Some(victim_key)).unwrap_err();
     assert!(matches!(err, WoooshError::KeyChanged), "got {err:?}");
@@ -817,23 +752,12 @@ fn key_changed_on_pin_mismatch() {
         _ => None,
     });
 
-    // Sanity: connecting with the right expectation still works.
     let ok_pid = s.core.connect_peer(victim.addr(), Some(victim.core.public_key().unwrap()));
     assert!(ok_pid.is_ok());
 }
 
-// ------------------------------------------- (i) internet path (PROTOCOL.md §9)
-
-/// Ticket → connect → redeem → transfer, over iroh, entirely on loopback.
-///
-/// Runs the redeemer-sends direction. The shells ship the opposite one (the
-/// publisher sends, PROTOCOL.md §9.2), covered separately below; the engine
-/// must carry both.
-///
-/// Both nodes run with relays and address lookup disabled, so the ticket's
-/// direct candidates are the only way in and the test needs no network at all.
-/// That keeps it hermetic in CI while still exercising the real iroh stack,
-/// the real ticket format and the *same* engine the LAN path uses.
+/// PROTOCOL.md §9, redeemer-sends direction; the shells ship the opposite one,
+/// covered below. Relays off, so the ticket's direct candidates are the only way in.
 #[test]
 fn internet_ticket_transfer_end_to_end() {
     let tmp = tempfile::tempdir().unwrap();
@@ -843,8 +767,6 @@ fn internet_ticket_transfer_end_to_end() {
     let ticket = r.core.begin_internet_ticket().unwrap();
     assert!(ticket.starts_with("wooosh-net:1?nid="), "got {ticket}");
 
-    // The shell-facing parse helper labels the UI before redeeming, and the
-    // node id in the ticket is the receiver's ordinary Wooosh identity.
     let info = wooosh_core::parse_internet_ticket(ticket.clone()).unwrap();
     assert_eq!(info.device_name.as_deref(), Some("net-receiver"));
     assert_eq!(info.device_id, r.core.device_id().unwrap());
@@ -852,8 +774,7 @@ fn internet_ticket_transfer_end_to_end() {
     assert!(!info.expired);
 
     let peer_id = s.core.redeem_ticket(ticket).unwrap();
-    // Same DeviceID as on the LAN: a device must not appear as two identities
-    // depending on the path it arrived over.
+    // A device must not appear as two identities depending on the path.
     assert_eq!(peer_id, r.core.device_id().unwrap());
     assert_eq!(
         wooosh_core::device_id_for(r.core.public_key().unwrap()).unwrap(),
@@ -864,9 +785,7 @@ fn internet_ticket_transfer_end_to_end() {
         fingerprint_phrase_for(r.core.public_key().unwrap()).unwrap()
     );
 
-    // Redeeming pins both ways, exactly like QR pairing.
-    // Redeeming authorises one session and pairs NOTHING (PROTOCOL.md §9.4).
-    // Both ends learn the peer through TicketRedeemed, never PairingResult.
+    // Redeeming authorises one session and pairs nothing (PROTOCOL.md §9.4).
     let redeemer = wait_for(&s.rx, Duration::from_secs(20), "sender TicketRedeemed", |e| match e {
         CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
         _ => None,
@@ -877,12 +796,9 @@ fn internet_ticket_transfer_end_to_end() {
         _ => None,
     });
     assert_eq!(publisher, s.core.device_id().unwrap());
-    // The load-bearing assertion of the whole model: an internet transfer
-    // leaves no trace in either trust store.
     assert!(s.core.trusted_peers().unwrap().is_empty(), "redeeming wrote a pin");
     assert!(r.core.trusted_peers().unwrap().is_empty(), "publishing wrote a pin");
 
-    // …and then the ordinary transfer engine runs over it, unchanged.
     let src = tmp.path().join("net-payload.bin");
     write_random_file(&src, 3 * MIB, 0xBEEF);
     let want = b3_of(&src);
@@ -917,8 +833,6 @@ fn internet_ticket_transfer_end_to_end() {
     assert_eq!((ok_files, failed), (1, 0));
     assert_eq!(bytes, 3 * MIB);
 
-    // Direction is reported on the sending side too, from the same event set
-    // a shell already handles.
     let dir = wait_for(&s.rx, Duration::from_secs(30), "TransferStarted", |e| match e {
         CoreEvent::TransferStarted { direction, .. } => Some(matches!(direction, TransferDirection::Send)),
         _ => None,
@@ -926,13 +840,8 @@ fn internet_ticket_transfer_end_to_end() {
     assert!(dir);
 }
 
-/// The same flow with the publisher on `PairedOnly` — the shipped default on
-/// every shell, and the case every other test in this section misses.
-///
-/// The internet path never pairs (PROTOCOL.md §9.4), so `trusted` is false for
-/// a legitimate ticket transfer. A visibility check that reads `trusted` alone
-/// therefore closes the connection *after* the token has already been redeemed
-/// and burned, which is unrecoverable: the user is handed a dead code.
+/// `PairedOnly` is the shipped default, and the internet path never pairs, so a
+/// visibility check reading `trusted` alone kills an already-burned ticket.
 #[test]
 fn internet_ticket_transfer_works_under_paired_only() {
     let tmp = tempfile::tempdir().unwrap();
@@ -956,8 +865,7 @@ fn internet_ticket_transfer_works_under_paired_only() {
         .send(peer_id, vec![src.to_string_lossy().to_string()])
         .unwrap();
 
-    // The regression: PairedOnly used to close the connection right here, so
-    // the OFFER never reached the receiver at all.
+    // The regression: PairedOnly used to close here, so the OFFER never landed.
     let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(30), "IncomingOffer", |e| match e {
         CoreEvent::IncomingOffer { transfer_id, files, .. } => {
             Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
@@ -973,18 +881,12 @@ fn internet_ticket_transfer_works_under_paired_only() {
     });
     assert_eq!(b3_of(Path::new(&staged)), want);
 
-    // Still no pins: honouring the ticket must not have promoted the peer.
     assert!(s.core.trusted_peers().unwrap().is_empty());
     assert!(r.core.trusted_peers().unwrap().is_empty());
 }
 
-/// The direction the shells actually ship: the **publisher sends**.
-///
-/// PROTOCOL.md §9.2 describes the publisher as the receiver, but Android's
-/// "Other Device" Send tab stages files, then mints a ticket and sends once it
-/// is redeemed (SendOverInternetTab.kt). Both ends set `ticket_authorized`, so
-/// the engine permits either direction — this pins that down so the shipped
-/// flow cannot regress while the §9.2 direction stays green.
+/// PROTOCOL.md §9.2 makes the publisher the receiver, but the shells ship the
+/// reverse, so the engine must permit either direction.
 #[test]
 fn internet_publisher_can_send_to_the_redeemer_under_paired_only() {
     let tmp = tempfile::tempdir().unwrap();
@@ -995,8 +897,6 @@ fn internet_publisher_can_send_to_the_redeemer_under_paired_only() {
     let publisher_id = red.core.redeem_ticket(ticket).unwrap();
     assert_eq!(publisher_id, pubr.core.device_id().unwrap());
 
-    // The publisher learns who redeemed only through this event; it is the
-    // peer id the shell then sends to.
     let redeemer_id =
         wait_for(&pubr.rx, Duration::from_secs(20), "publisher TicketRedeemed", |e| match e {
             CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
@@ -1043,7 +943,6 @@ fn internet_ticket_is_single_use_and_revocable() {
     let ticket = r.core.begin_internet_ticket().unwrap();
     assert_eq!(s1.core.redeem_ticket(ticket.clone()).unwrap(), r.core.device_id().unwrap());
 
-    // Second redemption of the same token is refused; s2 never gets pinned.
     let err = s2.core.redeem_ticket(ticket).unwrap_err();
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
     expect_pairing_failure(&s2, "reused ticket");
@@ -1054,7 +953,6 @@ fn internet_ticket_is_single_use_and_revocable() {
         .iter()
         .any(|p| p.pubkey == s2.core.public_key().unwrap()));
 
-    // A ticket the user withdrew stops working immediately.
     let ticket2 = r.core.begin_internet_ticket().unwrap();
     r.core.end_internet_ticket().unwrap();
     let err = s2.core.redeem_ticket(ticket2).unwrap_err();
@@ -1062,21 +960,18 @@ fn internet_ticket_is_single_use_and_revocable() {
     expect_pairing_failure(&s2, "withdrawn ticket");
 }
 
-/// The relay set is chosen at runtime, and a chosen relay is what a ticket
-/// advertises (DESIGN.md §9.1) — that is the mechanism by which a redeemer
-/// ends up on the publisher's own relay without configuring anything.
+/// A ticket advertises whatever relay is configured at runtime (DESIGN.md §9.1),
+/// which is how a redeemer ends up on the publisher's relay.
 #[test]
 fn relay_urls_are_settable_and_validated() {
     let tmp = tempfile::tempdir().unwrap();
     let r = Node::start_offline_internet(tmp.path(), "relay-cfg", Visibility::Everyone);
 
-    // Started relay-free: the ticket can only carry direct candidates.
     let ticket = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
     assert!(ticket.relay.is_none(), "relay-free node advertised {:?}", ticket.relay);
     assert!(!ticket.addrs.is_empty(), "relay-free node advertised no address to dial");
 
-    // A malformed URL is refused, and refusing must not disturb the working
-    // configuration — a typo in Settings cannot take the internet path down.
+    // A typo in Settings must not take the internet path down.
     let err = r
         .core
         .set_relay_urls(Some(vec!["not a url".into()]))
@@ -1085,38 +980,23 @@ fn relay_urls_are_settable_and_validated() {
     let after = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
     assert!(after.relay.is_none(), "rejected URL still changed the relay");
 
-    // A syntactically valid but unreachable relay is accepted by the setter
-    // and then fails at publish time. The failure is the point: a ticket that
-    // silently fell back to local addresses would look fine and only ever work
-    // on the publisher's own network.
-    //
-    // That a *reachable* relay is advertised is not asserted here — it would
-    // need a live relay server in-process, pulling the whole `iroh-relay`
-    // server stack in as a dev-dependency for one line. The ticket publishes
-    // `addr.relay_urls().next()`, i.e. whatever home relay the endpoint
-    // actually holds, and `internet_ticket_via_public_relays` covers that path
-    // end to end against real relays.
+    // Failing at publish time is the point: a ticket that silently fell back to
+    // local addresses would only work on the publisher's own network.
     r.core
         .set_relay_urls(Some(vec!["https://relay.invalid./".into()]))
         .unwrap();
     let err = r.core.begin_internet_ticket().unwrap_err();
     assert!(matches!(err, WoooshError::Connect(_)), "got {err:?}");
 
-    // Back to relay-free, and the node still publishes: a bad relay setting is
-    // recoverable without restarting the core.
     r.core.set_relay_urls(Some(Vec::new())).unwrap();
     let recovered = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
     assert!(!recovered.addrs.is_empty(), "node did not recover after a bad relay setting");
 
-    // Tickets minted before a relay change are dead by construction: the
-    // change tears the endpoint down, so the addresses in the old ticket stop
-    // answering. Not asserted by dialling one — that costs a full 30 s connect
-    // timeout for a property the teardown already guarantees.
+    // Tickets minted before a relay change are dead by construction (the change
+    // tears the endpoint down). Not asserted: dialling one costs 30 s.
 }
 
-/// Reads the `relay=` and `addrs=` fields back out of an encoded ticket. The
-/// parse helper the shells use deliberately does not expose `addrs`, so the
-/// test reads the wire form rather than widening the public API for a test.
+/// The shells' parse helper deliberately does not expose `addrs`.
 struct NetTicketFields {
     relay: Option<String>,
     addrs: Vec<String>,
@@ -1156,8 +1036,7 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8(out).unwrap()
 }
 
-/// Malformed, expired and foreign tickets fail before any dial, and every
-/// outcome still reaches the host as a `PairingResult` (DESIGN.md §4).
+/// Every outcome still reaches the host as a `PairingResult` (DESIGN.md §4).
 #[test]
 fn internet_ticket_rejects_bad_payloads() {
     let tmp = tempfile::tempdir().unwrap();
@@ -1167,7 +1046,6 @@ fn internet_ticket_rejects_bad_payloads() {
     assert!(matches!(err, WoooshError::InvalidQrPayload(_)), "got {err:?}");
     expect_pairing_failure(&s, "garbage ticket");
 
-    // A pairing QR is not a ticket.
     let err = s
         .core
         .redeem_ticket(s.core.begin_pairing_qr().unwrap())
@@ -1189,9 +1067,7 @@ fn internet_ticket_rejects_bad_payloads() {
     expect_pairing_failure(&s, "expired ticket");
 }
 
-/// PairedOnly rejects an unpaired internet peer exactly as it does on the LAN
-/// (PROTOCOL.md §4.1): the restriction is a property of the channel, not of
-/// the transport.
+/// PROTOCOL.md §4.1: a property of the channel, not of the transport.
 #[test]
 fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     let tmp = tempfile::tempdir().unwrap();
@@ -1199,16 +1075,12 @@ fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     let ticket = r.core.begin_internet_ticket().unwrap();
     r.core.set_visibility(Visibility::PairedOnly).unwrap();
 
-    // A live ticket is an explicit invitation, so PairedOnly must not slam the
-    // door before the caller can present its token — otherwise the mode would
-    // block the very transfer the user just set up.
+    // A live ticket is an invitation: PairedOnly must not close before the
+    // caller can present its token.
     let s = Node::start_offline_internet(tmp.path(), "strict-sender", Visibility::Everyone);
     assert_eq!(s.core.redeem_ticket(ticket.clone()).unwrap(), r.core.device_id().unwrap());
-    // Invited, not trusted: still no pin on either side.
     assert!(r.core.trusted_peers().unwrap().is_empty());
 
-    // With the ticket consumed there is no invitation left, and PairedOnly
-    // does what it says.
     let s2 = Node::start_offline_internet(tmp.path(), "strict-sender-2", Visibility::Everyone);
     let err = s2.core.redeem_ticket(ticket).unwrap_err();
     assert!(
@@ -1217,9 +1089,7 @@ fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     );
 }
 
-/// SAS over the internet path (PROTOCOL.md §4.3 + §9.5): iroh's connection is
-/// TLS 1.3 too, so both ends derive the same transcript-bound six digits and
-/// the camera-less pairing ceremony works unchanged off-LAN.
+/// PROTOCOL.md §4.3 + §9.5: iroh is TLS 1.3 too, so SAS works unchanged off-LAN.
 #[test]
 fn internet_sas_codes_agree() {
     let tmp = tempfile::tempdir().unwrap();
@@ -1243,10 +1113,7 @@ fn internet_sas_codes_agree() {
     assert_eq!(a.len(), 6);
 }
 
-/// The full internet path through n0's **public relays**, which needs real
-/// network access and is therefore not part of CI.
-///
-/// Run it explicitly with:
+/// Needs real network access, so it is not part of CI. Run explicitly with:
 ///   cargo test --release --test integration -- --ignored --test-threads=1 internet_ticket_via_public_relays
 #[test]
 #[ignore = "requires internet access and n0's public relay infrastructure"]

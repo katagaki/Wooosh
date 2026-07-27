@@ -6,28 +6,11 @@ using Wooosh.Peers;
 
 namespace Wooosh.Discovery;
 
-/// <summary>
-/// Advertises this device over mDNS/DNS-SD with the TXT layout of PROTOCOL.md §3.1.
-///
-/// <para><b>Why the WinRT DNS-SD API.</b> Discovery is native per platform (DESIGN.md §2)
-/// precisely so that no shell ships a second mDNS responder to fight the system one.
-/// Windows has had an mDNS responder in <c>dnsapi.dll</c> since Windows 10 1703, and
-/// <c>Windows.Networking.ServiceDiscovery.Dnssd</c> is its public surface, so it is the
-/// direct counterpart of <c>NsdManager</c> on Android and <c>NWListener</c> on Apple.
-/// A hand-rolled responder on <c>System.Net.Sockets</c> would mean binding UDP 5353
-/// alongside the OS responder and re-implementing DNS record encoding, which is a lot of
-/// unverifiable code for a service the OS already publishes correctly. A third-party mDNS
-/// NuGet package has the same problem plus a dependency.</para>
-///
-/// <para><b>The one wart.</b> <c>DnssdServiceInstance</c> can only be registered against a
-/// <c>StreamSocketListener</c> or a <c>DatagramSocket</c>, and the SRV port comes from the
-/// socket. Wooosh's listener is QUIC over UDP, owned by the core, so the port the core
-/// reports has to be published without this shell owning a socket on it. TCP and UDP port
-/// numbers are separate namespaces, so a <c>StreamSocketListener</c> bound to the same
-/// number does not collide with the core's UDP socket, and DNS-SD convention already puts
-/// the QUIC UDP port in an <c>_tcp</c> SRV record (PROTOCOL.md §1). The listener accepts
-/// nothing: it exists so the OS has something to attach the registration to.</para>
-/// </summary>
+/// <summary>Advertises the TXT layout of PROTOCOL.md §3.1 via the WinRT DNS-SD API, so no
+/// second mDNS responder fights the system one (DESIGN.md §2). <c>DnssdServiceInstance</c>
+/// can only register against a socket listener and takes the SRV port from it, but Wooosh's
+/// QUIC/UDP listener is owned by the core; TCP and UDP port numbers are separate namespaces,
+/// so the <c>StreamSocketListener</c> here does not collide and accepts nothing.</summary>
 public sealed class DnssdAdvertiser : IAsyncDisposable
 {
     /// <summary>PROTOCOL.md §1. The <c>_tcp</c> is DNS-SD convention, not the transport.</summary>
@@ -38,18 +21,11 @@ public sealed class DnssdAdvertiser : IAsyncDisposable
     private StreamSocketListener? _listener;
     private DnssdServiceInstance? _instance;
 
-    /// <summary>
-    /// The instance name the OS actually registered. It differs from what was requested
-    /// when mDNS resolves a name conflict, and the browser needs the real one to filter
-    /// this device out of its own results.
-    /// </summary>
+    /// <summary>What the OS registered, which differs from the request when mDNS resolves a
+    /// name conflict. The browser needs the real one to filter out this device.</summary>
     public string? RegisteredInstanceName { get; private set; }
 
-    /// <summary>
-    /// Republishes the record. Safe to call on every settings change: it tears the old
-    /// registration down first, because a TXT update is not something DNS-SD lets you do
-    /// in place through this API.
-    /// </summary>
+    /// <summary>Tears the old registration down first: this API cannot update TXT in place.</summary>
     public async Task ApplyAsync(TxtRecord record)
     {
         await StopAsync();
@@ -76,8 +52,7 @@ public sealed class DnssdAdvertiser : IAsyncDisposable
             var result = await instance.RegisterStreamSocketListenerAsync(listener);
             if (result.Status != DnssdRegistrationStatus.Success)
             {
-                // Losing discovery is bad. Taking the app down with it is worse: Wooosh can
-                // still see other devices and send to them while invisible.
+                // Not fatal: Wooosh can still see other devices and send to them while invisible.
                 Debug.WriteLine($"[Wooosh] mDNS registration failed: {result.Status}");
                 listener.Dispose();
                 return;
@@ -85,7 +60,6 @@ public sealed class DnssdAdvertiser : IAsyncDisposable
 
             _listener = listener;
             _instance = instance;
-            // mDNS may have resolved a name conflict by renaming us; take what it registered.
             RegisteredInstanceName = instance.DnssdServiceInstanceName;
         }
         catch (Exception e)

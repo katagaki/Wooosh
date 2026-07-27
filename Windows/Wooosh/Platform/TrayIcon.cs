@@ -4,16 +4,9 @@ using Wooosh.Localization;
 namespace Wooosh.Platform;
 
 /// <summary>
-/// Notification-area icon so Wooosh can keep receiving with its window closed
-/// (DESIGN.md §7: "minimizes to tray and keeps receiving").
-///
-/// <para>WinUI 3 has no tray API, so this is <c>Shell_NotifyIcon</c> directly. The
-/// alternative, a NuGet wrapper, adds a dependency for about a hundred lines of P/Invoke
-/// that will not change again.</para>
-///
-/// <para>The callback message is delivered to the window procedure of an existing HWND, so
-/// this subclasses the main window rather than creating a message-only window: one fewer
-/// window to keep alive, and the icon dies with the window it belongs to.</para>
+/// Notification-area icon so Wooosh keeps receiving with its window closed (DESIGN.md §7).
+/// WinUI 3 has no tray API, hence <c>Shell_NotifyIcon</c>; the callback message needs an
+/// existing HWND's window procedure, so the main window is subclassed.
 /// </summary>
 public sealed partial class TrayIcon : IDisposable
 {
@@ -32,18 +25,16 @@ public sealed partial class TrayIcon : IDisposable
     private NotifyIconData _data;
     private bool _disposed;
 
-    /// <summary>Raised when the user asks for the window back.</summary>
     public event Action? OpenRequested;
 
-    /// <summary>Raised when the user quits from the menu. This is a real exit, not a hide.</summary>
+    /// <summary>A real exit, not a hide.</summary>
     public event Action? QuitRequested;
 
     public TrayIcon(IntPtr hwnd)
     {
         _hwnd = hwnd;
 
-        // Keep the delegate alive for as long as the subclass is installed: if it is
-        // collected, the next message dispatched to it takes the process down.
+        // Must outlive the subclass: if collected, the next message dispatched takes the process down.
         _wndProc = HandleMessage;
         _previousWndProc = SetWindowProc(hwnd, Marshal.GetFunctionPointerForDelegate(_wndProc));
 
@@ -101,8 +92,7 @@ public sealed partial class TrayIcon : IDisposable
             AppendMenuW(menu, MfSeparator, 0, null);
             AppendMenuW(menu, MfString, IdQuit, Strings.Get("TrayQuit"));
 
-            // Required, or the menu stays up after a click elsewhere (documented quirk of
-            // TrackPopupMenu from a notification-icon callback).
+            // Required, or the menu stays up after a click elsewhere: TrackPopupMenu quirk.
             SetForegroundWindow(_hwnd);
             GetCursorPos(out var cursor);
             TrackPopupMenuEx(menu, TpmRightButton, cursor.X, cursor.Y, _hwnd, IntPtr.Zero);
@@ -125,8 +115,6 @@ public sealed partial class TrayIcon : IDisposable
         Shell_NotifyIconW(NimDelete, ref _data);
         SetWindowProc(_hwnd, _previousWndProc);
     }
-
-    // ---- Win32 ------------------------------------------------------------------------
 
     private const int GwlpWndProc = -4;
 
@@ -165,16 +153,12 @@ public sealed partial class TrayIcon : IDisposable
         public int Y;
     }
 
-    // NOTIFYICONDATAW contains a fixed-size string, which the LibraryImport source
-    // generator cannot marshal, so these stay on DllImport.
+    // NOTIFYICONDATAW's fixed-size string defeats the LibraryImport generator: DllImport only.
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool Shell_NotifyIconW(uint message, ref NotifyIconData data);
 
-    /// <summary>
-    /// SetWindowLongPtrW only exists on 64-bit user32; on x86 it is a macro over
-    /// SetWindowLongW. The project builds for x86 as well, so both are declared.
-    /// </summary>
+    /// <summary>SetWindowLongPtrW is 64-bit only; x86 needs SetWindowLongW, and both targets ship.</summary>
     private static IntPtr SetWindowProc(IntPtr hwnd, IntPtr wndProc) =>
         IntPtr.Size == 8
             ? SetWindowLongPtrW(hwnd, GwlpWndProc, wndProc)

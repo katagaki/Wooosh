@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 typealias TransferId = String
 
-/** File id inside a transfer — `fid` on the wire (PROTOCOL.md §5), `u32` in the core. */
+/** `fid` on the wire (PROTOCOL.md §5), `u32` in the core. */
 typealias FileId = UInt
 
 enum class CoreVisibility { EVERYONE, PAIRED_ONLY, OFF }
@@ -19,34 +19,25 @@ data class CoreConfig(
     val displayName: String,
     val deviceType: DeviceType,
     val visibility: CoreVisibility,
-    /** App-private directory where the core stages incoming files until FileReady. */
     val stagingDir: String,
-    /** App-private JSON file holding the core's pinned peer keys (PROTOCOL.md §4.5). */
+    /** App-private; the core's pinned peer keys (PROTOCOL.md §4.5). */
     val trustStorePath: String,
     /** Bind address; null = 0.0.0.0 on an ephemeral UDP port. */
     val listenAddr: String? = null,
 )
 
-/**
- * A peer as the core sees it — keyed by long-term identity (DeviceID), NOT by the
- * rotating discovery id used by the NSD browser.
- *
- * [publicKey] is the peer's raw 32-byte Ed25519 identity key, proven in the TLS
- * handshake. Non-null for anything that came off the wire; null only for a peer known by
- * DeviceID alone (a cache miss). Pass it back to `connectPeer` / `revokePeer`.
- */
+/** Keyed by DeviceID; [publicKey] is the key proven in the TLS handshake, or null. */
 data class PeerRef(
     val id: String,
     val displayName: String,
-    /** Human-checkable 6-word phrase (PROTOCOL.md §2), derived by the core from [publicKey]. */
+    /** 6-word phrase, derived by the core (PROTOCOL.md §2). */
     val fingerprint: String,
     val paired: Boolean,
     val publicKey: ByteArray? = null,
     /** The peer's HELLO `dt`; null when it announced a type this build doesn't know. */
     val deviceType: DeviceType? = null,
 ) {
-    // ByteArray needs structural equality, or every re-emission of the same peer looks
-    // like a change to the StateFlows that hold PeerRefs.
+    // ByteArray needs structural equality, or re-emitting the same peer looks like a change.
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is PeerRef) return false
@@ -69,14 +60,11 @@ data class PeerRef(
     }
 }
 
-/**
- * One pinned peer from the core's own trust store (`trustedPeers()`) — the shell's only
- * trust list. Re-read it at launch, after every successful pairing and after a revoke.
- */
+/** The shell's only trust list. Re-read at launch, after each pairing and after a revoke. */
 data class TrustedPeerInfo(
     /** `Q7KM-3PXA-…` — identical to the `peerId` carried by every core event. */
     val deviceId: String,
-    /** Raw 32 bytes; what `connectPeer` pins against and `revokePeer` takes. */
+    /** Raw 32 bytes; what `connectPeer` pins against. */
     val publicKey: ByteArray,
     val displayName: String,
     val deviceType: DeviceType?,
@@ -116,14 +104,7 @@ data class FileMeta(
     val mime: String,
 )
 
-/**
- * A parsed `wooosh-pair:1?…` payload (PROTOCOL.md §4.2), read *without* dialling anything.
- *
- * Everything in here is unauthenticated hint material — [deviceName] is the QR's `dn`
- * field and is only ever a label. It exists so the pairing UI can say who it is
- * connecting to while the blocking handshake runs, and can reject an expired or
- * malformed code instantly instead of after a network timeout.
- */
+/** Unauthenticated hint material (PROTOCOL.md §4.2); [deviceName] is only ever a label. */
 data class PairingCodeInfo(
     val deviceId: String,
     val deviceName: String?,
@@ -131,14 +112,7 @@ data class PairingCodeInfo(
     val expired: Boolean,
 )
 
-/**
- * A parsed `wooosh-net:1?…` internet ticket (PROTOCOL.md §9.2), read *without* dialling
- * anything.
- *
- * Everything here is label material except [publicKey], which is the key the handshake is
- * pinned to. That key arriving out of band is what makes the internet path MITM-proof
- * with no extra ceremony.
- */
+/** [publicKey] arriving out of band is what makes the internet path MITM-proof. */
 data class TicketInfo(
     val deviceId: String,
     val publicKey: ByteArray,
@@ -167,24 +141,14 @@ data class TicketInfo(
     }
 }
 
-/**
- * Event stream (core -> shell), the single source of UI truth (DESIGN.md §4).
- *
- * This mirrors the shape of `uniffi.wooosh_core.CoreEvent` one-for-one; [RealCore]
- * only folds the per-event peer fields (`peer_id` / `peer_pubkey` / `device_name` /
- * `device_type` / `fingerprint` / `trusted`) into a [PeerRef].
- */
+/** Core -> shell, the single source of UI truth (DESIGN.md §4). */
 sealed interface CoreEvent {
     data class PeerConnected(val peer: PeerRef) : CoreEvent
     data class PeerDisconnected(val peerId: String) : CoreEvent
 
     data class PairingSas(val peer: PeerRef, val sixDigits: String) : CoreEvent
 
-    /**
-     * Pairing concluded — QR or SAS, success or failure/timeout (DESIGN.md §4).
-     * On success [message] carries the peer's device name, on failure the reason.
-     * [peer] carries the key that was (or would have been) pinned.
-     */
+    /** QR or SAS, success or failure/timeout. [message] is the device name, or the reason. */
     data class PairingResult(
         val peerId: String,
         val peer: PeerRef?,
@@ -192,13 +156,7 @@ sealed interface CoreEvent {
         val message: String?,
     ) : CoreEvent
 
-    /**
-     * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
-     *
-     * **Not a pairing.** Nothing is written to the trust store and the authorisation
-     * dies with the connection. This is what the sending screen waits on before handing
-     * over the files it staged.
-     */
+    /** Not a pairing: the authorisation dies with the connection (PROTOCOL.md §9.4). */
     data class TicketRedeemed(val peer: PeerRef) : CoreEvent
 
     data class TransferStarted(
@@ -232,7 +190,7 @@ sealed interface CoreEvent {
         val kind: FileKind,
     ) : CoreEvent
 
-    /** [durationMs] is the core's own wall-clock measurement; the shell never times transfers. */
+    /** [durationMs] is the core's measurement; the shell never times transfers. */
     data class TransferDone(
         val transferId: TransferId,
         val okFiles: Int,
@@ -247,146 +205,76 @@ sealed interface CoreEvent {
         val resumable: Boolean,
     ) : CoreEvent
 
-    /**
-     * A pinned peer presented a different key (PROTOCOL.md §4.5). [peer] is the pinned
-     * identity we expected (its [PeerRef.fingerprint] is the expected phrase);
-     * [presentedFingerprint] is the phrase for the key actually offered, when the
-     * handshake got far enough to observe one.
-     */
+    /** [peer] is the expected identity (PROTOCOL.md §4.5); the presented one may be null. */
     data class KeyChanged(
         val peer: PeerRef,
         val presentedFingerprint: String?,
     ) : CoreEvent
 }
 
-/**
- * Shell-side seam over the wooosh-core FFI surface (DESIGN.md §4), implemented by [RealCore].
- *
- * Blocking calls (`connectPeer`, `send`, `revokePeer`, `trustedPeers`) are `suspend`:
- * the core does real network and disk work on them and they must never run on the main
- * thread.
- */
+/** The `suspend` members do network and disk work and never run on the main thread. */
 interface WoooshCore {
 
-    /** Core -> shell event stream. Hot; events fired with no subscriber are dropped. */
+    /** Hot; events fired with no subscriber are dropped. */
     val events: Flow<CoreEvent>
 
-    /** Blocking; call off the main thread. Boots the engine and binds the QUIC socket. */
+    /** Blocking; call off the main thread. */
     fun start(config: CoreConfig)
 
     fun stop()
 
     fun setVisibility(mode: CoreVisibility)
 
-    // ---- identity: the CORE is the single source of truth (PROTOCOL.md §2) ----
-
     /** `Q7KM-3PXA-…` DeviceID = BLAKE3(pubkey)[0..16]; null before [start]. */
     fun deviceId(): String?
 
-    /** 6-word verification phrase; null before [start]. */
     fun fingerprintPhrase(): String?
 
     /** Bound "ip:port" of the QUIC listener to publish in the mDNS TXT `p` field. */
     fun listenAddr(): String?
 
-    /** The core's own derivation for any peer key — never re-implemented in the shell. */
+    /** The core's own derivation — never re-implemented in the shell. */
     fun fingerprintPhraseFor(publicKey: ByteArray): String?
 
-    /** The core's own DeviceID derivation; equals the `peerId` in every event. */
+    /** Equals the `peerId` in every event. */
     fun deviceIdFor(publicKey: ByteArray): String?
 
-    // ---- trust (PROTOCOL.md §4.5) ----
-
-    /**
-     * The core's pinned peer set, read straight from its trust store. This is the
-     * shell's trust list — re-read after every successful pairing and after a revoke.
-     */
+    /** Re-read after every successful pairing and after a revoke. */
     suspend fun trustedPeers(): List<TrustedPeerInfo>
 
-    /** Drops the core's pin for [publicKey]; false when it was not pinned. */
+    /** False when [publicKey] was not pinned. */
     suspend fun revokePeer(publicKey: ByteArray): Boolean
 
-    // ---- pairing (PROTOCOL.md §4) ----
-
-    /** Returns the `wooosh-pair:1?...` payload to render as a QR code. */
     fun beginPairingQr(): String
 
-    /**
-     * Parses a scanned or pasted payload locally — no network, no blocking. Null when it
-     * is not a Wooosh pairing code at all. Lets the UI name the peer while it waits.
-     */
+    /** Local parse, no network. */
     fun parsePairingCode(payload: String): PairingCodeInfo?
 
-    /**
-     * Sender-side QR path. Returns immediately; the outcome arrives as
-     * [CoreEvent.PairingResult] — success from the core, failure synthesised from the
-     * thrown error. It can take tens of seconds (address hints are dialled in turn), so
-     * callers must show progress rather than assume it is quick.
-     */
+    /** Hints are dialled in turn, so callers must show progress for tens of seconds. */
     fun pairWithQr(payload: String)
 
-    /** Camera-less path: start SAS numeric comparison with a connected peer. */
     fun requestSasPairing(peerId: String)
 
     fun confirmSas(peerId: String, accepted: Boolean)
 
-    // ---- internet path (DESIGN.md §9.1, PROTOCOL.md §9) ----
-
-    /**
-     * Publishes this device on the internet path and returns the `wooosh-net:1?…` ticket
-     * to render as a QR code.
-     *
-     * `suspend` because it is genuinely slow and genuinely consequential: the first call
-     * binds the iroh endpoint and waits up to ~15 s for a home relay, and it is the first
-     * moment Wooosh contacts a relay at all. Nothing calls it until the user asks.
-     */
+    /** First call binds the iroh endpoint and waits up to ~15 s for a home relay. */
     suspend fun beginInternetTicket(): String
 
-    /**
-     * Invalidates the outstanding ticket. A ticket is a capability, so this runs when the
-     * user leaves the screen rather than waiting for the 120 s expiry.
-     */
+    /** A ticket is a capability, so it is invalidated on leaving, not at the 120 s expiry. */
     fun endInternetTicket()
 
-    /**
-     * Sender-side internet path: dial the ticket's node, redeem its token, pin the key it
-     * was minted with. Returns immediately; the outcome arrives as
-     * [CoreEvent.PairingResult], exactly like [pairWithQr]. Budget for a minute: hole
-     * punching runs before the wait for PAIR_ACCEPT even starts.
-     */
+    /** Budget a minute: hole punching runs before the wait for PAIR_ACCEPT starts. */
     fun redeemTicket(ticket: String)
 
-    /** Local parse, no network. Null when the payload is not a Wooosh ticket. */
+    /** Local parse, no network. */
     fun parseTicket(ticket: String): TicketInfo?
 
-    /**
-     * Chooses the relays the internet path uses (DESIGN.md §9.1).
-     *
-     * - `null` — n0's free public relays.
-     * - `emptyList()` — no relay and no address lookup; nothing leaves this device
-     *   except to addresses carried in a ticket.
-     * - a list — a chosen or self-hosted relay. This device's tickets advertise it, so
-     *   a redeemer uses it without configuring anything.
-     *
-     * Throws [CoreException] on a malformed URL, leaving the working setting in place.
-     */
+    /** `null` = n0's public relays, `emptyList()` = no relay or address lookup at all. */
     suspend fun setRelayUrls(urls: List<String>?)
 
-    // ---- connections & transfers ----
-
-    /**
-     * Connects to an address the native mDNS browser resolved (DESIGN.md §4).
-     * [expectedPublicKey] pins the TLS handshake to that exact key; always pass the
-     * pinned key from [trustedPeers] when the shell holds one. Passing null does not
-     * opt out of pinning (the core re-applies its own pin when it can resolve the
-     * identity behind the address) but it does leave the very first reconnect to a new
-     * address unpinned.
-     *
-     * Returns the core's peer id (= the peer's DeviceID).
-     */
+    /** Null [expectedPublicKey] leaves the first reconnect to a new address unpinned. */
     suspend fun connectPeer(addr: String, expectedPublicKey: ByteArray? = null): String
 
-    /** Begins an outgoing transfer; manifest arrives via [CoreEvent.TransferStarted]. */
     suspend fun send(peerId: String, uris: List<Uri>): TransferId
 
     /** Empty [acceptedFileIds] declines the whole offer. */
@@ -395,5 +283,4 @@ interface WoooshCore {
     fun cancel(transferId: TransferId)
 }
 
-/** Thrown by [WoooshCore.connectPeer] / [WoooshCore.send] with a user-presentable message. */
 class CoreException(message: String, cause: Throwable? = null) : Exception(message, cause)

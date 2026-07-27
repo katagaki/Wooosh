@@ -1,21 +1,14 @@
 import Foundation
 import Observation
 
-/// The user-visible trust list (PROTOCOL.md §4.5), read straight from the
-/// core's canonical `trust.json` via `trustedPeers()`.
-///
-/// Deliberately holds no persisted state of its own — a shell-side mirror could
-/// disagree with the core about who is pinned. This is a refresh-on-demand
-/// cache plus the one thing the core does not model: which peers have shown a
-/// KEY_CHANGED this session.
+/// Read straight from the core's `trust.json` (PROTOCOL.md §4.5). Persists
+/// nothing of its own: a shell-side mirror could disagree about who is pinned.
 @MainActor
 @Observable
 final class TrustStore {
-    /// Pinned peers, in the core's order (paired-at, then DeviceID).
     private(set) var devices: [TrustedPeerInfo] = []
 
-    /// DeviceIDs that presented a different key since launch. Transient
-    /// warning state — trust itself is only ever changed by the core.
+    /// Transient warning state; trust itself is only ever changed by the core.
     private(set) var keyChangedIDs: Set<String> = []
 
     @ObservationIgnored
@@ -27,8 +20,7 @@ final class TrustStore {
         refresh()
     }
 
-    /// Re-reads the core's trust store. Call at launch, after every successful
-    /// `pairingResult`, and after `revokePeer`.
+    /// Call at launch, after every successful `pairingResult`, and after revoke.
     func refresh() {
         devices = core?.trustedPeers() ?? []
         // A peer that is no longer pinned cannot be "key changed" any more.
@@ -44,7 +36,6 @@ final class TrustStore {
         devices.first { $0.deviceID == deviceID }
     }
 
-    /// The pinned key for a DeviceID — what `connectPeer` should pin with.
     func publicKey(forDeviceID deviceID: String) -> Data? {
         device(forDeviceID: deviceID)?.publicKey
     }

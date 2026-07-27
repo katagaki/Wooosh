@@ -38,10 +38,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val settings: StateFlow<Settings?> = app.settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    /**
-     * Identity comes from the core (PROTOCOL.md §2) — one keypair per install. The core
-     * boots asynchronously, so poll briefly until it answers.
-     */
+    /** The core boots asynchronously, so poll until it answers (PROTOCOL.md §2). */
     val deviceIdFormatted: StateFlow<String?> = flow {
         while (true) {
             val id = app.core.deviceId()
@@ -64,40 +61,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope + Dispatchers.IO, SharingStarted.Eagerly, null)
 
-    // ---- transfers ----
     val transfers: StateFlow<List<TransferUi>> = app.transferManager.transfers
     val hasActiveTransfers: StateFlow<Boolean> = app.transferManager.hasActiveTransfers
     val pendingOffer: StateFlow<CoreEvent.IncomingOffer?> = app.transferManager.pendingOffer
 
-    /** Sends whose OFFER is out and whose receiver has not answered yet. */
     val outgoingOffers: StateFlow<List<OutgoingOffer>> = app.transferManager.outgoingOffers
 
-    // ---- pairing ----
     val pendingSas: StateFlow<PairingManager.SasRequest?> = app.pairingManager.pendingSas
     val keyChanged: StateFlow<PairingManager.KeyChangedAlert?> = app.pairingManager.keyChanged
 
-    /** Non-null while a pairing ceremony is running or has just resolved. */
     val pairingAttempt: StateFlow<PairingManager.Attempt?> = app.pairingManager.attempt
 
-    /** Fires when a ticket *this* device redeemed has connected (PROTOCOL.md §9.4). */
+    /** Fires for a ticket *this* device redeemed, not one it published (PROTOCOL.md §9.4). */
     val ticketRedeemed: SharedFlow<Unit> = app.pairingManager.ticketRedeemed
 
-    /** Snackbar channel: pairing outcomes plus transfer failures with no card yet. */
     val statusMessages: SharedFlow<String> = merge(
         app.pairingManager.messages,
         app.transferManager.errors,
     ).shareIn(viewModelScope, SharingStarted.Eagerly)
 
-    // ---- trust: the core's own pinned set, never a shell-side mirror ----
+    // The core's own pinned set, never a shell-side mirror.
     val pairedDevices: StateFlow<List<TrustedPeerInfo>> = app.trustStore.devices
     val pairedDeviceIds: StateFlow<Set<String>> = app.trustStore.devices
         .map { devices -> devices.map { it.deviceId }.toSet() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    // ---- share target ----
     val stagedShare: StateFlow<OutboxRepository.StagedShare?> = app.outbox.staged
-
-    // ------------------------------------------------------------- actions
 
     fun refresh() = app.discovery.refresh()
 
@@ -109,7 +98,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { app.settingsRepository.setVisibility(visibility) }
     }
 
-    /** Relay selection for the internet path (DESIGN.md §9.1). */
     fun setRelayMode(mode: RelayMode) {
         viewModelScope.launch { app.settingsRepository.setRelayMode(mode) }
     }
@@ -118,11 +106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { app.settingsRepository.setRelayUrl(url) }
     }
 
-    /**
-     * Non-null when the core refused the relay address. The core keeps its previous
-     * working configuration in that case, so this is a correction to make rather than a
-     * broken state.
-     */
+    /** Set when the core refused the relay address; it keeps its last working config. */
     val relayError: StateFlow<String?> = app.relayError
 
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
@@ -152,30 +136,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissKeyChanged() = app.pairingManager.dismissKeyChanged()
 
-    /** Drops the stale pin; the caller then navigates to the pairing screen. */
     fun revokeForRepair() = app.pairingManager.revokeForRepair()
 
-    /** [deviceId] is a DeviceID from [pairedDevices]; the key is resolved from the core. */
     fun revokeDevice(deviceId: String) = app.pairingManager.revoke(deviceId)
 
     fun beginPairingQr(): String = app.core.beginPairingQr()
 
-    /**
-     * Goes through the pairing manager, not straight at the core: it owns the
-     * in-progress state, the pre-flight checks and the timeout that keep this from
-     * looking like a hang.
-     */
+    /** Via the manager, not the core: it owns the in-progress state and the timeout. */
     fun pairWithQr(payload: String) = app.pairingManager.pairWithScannedCode(payload)
 
-    /**
-     * Mints an internet ticket (PROTOCOL.md §9.2). Suspends for as long as it takes the
-     * core to bind its endpoint and find a relay, and throws rather than swallowing: this
-     * is the one call that contacts a relay, and a user who asked for a code and got
-     * silence cannot tell a slow relay from a broken one.
-     */
+    /** Throws rather than swallowing: a slow relay must not look like a broken one. */
     suspend fun beginInternetTicket(): String {
-        // A redemption recorded against the *previous* code must not be mistaken for
-        // one against this one, or the tab would fire its send the moment it opens.
+        // A redemption of the *previous* code must not fire this one's send.
         app.transferManager.clearTicketRedeemedPeer()
         return app.core.beginInternetTicket()
     }
@@ -186,33 +158,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         internetOutbox = emptyList()
     }
 
-    /** Files waiting for someone to scan the code (PROTOCOL.md §9.4). */
     private var internetOutbox: List<Uri> = emptyList()
 
     fun stageInternetSend(uris: List<Uri>) {
         internetOutbox = uris
     }
 
-    /** Set when someone redeems a ticket this device published. */
     val ticketRedeemedPeerId: StateFlow<String?> = app.transferManager.ticketRedeemedPeerId
 
-    /**
-     * The redeeming side is finished the moment the connection lands: nothing is staged to
-     * send back. Clearing the id keeps a redemption *this* device made from being replayed
-     * as an outgoing send the next time the user opens the send tab.
-     */
+    /** Clearing the id stops a redemption *this* device made replaying as an outgoing send. */
     fun ticketRedemptionHandled() = app.transferManager.clearTicketRedeemedPeer()
 
-    /**
-     * Hands the staged files to whoever redeemed. The core refuses this unless that peer
-     * really did redeem (PROTOCOL.md §9.4), so a stray call cannot leak them.
-     */
+    /** The core refuses unless that peer really redeemed, so a stray call cannot leak files. */
     fun completeInternetSend(peerId: String) {
         val uris = internetOutbox
         if (uris.isEmpty()) return
         internetOutbox = emptyList()
-        // Consumed: a ticket is single-use, so this id must not survive to trigger a
-        // second send against a code that no longer exists.
+        // A ticket is single-use: the id must not survive to trigger a second send.
         app.transferManager.clearTicketRedeemedPeer()
         app.transferManager.sendToPeerId(peerId, uris)
     }

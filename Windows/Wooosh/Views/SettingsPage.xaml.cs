@@ -35,8 +35,7 @@ public sealed partial class SettingsPage : Page, INotifyPropertyChanged
                 break;
         }
 
-        // The core is started asynchronously, so the identity fields usually arrive after
-        // this page is first drawn.
+        // The core starts asynchronously, so the identity fields arrive after this page is first drawn.
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         Unloaded += (_, _) => viewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
@@ -55,13 +54,9 @@ public sealed partial class SettingsPage : Page, INotifyPropertyChanged
         }
     }
 
-    /// <summary>The core's own DeviceID, or a placeholder while it is still starting.</summary>
     public string DeviceIdText => App.ViewModel?.DeviceId ?? Strings.Get("SettingsStarting");
 
-    /// <summary>
-    /// This device's six-word phrase, as the core derives it. Fingerprint phrases are never
-    /// translated: they are a shared artifact that must read identically on both devices.
-    /// </summary>
+    /// <summary>Never translated: the phrase must read identically on both devices.</summary>
     public string FingerprintText => App.ViewModel?.FingerprintPhrase ?? Strings.Get("SettingsStarting");
 
     private void OnBackClick(object sender, RoutedEventArgs e)
@@ -72,11 +67,7 @@ public sealed partial class SettingsPage : Page, INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Committed on focus loss, not per keystroke. Every change republishes the mDNS record,
-    /// and doing that on each character makes this device flicker in every other device's
-    /// list (the advertiser debounces as well, belt and braces).
-    /// </summary>
+    /// <summary>Focus loss, not per keystroke: every change republishes the mDNS record and would flicker this device in every other list.</summary>
     private void OnDisplayNameCommitted(object sender, RoutedEventArgs e) =>
         App.ViewModel?.Settings.SetDisplayName(DisplayNameBox.Text);
 

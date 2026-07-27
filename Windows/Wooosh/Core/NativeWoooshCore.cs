@@ -3,30 +3,10 @@ using Wooosh.Localization;
 
 namespace Wooosh.Core;
 
-/// <summary>
-/// The real core, over <c>wooosh_core.dll</c>. The only implementation of
-/// <see cref="IWoooshCore"/> there will ever be: the Apple and Android shells both had a
-/// mock removed, and a shell that can fabricate peers and transfers makes every demo,
-/// screenshot and bug report ambiguous.
-///
-/// <para><b>State of this file.</b> Three groups of members:</para>
-/// <list type="number">
-/// <item><b>Working.</b> Everything whose arguments and results are strings, byte arrays or
-/// booleans. Those lower and lift through <see cref="UniffiSerialization"/>, which is the
-/// complete UniFFI primitive format, so they will work the moment the DLL is present.</item>
-/// <item><b>Blocked on a record codec.</b> <see cref="StartAsync"/>,
-/// <see cref="TrustedPeersAsync"/>, <see cref="SendAsync"/>, <see cref="ParsePairingCode"/>
-/// and <see cref="SetVisibility"/>. These pass or return the core's own record and enum
-/// types, whose byte layout must match the Rust declarations exactly.</item>
-/// <item><b>Blocked on callback VTables.</b> The event stream and the key store. Rust calls
-/// back into managed code through a registered table of function pointers; the order of
-/// that table is generated, not documented.</item>
-/// </list>
-///
-/// <para>Groups 2 and 3 throw <see cref="CoreException"/> with a user-presentable message
-/// rather than returning something invented. See Windows/README.md for how to close
-/// the gap.</para>
-/// </summary>
+/// <summary>The real core, over <c>wooosh_core.dll</c>. Members touching the core's own
+/// records, enums or callback interfaces need generated codecs whose byte layout and VTable
+/// order must match Rust exactly, so they throw rather than invent a result
+/// (Windows/README.md); the rest work today through <see cref="UniffiSerialization"/>.</summary>
 public sealed class NativeWoooshCore : IWoooshCore
 {
     private readonly object _gate = new();
@@ -40,11 +20,8 @@ public sealed class NativeWoooshCore : IWoooshCore
 
     public string? ListenAddr { get; private set; }
 
-    /// <summary>
-    /// True when <c>wooosh_core.dll</c> loads and reports the UniFFI contract version these
-    /// declarations were written against. Checked before anything else so a missing or
-    /// mismatched DLL is one clear failure at startup rather than a crash later.
-    /// </summary>
+    /// <summary>Checked first so a missing or contract-mismatched DLL fails clearly at
+    /// startup rather than crashing later.</summary>
     public static bool ProbeNativeLibrary(out string diagnostic)
     {
         try
@@ -74,9 +51,8 @@ public sealed class NativeWoooshCore : IWoooshCore
     }
 
     public Task StartAsync(CoreConfig config, CancellationToken cancellationToken = default) =>
-        // Off the UI thread, always: start() runs the whole boot inline and calls
-        // KeyStore.load_identity synchronously, which on Windows means DPAPI and possibly
-        // a Windows Hello prompt (DESIGN.md §4, threading contract).
+        // Off the UI thread, always: start() boots inline and calls KeyStore.load_identity
+        // synchronously, which on Windows means DPAPI and possibly Windows Hello (DESIGN.md §4).
         Task.Run(
             () =>
             {
@@ -92,16 +68,8 @@ public sealed class NativeWoooshCore : IWoooshCore
                             NativeMethods.uniffi_wooosh_core_fn_constructor_woooshcore_new(ref status));
                 }
 
-                // TODO(bindings): lower `config` (a Config record), build the KeyStore and
-                // CoreEventListener callback objects, then:
-                //
-                //   NativeMethods.uniffi_wooosh_core_fn_method_woooshcore_start(
-                //       _handle, loweredConfig, keyStoreHandle, listenerHandle, ref status);
-                //
-                // then read back device_id / fingerprint_phrase / listen_addr, which are
-                // plain strings and already work. Until the callback VTables exist there is
-                // nothing to hand start() for its last two arguments, and passing null
-                // aborts inside the core.
+                // TODO(bindings): needs a lowered Config plus KeyStore and CoreEventListener
+                // callback objects; passing null for those two arguments aborts in the core.
                 _ = config;
                 throw new CoreException(
                     Strings.Get("ErrorCoreStart"),
@@ -126,13 +94,11 @@ public sealed class NativeWoooshCore : IWoooshCore
     });
 
     public void SetVisibility(CoreVisibility mode) =>
-        // TODO(bindings): `mode` is a Visibility enum, lowered as a one-based i32 variant
-        // index. The index depends on the declaration order in the Rust enum, so it comes
-        // from the generator rather than from a guess here.
+        // TODO(bindings): `mode` lowers to a variant index that depends on the Rust enum's
+        // declaration order, so it must come from the generator.
         throw NotWired();
 
     public string? FingerprintPhraseFor(byte[] publicKey) =>
-        // Works today: bytes in, string out.
         UniffiSerialization.LiftString(
             UniffiCall.Rust((ref RustCallStatus status) =>
                 NativeMethods.uniffi_wooosh_core_fn_func_fingerprint_phrase_for(
@@ -172,7 +138,7 @@ public sealed class NativeWoooshCore : IWoooshCore
     public Task PairWithQrAsync(string payload) => Task.Run(() =>
     {
         RequireHandle();
-        // Blocking and slow by design: hints are raced but the reply timeout is 20 s.
+        // Blocking by design: hints are raced but the reply timeout is 20 s.
         UniffiSerialization.LiftString(
             UniffiCall.Rust((ref RustCallStatus status) =>
                 NativeMethods.uniffi_wooosh_core_fn_method_woooshcore_pair_with_qr(
@@ -208,9 +174,7 @@ public sealed class NativeWoooshCore : IWoooshCore
     });
 
     public Task<TransferId> SendAsync(string peerId, IReadOnlyList<string> filePaths) =>
-        // TODO(bindings): `files` is a Vec<String>. The sequence-of-string writer is a
-        // three-line addition to UniffiSerialization, but it is only worth adding together
-        // with the generated codecs so the whole surface is verified at once.
+        // TODO(bindings): `files` is a Vec<String>, added with the generated codecs.
         Task.FromException<TransferId>(NotWired());
 
     public void RespondToOffer(TransferId transferId, IReadOnlyList<FileId> acceptedFileIds)
@@ -247,11 +211,8 @@ public sealed class NativeWoooshCore : IWoooshCore
                 ref status));
     }
 
-    // The internet path (PROTOCOL.md §9). All three are exported as UniFFI async
-    // functions, which are polled through a Rust future handle rather than called
-    // straight through, so they need the async scaffolding the codecs bring with them —
-    // not just a symbol declaration. `end_internet_ticket` is the one synchronous
-    // exception, but wiring it alone would give the UI a revoke with nothing to revoke.
+    // The internet path (PROTOCOL.md §9) is exported as UniFFI async functions, polled
+    // through a Rust future handle, so it needs the async scaffolding the codecs bring.
 
     public Task<string> BeginInternetTicketAsync() =>
         Task.FromException<string>(NotWired());
@@ -261,7 +222,7 @@ public sealed class NativeWoooshCore : IWoooshCore
     public Task<string> RedeemTicketAsync(string ticket) =>
         Task.FromException<string>(NotWired());
 
-    /// <summary>Raises an event onto the shell. Called from the core's event thread.</summary>
+    /// <summary>Called from the core's event thread.</summary>
     internal void Publish(CoreEvent coreEvent) => EventReceived?.Invoke(coreEvent);
 
     private void RequireHandle()

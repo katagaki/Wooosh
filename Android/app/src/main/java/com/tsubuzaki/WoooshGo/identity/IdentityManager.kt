@@ -14,17 +14,9 @@ import javax.crypto.spec.GCMParameterSpec
 import uniffi.wooosh_core.KeyStore as CoreKeyStore
 
 /**
- * Platform key-storage adapter for the Rust core (DESIGN.md §4 `PlatformAdapters.key_store`,
- * PROTOCOL.md §2).
- *
- * The core owns the identity: it calls [loadIdentity] on start and, only on first launch,
- * generates an Ed25519 keypair and hands the 32-byte secret back through [storeIdentity].
- * The shell never derives a public key or a DeviceID of its own — `core.deviceId()` and
- * `core.fingerprintPhrase()` are the single source of truth.
- *
- * Android Keystore has no Curve25519 below API 33, so the 32-byte secret lives in
- * SharedPreferences encrypted with AES-GCM under a Keystore-held AES key. This layout is
- * load-bearing for upgrades: changing it costs every existing install its identity.
+ * The core owns the identity (PROTOCOL.md §2). Android Keystore has no Curve25519 below
+ * API 33, so the 32-byte secret lives in SharedPreferences under AES-GCM with a
+ * Keystore-held key; changing this layout costs every install its identity.
  */
 class IdentityManager(context: Context) : CoreKeyStore {
 
@@ -34,7 +26,7 @@ class IdentityManager(context: Context) : CoreKeyStore {
     private val prefs
         get() = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /** Called by the core on start. Null on a genuinely fresh install. */
+    /** Null on a genuinely fresh install. */
     override fun loadIdentity(): ByteArray? {
         synchronized(lock) {
             val storedCiphertext = prefs.getString(KEY_SEED_CIPHERTEXT, null) ?: return null
@@ -45,9 +37,8 @@ class IdentityManager(context: Context) : CoreKeyStore {
                     Base64.decode(storedIv, Base64.NO_WRAP),
                 )
             }.getOrElse { error ->
-                // Unwrapping failed (Keystore key lost — e.g. after a device restore).
-                // Drop the unusable blob so the core mints a fresh identity instead of
-                // failing to start; the user re-pairs, which is the honest outcome.
+                // Keystore key lost, e.g. after a device restore. Dropping the blob makes
+                // the core mint a fresh identity rather than fail to start.
                 Log.w(TAG, "identity unwrap failed, discarding stored key", error)
                 prefs.edit { remove(KEY_SEED_CIPHERTEXT).remove(KEY_SEED_IV) }
                 return null
@@ -62,7 +53,7 @@ class IdentityManager(context: Context) : CoreKeyStore {
         }
     }
 
-    /** Called by the core exactly once, on first launch. */
+    /** Called exactly once, on first launch. */
     override fun storeIdentity(secret: ByteArray) {
         synchronized(lock) {
             val (ciphertext, iv) = encrypt(secret)

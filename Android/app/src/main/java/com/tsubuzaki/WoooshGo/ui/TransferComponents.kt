@@ -60,9 +60,6 @@ import com.tsubuzaki.WoooshGo.transfer.TransferStatus
 import com.tsubuzaki.WoooshGo.transfer.TransferUi
 import kotlinx.coroutines.delay
 
-// ---------------------------------------------------------------- incoming offer
-
-/** Consent sheet for an incoming offer (DESIGN.md §5 / PROTOCOL.md §4.4). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncomingOfferSheet(
@@ -75,9 +72,7 @@ fun IncomingOfferSheet(
     ModalBottomSheet(onDismissRequest = onDecline) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // From the sender's HELLO, which is form-factor only, so this is usually
-                // the neutral glyph — deliberately, never a guessed platform
-                // (PROTOCOL.md §3.1).
+                // HELLO carries form factor only, so this is usually the neutral glyph.
                 offer.from.deviceType?.let { type ->
                     Icon(
                         imageVector = type.icon(),
@@ -115,7 +110,6 @@ fun IncomingOfferSheet(
                 }
             } else {
                 // The sender shows these same six words while it waits (OutgoingOfferCard).
-                // Do not ask for a comparison the other side is not displaying.
                 Text(
                     text = stringResource(R.string.offer_unpaired_warning),
                     style = MaterialTheme.typography.bodyMedium,
@@ -193,18 +187,9 @@ fun IncomingOfferSheet(
     }
 }
 
-// ------------------------------------------------------- outgoing offer (send side)
-
 /**
- * Send-side card for the window between OFFER and DECISION (PROTOCOL.md §5).
- *
- * While an **unpaired** peer is deciding, this shows our own 6-word phrase big enough to
- * read aloud: the receiver's consent sheet tells them to compare it against the sender's
- * screen (PROTOCOL.md §4.4), so it must be on screen here at the same moment. For a
- * paired peer no comparison is asked for and the phrase is suppressed.
- *
- * [ownFingerprint] is `core.fingerprintPhrase()` verbatim; the shell never derives it
- * (DESIGN.md §4).
+ * While an unpaired peer decides, our phrase must be on screen at the same moment its
+ * consent sheet asks for the comparison. [ownFingerprint] is the core's, never derived.
  */
 @Composable
 fun OutgoingOfferCard(
@@ -270,10 +255,7 @@ fun OutgoingOfferCard(
     }
 }
 
-/**
- * The 6-word verification phrase (PROTOCOL.md §2), sized so two people can read it to
- * each other across a table.
- */
+/** Sized so two people can read it to each other across a table (PROTOCOL.md §2). */
 @Composable
 fun VerificationPhrase(
     phrase: String,
@@ -302,9 +284,7 @@ fun VerificationPhrase(
     }
 }
 
-// ---------------------------------------------------------------- SAS
-
-/** SAS numeric-comparison sheet (PROTOCOL.md §4.3): 60 s window, both users compare codes. */
+/** SAS comparison (PROTOCOL.md §4.3): 60 s window, both users compare codes. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SasSheet(
@@ -378,14 +358,7 @@ fun SasSheet(
 
 private const val SAS_TIMEOUT_SECONDS = 60
 
-// ---------------------------------------------------------------- key changed
-
-/**
- * Prominent KEY_CHANGED warning (PROTOCOL.md §4.5) — never a silent re-pin.
- *
- * Both phrases are shown so the warning is checkable rather than just alarming: each is
- * the same 6 words the other device shows in its own settings.
- */
+/** KEY_CHANGED (PROTOCOL.md §4.5): never a silent re-pin, and both phrases are checkable. */
 @Composable
 fun KeyChangedDialog(
     alert: PairingManager.KeyChangedAlert,
@@ -408,8 +381,7 @@ fun KeyChangedDialog(
                 Spacer(Modifier.height(16.dp))
                 FingerprintRow(
                     label = stringResource(R.string.keychanged_expected_label),
-                    // A shared verification artifact: it must read identically on both
-                    // devices, so never translate or reformat it.
+                    // Shared artifact: never translate or reformat it.
                     phrase = alert.expectedFingerprint,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -453,8 +425,6 @@ private fun FingerprintRow(label: String, phrase: String, color: androidx.compos
         )
     }
 }
-
-// ---------------------------------------------------------------- transfer card
 
 @Composable
 fun TransferCard(
@@ -534,8 +504,7 @@ fun TransferCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(6.dp))
-                // Each part is a whole format string of its own: never hand a translator
-                // half a sentence to reorder.
+                // Each part is a whole format string: never hand a translator half a sentence.
                 val parts = buildList {
                     add(
                         stringResource(

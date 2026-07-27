@@ -1,13 +1,7 @@
 import SwiftUI
 
-/// The sending half of the internet path (PROTOCOL.md §9), shown as the Send
-/// segment of `OtherDeviceView`.
-///
-/// The sender presents a code and waits; the recipient scans it and downloads.
-/// **Nothing is paired.** The code authorises one transfer and dies with it, so
-/// no fingerprint is shown: there is no prior relationship to check one
-/// against, and asking the user to verify something they cannot is worse than
-/// asking nothing.
+/// The sending half of the internet path (PROTOCOL.md §9). Nothing is paired: the code
+/// authorises one transfer, and no fingerprint is shown because there is nothing to check.
 struct SendOverInternetView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -29,10 +23,8 @@ struct SendOverInternetView: View {
             }
             mint()
         }
-        // The code is a live capability, so it dies with the screen rather than
-        // lingering until its expiry.
+        // A live capability, so it dies with the screen rather than lingering until expiry.
         .onDisappear { if ticket != nil || minting { model.endInternetTicket() } }
-        // The whole point of the screen: someone scanned, so hand the files over.
         .onChange(of: model.ticketRedeemedPeerID) { _, peerID in
             guard let peerID, !sent else { return }
             sent = true

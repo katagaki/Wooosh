@@ -1,11 +1,7 @@
 import SwiftUI
 
-/// Shown over the device list while a pairing attempt started from a row is
-/// in flight (there is no sheet up to host it).
-///
-/// Pairing dials a peer across a network and has been measured at 19 s, so it
-/// must always name the peer and always offer Cancel. Silence reads as a dead
-/// app and gets force-quit.
+/// Shown over the device list when a row-initiated pairing has no sheet to host it.
+/// Pairing has been measured at 19 s, so it must always name the peer and offer Cancel.
 struct PairingProgressOverlay: View {
     let peerName: String?
     let cancel: () -> Void
@@ -14,7 +10,6 @@ struct PairingProgressOverlay: View {
 
     var body: some View {
         ZStack {
-            // Scrim, so the list underneath reads as not-interactive.
             Rectangle()
                 .fill(.black.opacity(0.18))
                 .ignoresSafeArea()
@@ -47,9 +42,7 @@ struct PairingProgressOverlay: View {
     }
 }
 
-/// A floating pane, so it takes real Liquid Glass — except under Reduce
-/// Transparency, where it falls back to an opaque surface rather than
-/// degrading into something hard to read.
+/// Real Liquid Glass, except under Reduce Transparency where it falls back to opaque.
 private struct PairingCardBackground: ViewModifier {
     let reduceTransparency: Bool
 

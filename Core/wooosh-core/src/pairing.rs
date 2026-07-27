@@ -1,8 +1,5 @@
-//! Pairing: QR payload + one-time tokens (PROTOCOL.md §4.2) and SAS state.
-//!
-//! PROTOCOL.md §4.2 shows `?` between every parameter (`...?pk=..?tok=..`),
-//! which is not valid URI query syntax. We emit `&` and accept both on parse,
-//! so payloads from a spec-literal implementation still scan.
+//! PROTOCOL.md §4.2 separates every QR parameter with `?`, which is not valid
+//! URI query syntax: emit `&`, accept both, so spec-literal payloads still scan.
 
 use crate::error::WoooshError;
 use base64::Engine as _;
@@ -22,7 +19,7 @@ pub struct QrPayload {
     pub version: u64,
     pub pubkey: [u8; 32],
     pub token: [u8; 32],
-    /// Display-name hint (unauthenticated, UI label only).
+    /// Unauthenticated, UI label only.
     pub dn: Option<String>,
     pub hints: Vec<String>,
     pub expires_unix: u64,
@@ -125,7 +122,6 @@ impl QrPayload {
     }
 }
 
-/// Receiver-side state for an outstanding QR pairing offer.
 pub struct QrPending {
     token: [u8; 32],
     issued_at: Instant,
@@ -206,6 +202,6 @@ mod tests {
         let (mut pending, token) = QrPending::new();
         assert!(!pending.redeem(&[0u8; 32]));
         assert!(pending.redeem(&token));
-        assert!(!pending.redeem(&token)); // single use
+        assert!(!pending.redeem(&token));
     }
 }

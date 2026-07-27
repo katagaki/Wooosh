@@ -1,15 +1,9 @@
 namespace Wooosh.Peers;
 
-/// <summary>
-/// Advertised device type: the <c>dt</c> TXT value of PROTOCOL.md §3.1.
-///
-/// The vocabulary is deliberately platform-explicit rather than form-factor-only, because
-/// form factor cannot tell a Pixel from an iPhone and the receiving UI has to pick a glyph.
-/// A generic icon is always acceptable; a confidently wrong one is not.
-/// </summary>
+/// <summary>PROTOCOL.md §3.1 <c>dt</c>: a generic icon is acceptable, a confidently wrong one is not.</summary>
 public enum DeviceType
 {
-    /// <summary>Absent <c>dt</c>, or a value this build does not know. Never guessed at.</summary>
+    /// <summary>Absent or unrecognised <c>dt</c>. Never guessed at.</summary>
     Unknown = 0,
     IPhone,
     IPad,
@@ -33,11 +27,7 @@ public static class DeviceTypeExtensions
         _ => null,
     };
 
-    /// <summary>
-    /// Parses a <c>dt</c> TXT value. Unrecognised and absent values both become
-    /// <see cref="DeviceType.Unknown"/>: PROTOCOL.md §3.1 requires tolerating additions
-    /// to the enum rather than guessing at them.
-    /// </summary>
+    /// <summary>PROTOCOL.md §3.1 requires tolerating enum additions, not guessing at them.</summary>
     public static DeviceType FromTxtValue(string? value) => value switch
     {
         "iphone" => DeviceType.IPhone,
@@ -49,22 +39,15 @@ public static class DeviceTypeExtensions
         _ => DeviceType.Unknown,
     };
 
-    /// <summary>
-    /// Segoe Fluent Icons glyph for a device row.
-    ///
-    /// Deliberately coarse: the glyphs say "phone", "tablet", "computer" and never imply a
-    /// platform, so an unknown <c>dt</c> can fall back without looking like a different
-    /// kind of device. Platform is conveyed by the accessible name, not the picture.
-    /// </summary>
+    /// <summary>Coarse and never platform-implying, so Unknown can fall back; platform lives in the accessible name.</summary>
     public static string ToGlyph(this DeviceType type) => type switch
     {
         DeviceType.IPhone or DeviceType.AndroidPhone => "\uE8EA", // CellPhone
         DeviceType.IPad or DeviceType.AndroidTablet => "\uE70A",  // Tablet
         DeviceType.Mac or DeviceType.Windows => "\uE7F8",         // DeviceLaptopNoPic
-        _ => "\uE772",                                            // Devices: neutral, claims nothing
+        _ => "\uE772",                                            // Devices
     };
 
-    /// <summary>Resource key for the accessible name of the row's device glyph.</summary>
     public static string ToAccessibleNameKey(this DeviceType type) => type switch
     {
         DeviceType.IPhone => "DeviceKindIPhone",

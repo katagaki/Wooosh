@@ -5,27 +5,14 @@ using Microsoft.UI.Dispatching;
 namespace Wooosh.Peers;
 
 /// <summary>
-/// The canonical device list (DESIGN.md §5, PROTOCOL.md §3.3). These rules are
-/// non-negotiable and this class is the only place that enforces them:
-///
-/// <list type="bullet">
-/// <item>Rows are ordered strictly by the tick count of their FIRST sighting in this
-/// process. New devices append to the bottom.</item>
-/// <item>The collection is append-only and is NEVER re-sorted. Not on rename, not on
-/// re-announce, not on pairing, not on going stale.</item>
-/// <item>A peer that stops advertising is greyed out in place, disabled, and keeps its
-/// position and height. It is never removed. Rows shifting under a cursor is how a
-/// user sends a file to the wrong device.</item>
-/// <item>The stale threshold is 10 s and stays 10 s. Scanning happens every 2 s, so that
-/// is roughly five missed announces rather than two. Faster scanning finds devices
-/// sooner; it does not drop them sooner.</item>
-/// </list>
-///
-/// The only thing that clears the list is an explicit user refresh (or relaunch).
+/// The canonical device list (DESIGN.md §5, PROTOCOL.md §3.3). Ordered by first sighting,
+/// append-only, never re-sorted; a peer that stops advertising greys out in place and is
+/// never removed, because rows shifting under the cursor is how a file reaches the wrong
+/// device. Only an explicit user refresh clears the list.
 /// </summary>
 public sealed class PeerRegistry : IDisposable
 {
-    /// <summary>PROTOCOL.md §3.3. Do not "tune" this.</summary>
+    /// <summary>10 s, PROTOCOL.md §3.3, and it stays 10 s. Do not tune.</summary>
     public const int StaleThresholdMs = 10_000;
 
     private const int SweepIntervalMs = 1_000;
@@ -34,10 +21,6 @@ public sealed class PeerRegistry : IDisposable
     private readonly DispatcherQueueTimer _sweepTimer;
     private readonly Dictionary<string, Peer> _byRid = [];
 
-    /// <summary>
-    /// Bound by the device list with x:Bind. Append-only: <see cref="Peers"/> is only ever
-    /// added to, or cleared wholesale by <see cref="Clear"/>.
-    /// </summary>
     public ObservableCollection<Peer> Peers { get; } = [];
 
     public PeerRegistry(DispatcherQueue dispatcher)
@@ -50,11 +33,7 @@ public sealed class PeerRegistry : IDisposable
         _sweepTimer.Start();
     }
 
-    /// <summary>
-    /// An announce for <paramref name="rid"/> arrived (mDNS browse result, PROTOCOL.md §3.1).
-    /// Safe to call from any thread: it marshals to the UI thread, because
-    /// ObservableCollection change notifications must be raised there.
-    /// </summary>
+    /// <summary>Callable from any thread: ObservableCollection notifications must be raised on the UI one.</summary>
     public void NoteSighting(
         string rid,
         string displayName,
@@ -84,7 +63,6 @@ public sealed class PeerRegistry : IDisposable
                     existing.Addresses = addresses;
                 }
 
-                // Re-enabled in place. DiscoveredAtTicks, the ordering key, is untouched.
                 existing.IsStale = false;
                 return;
             }
@@ -103,21 +81,12 @@ public sealed class PeerRegistry : IDisposable
 
             _byRid[rid] = peer;
 
-            // Append. Never Insert, never Sort: DiscoveredAtTicks is monotonic, so append
-            // order IS discovery order, and the list stays correct without ever being
-            // reordered.
+            // Never Insert, never Sort: DiscoveredAtTicks is monotonic, so append order is discovery order.
             Peers.Add(peer);
         });
     }
 
-    /// <summary>
-    /// A control channel came up (HELLO, PROTOCOL.md §4.1). The name in HELLO is
-    /// authenticated and therefore beats the mDNS TXT, which is untrusted hint material.
-    ///
-    /// A device type of <see cref="DeviceType.Unknown"/> never overwrites a known one:
-    /// replacing a correct <c>android-phone</c> glyph from the TXT record with a neutral
-    /// one because HELLO said nothing is a regression, not a correction.
-    /// </summary>
+    /// <summary>HELLO's authenticated name beats the TXT hint; Unknown never overwrites a known type.</summary>
     public void NoteConnected(string peerId, string displayName, DeviceType deviceType, bool trusted)
     {
         _dispatcher.TryEnqueue(() =>
@@ -144,10 +113,6 @@ public sealed class PeerRegistry : IDisposable
         });
     }
 
-    /// <summary>
-    /// Records the core's peer id for a row after a successful connect, so a later send to
-    /// the same row can pass the pinned key to connect_peer.
-    /// </summary>
     public void AttachPeerId(string rid, string peerId)
     {
         _dispatcher.TryEnqueue(() =>
@@ -159,7 +124,6 @@ public sealed class PeerRegistry : IDisposable
         });
     }
 
-    /// <summary>Marks rows paired or unpaired from the core's trust store.</summary>
     public void ApplyTrust(IReadOnlyCollection<string> trustedPeerIds)
     {
         _dispatcher.TryEnqueue(() =>
@@ -171,10 +135,7 @@ public sealed class PeerRegistry : IDisposable
         });
     }
 
-    /// <summary>
-    /// The only in-process way the list is emptied, and it exists solely because
-    /// DESIGN.md §5 allows an explicit user refresh to do it.
-    /// </summary>
+    /// <summary>Only ever reached from an explicit user refresh (DESIGN.md §5).</summary>
     public void Clear()
     {
         _dispatcher.TryEnqueue(() =>
@@ -184,10 +145,7 @@ public sealed class PeerRegistry : IDisposable
         });
     }
 
-    /// <summary>
-    /// Greys out rows that have been silent past the threshold. Runs on the UI thread
-    /// (DispatcherQueueTimer), so it can touch the collection's items directly.
-    /// </summary>
+    /// <summary>Runs on the UI thread (DispatcherQueueTimer), so it can touch the items directly.</summary>
     private void Sweep()
     {
         var now = Environment.TickCount64;
@@ -196,7 +154,6 @@ public sealed class PeerRegistry : IDisposable
             var silent = now - peer.LastSeenTicks >= StaleThresholdMs;
             if (peer.IsStale != silent)
             {
-                // In place. The row keeps its index, and the ListView keeps its scroll.
                 peer.IsStale = silent;
             }
         }

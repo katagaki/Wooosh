@@ -22,12 +22,6 @@
                     Text="{loc:Localize Key=OtherDeviceTitle}" />
             </StackPanel>
 
-            <!--
-                Sending and receiving are two directions of one job, so they are two
-                segments of a single screen rather than a question asked before the screen
-                opens. Asking first made the user commit to a direction while looking at
-                nothing; here both are visible and switching costs a click.
-            -->
             <SelectorBar x:Name="DirectionBar" SelectionChanged="OnDirectionChanged">
                 <SelectorBarItem
                     x:Name="SendSegment"
@@ -38,11 +32,7 @@
                     Text="{loc:Localize Key=OtherDeviceReceive}" />
             </SelectorBar>
 
-            <!--
-                Send (PROTOCOL.md §9.4). Nothing is paired and no fingerprint is shown: the
-                code authorises one transfer and dies with it, so there is no prior
-                relationship to check a phrase against.
-            -->
+            <!-- Send (PROTOCOL.md §9.4): no fingerprint is shown because nothing is paired and the code authorises one transfer only. -->
             <StackPanel x:Name="SendPanel" Spacing="12">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=InternetSendTitle}" />
 
@@ -74,13 +64,7 @@
                         TextWrapping="Wrap" />
                 </StackPanel>
 
-                <!--
-                    TODO(pairing): render the ticket as a QR code once a QR renderer is
-                    chosen. There is none in the box on Windows, and the phones scan rather
-                    than paste, so this is the half of the flow that stays worse until that
-                    dependency decision is made. The copyable text below is the real
-                    fallback, not a placeholder.
-                -->
+                <!-- TODO(pairing): render the ticket as a QR code; Windows ships no QR renderer, so the copyable text is the real fallback. -->
                 <StackPanel x:Name="SendTicket" Spacing="8" Visibility="Collapsed">
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -117,12 +101,7 @@
                 </StackPanel>
             </StackPanel>
 
-            <!--
-                Receive (PROTOCOL.md §9.4). Redeeming the code *is* the consent, so no
-                second prompt follows: the incoming transfer shows in the device list like
-                any other. A PC has no camera in the general case, so pasting is the whole
-                flow here rather than a fallback under a viewfinder.
-            -->
+            <!-- Receive (PROTOCOL.md §9.4): redeeming the code is the consent, so no second prompt follows, and a PC pastes rather than scans. -->
             <StackPanel x:Name="ReceivePanel" Spacing="12" Visibility="Collapsed">
                 <TextBlock
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"

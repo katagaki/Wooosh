@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// The receiving half of the internet path (PROTOCOL.md §9.4), shown as the
-/// Receive segment of `OtherDeviceView`: scan the code the sender is showing,
-/// and the files follow.
-///
-/// Scanning *is* the consent, so the incoming offer never raises a second
-/// prompt. Nothing is paired, and no fingerprint is shown: there is no prior
-/// relationship to check one against.
+/// The receiving half of the internet path (PROTOCOL.md §9.4). Scanning is the consent, so
+/// there is no second prompt, nothing is paired, and no fingerprint is shown.
 struct RedeemTicketView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -19,8 +14,7 @@ struct RedeemTicketView: View {
             case .connecting(let peerName):
                 connecting(peerName: peerName)
             case .success:
-                // Success is a hand-off, not a screen: the send sheet is
-                // what the user came for.
+                // A hand-off, not a screen.
                 Color.clear.onAppear(perform: finish)
             case .failed(let message):
                 failure(message)
@@ -31,8 +25,7 @@ struct RedeemTicketView: View {
         .onAppear { model.resetPairingPhase() }
     }
 
-    /// Redeeming is the whole job: the sender hands the files over on its own,
-    /// and the incoming transfer shows in the list like any other.
+    /// Redeeming is the whole job: the sender then hands the files over on its own.
     private func finish() {
         _ = model.takeRedeemedPeerID()
         model.resetPairingPhase()
@@ -46,8 +39,6 @@ struct RedeemTicketView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     #if os(iOS)
-                    // Straight to the viewfinder: the user tapped a device row,
-                    // so there is nothing to choose first.
                     QRScannerView { scanned in
                         model.pairWithScannedCode(scanned)
                     }
@@ -55,7 +46,7 @@ struct RedeemTicketView: View {
                     .frame(height: 300)
                     .clipShape(.rect(cornerRadius: 20))
                     #else
-                    // No camera on the Mac, so pasting is the whole flow here.
+                    // No camera on the Mac, so pasting is the whole flow.
                     Image(systemName: "qrcode.viewfinder")
                         .font(.system(size: 56))
                         .foregroundStyle(.secondary)
@@ -102,8 +93,7 @@ struct RedeemTicketView: View {
                 Text(peerName.map { L.f("transfer_connecting_to", $0) } ?? L.t("transfer_connecting_generic"))
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
-                // Hole punching before the pairing reply: slower than the LAN,
-                // and silence for that long reads as a hang.
+                // Hole punching is slower than the LAN, and silence that long reads as a hang.
                 Text(L.t("other_device_connecting_body"))
                     .font(.callout)
                     .foregroundStyle(.secondary)

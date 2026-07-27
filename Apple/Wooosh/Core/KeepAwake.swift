@@ -3,10 +3,7 @@ import Foundation
 import UIKit
 #endif
 
-/// Keeps the device awake while transfers are active (DESIGN.md §7):
-/// - iOS: `UIApplication.isIdleTimerDisabled` while active.
-/// - macOS: `ProcessInfo.beginActivity(.idleSystemSleepDisabled)`.
-/// Released as soon as no transfer is active.
+/// Held while a transfer is active, released as soon as none is (DESIGN.md §7).
 @MainActor
 enum KeepAwake {
     #if os(macOS)

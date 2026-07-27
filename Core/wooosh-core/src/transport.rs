@@ -1,11 +1,9 @@
 //! QUIC transport (PROTOCOL.md §4.1 + §6 tuning).
 //!
-//! Self-signed X.509 certs wrapping the Ed25519 identity key. The cert is only
-//! an envelope, so the custom rustls verifiers on both sides accept any
-//! well-formed one and never evaluate a CA chain — but they still verify the
-//! TLS 1.3 handshake signature against its key, which is what proves key
-//! possession. Trust and pinning decisions happen above TLS, on the Ed25519
-//! SPKI extracted from the peer cert.
+//! Self-signed X.509 certs are only an envelope for the Ed25519 identity key:
+//! the custom rustls verifiers accept any well-formed cert and never evaluate
+//! a CA chain, but still verify the TLS 1.3 handshake signature, which proves
+//! key possession. Trust and pinning happen above TLS, on the cert's SPKI.
 
 use crate::error::WoooshError;
 use crate::identity::Identity;
@@ -21,8 +19,7 @@ use std::time::Duration;
 
 pub const ALPN: &[u8] = b"wooosh/1";
 
-/// Extract the raw Ed25519 public key (32 bytes) from a certificate's
-/// SubjectPublicKeyInfo. Errors if the SPKI is not Ed25519.
+/// Errors if the SPKI is not Ed25519.
 pub fn ed25519_spki_from_cert(cert: &CertificateDer<'_>) -> Result<[u8; 32], WoooshError> {
     let (_, parsed) = x509_parser::parse_x509_certificate(cert.as_ref())
         .map_err(|e| WoooshError::Crypto(format!("x509 parse: {e}")))?;
@@ -36,8 +33,7 @@ pub fn ed25519_spki_from_cert(cert: &CertificateDer<'_>) -> Result<[u8; 32], Woo
     key.try_into().map_err(|_| WoooshError::Crypto("bad Ed25519 SPKI length".into()))
 }
 
-/// Extract the peer's Ed25519 key from an established LAN QUIC connection.
-/// The transport-blind entry point is `conn::Conn::peer_pubkey`.
+/// LAN only; the transport-blind entry point is `conn::Conn::peer_pubkey`.
 pub fn quic_peer_pubkey(conn: &quinn::Connection) -> Result<[u8; 32], WoooshError> {
     let identity = conn
         .peer_identity()
@@ -49,7 +45,6 @@ pub fn quic_peer_pubkey(conn: &quinn::Connection) -> Result<[u8; 32], WoooshErro
     ed25519_spki_from_cert(cert)
 }
 
-/// Generate the self-signed cert (rcgen PKCS_ED25519) for our identity key.
 pub fn make_cert(identity: &Identity) -> Result<(CertificateDer<'static>, PrivateKeyDer<'static>), WoooshError> {
     let pkcs8 = identity.pkcs8_der()?;
     let key_pair = rcgen::KeyPair::from_pkcs8_der_and_sign_algo(
@@ -87,8 +82,7 @@ impl ClientCertVerifier for AcceptAnyClientCert {
         _intermediates: &[CertificateDer<'_>],
         _now: UnixTime,
     ) -> Result<ClientCertVerified, rustls::Error> {
-        // Acceptance is well-formedness only: parses and carries an Ed25519
-        // key. Trust is decided above TLS.
+        // Well-formedness only; trust is decided above TLS.
         ed25519_spki_from_cert(end_entity)
             .map_err(|e| rustls::Error::General(e.to_string()))?;
         Ok(ClientCertVerified::assertion())
@@ -128,12 +122,10 @@ impl ClientCertVerifier for AcceptAnyClientCert {
 #[derive(Debug)]
 struct AcceptAnyServerCert {
     provider: Arc<CryptoProvider>,
-    /// When set, the handshake itself fails unless the server presents
-    /// exactly this Ed25519 key (used for QR pairing and pinned reconnects).
+    /// When set, the handshake fails unless the server presents this key.
     expected_key: Option<[u8; 32]>,
-    /// The key the server actually presented, recorded even when the pin
-    /// rejects it: a failed handshake exposes no `peer_identity()`, so this is
-    /// the only way KEY_CHANGED can name the offending key.
+    /// Recorded even when the pin rejects it: a failed handshake exposes no
+    /// `peer_identity()`, so this is the only way KEY_CHANGED can name the key.
     seen_key: Arc<std::sync::Mutex<Option<[u8; 32]>>>,
 }
 
@@ -201,8 +193,7 @@ pub fn transport_config() -> Arc<quinn::TransportConfig> {
     Arc::new(tc)
 }
 
-/// Build the QUIC endpoint: server config (mutual TLS required) listening on
-/// `bind`, usable for outgoing connections too.
+/// Mutual TLS required; also used for outgoing connections.
 pub fn make_endpoint(identity: &Identity, bind: SocketAddr) -> Result<quinn::Endpoint, WoooshError> {
     let (cert, key) = make_cert(identity)?;
     let provider = provider();
@@ -228,13 +219,10 @@ pub fn make_endpoint(identity: &Identity, bind: SocketAddr) -> Result<quinn::End
     Ok(endpoint)
 }
 
-/// Handle onto the key a client-side handshake observed on the peer's
-/// certificate. Populated even when the pin rejected it.
+/// The key the peer's cert carried, populated even when the pin rejected it.
 pub type SeenKey = Arc<std::sync::Mutex<Option<[u8; 32]>>>;
 
-/// Per-connection client config; `expected_key` enforces pinning inside the
-/// TLS handshake itself. The returned [`SeenKey`] carries the key the peer
-/// presented (available whether or not the pin matched).
+/// `expected_key` enforces pinning inside the TLS handshake itself.
 pub fn client_config(
     identity: &Identity,
     expected_key: Option<[u8; 32]>,
@@ -262,17 +250,10 @@ pub fn client_config(
     Ok((cfg, seen_key))
 }
 
-/// SAS derivation (PROTOCOL.md §4.3): 6-digit code from the TLS exporter, so
-/// the code is bound to this exact TLS transcript. A relaying MITM holds two
-/// separate sessions and therefore cannot make both ends show the same digits.
-///
-/// export_keying_material(label="EXPORTER-wooosh-sas", context=empty, 32 bytes),
-/// first 4 bytes as big-endian u32, mod 1_000_000.
-///
-/// Identical on the internet path: iroh's QUIC connection is TLS 1.3 too and
-/// exposes the same exporter, so both ends of an iroh session derive the same
-/// code from the same transcript and a relay in the middle cannot make two
-/// sessions agree (PROTOCOL.md §9.5).
+/// SAS derivation (PROTOCOL.md §4.3, §9.5): label "EXPORTER-wooosh-sas",
+/// empty context, 32 bytes, first 4 as big-endian u32 mod 1_000_000. Binding
+/// it to the TLS transcript is what stops a relaying MITM, which holds two
+/// separate sessions, from making both ends show the same digits.
 pub fn derive_sas(conn: &crate::conn::Conn) -> Result<u32, WoooshError> {
     let mut out = [0u8; 32];
     conn.export_keying_material(&mut out, b"EXPORTER-wooosh-sas", b"")?;

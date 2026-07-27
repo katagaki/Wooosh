@@ -23,13 +23,7 @@ import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.pairing.PairingManager
 import com.tsubuzaki.WoooshGo.pairing.PairingManager.AttemptState
 
-/**
- * The visible half of a pairing ceremony (PROTOCOL.md §4.2 / §4.3).
- *
- * Pairing crosses a network and can be slow or fail; showing nothing implies otherwise.
- * Modal on purpose, and it must always offer a way out — a wait with no exit leaves
- * force-quitting as the only escape.
- */
+/** Modal on purpose, but must always offer a way out (PROTOCOL.md §4.2 / §4.3). */
 @Composable
 fun PairingProgressDialog(
     attempt: PairingManager.Attempt,
@@ -38,8 +32,7 @@ fun PairingProgressDialog(
 ) {
     when (attempt.state) {
         AttemptState.CONNECTING -> AlertDialog(
-            // Back / outside tap cancels the wait rather than hiding it: a spinner the
-            // user cannot see but cannot escape either is the worst of both.
+            // Back cancels the wait rather than hiding an inescapable spinner.
             onDismissRequest = onCancel,
             properties = DialogProperties(
                 dismissOnBackPress = true,

@@ -280,9 +280,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Receiver event loop, shared by the LAN and internet paths: the whole point
-/// of the internet path is that a host drives it with the events it already
-/// handles (DESIGN.md §9.1).
+/// Shared by the LAN and internet paths: a host drives both with the same
+/// events (DESIGN.md §9.1).
 fn receive_loop(
     core: &Arc<WoooshCore>,
     rx: &mpsc::Receiver<CoreEvent>,
@@ -300,7 +299,7 @@ fn receive_loop(
                 core.respond_to_offer(transfer_id, fids)?;
             }
             CoreEvent::FileReady { file_id, staged_path, .. } => {
-                // Storage routing normally done by the native shell.
+                // Storage routing is the native shell's job; stand in for it.
                 let src = PathBuf::from(&staged_path);
                 let dest = out.join(src.file_name().unwrap());
                 std::fs::rename(&src, &dest)
@@ -334,7 +333,6 @@ fn receive_loop(
     }
 }
 
-/// Sender event loop, shared by the LAN and internet paths.
 fn send_loop(core: &Arc<WoooshCore>, rx: &mpsc::Receiver<CoreEvent>) -> Result<()> {
     loop {
         match rx.recv_timeout(Duration::from_secs(300)) {

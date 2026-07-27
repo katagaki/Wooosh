@@ -1,8 +1,7 @@
 import Foundation
 
-// The core is the single source of identity (PROTOCOL.md §2). The app
-// contributes storage only, through `KeychainKeyStore`; DeviceIDs and
-// fingerprint phrases are always rendered by the core, never derived here.
+// The core is the single source of identity (PROTOCOL.md §2): the app lends
+// storage only, and never derives a DeviceID or fingerprint phrase itself.
 
 extension Data {
     var lowercaseHex: String {

@@ -33,13 +33,7 @@
                 Click="OnPairClick"
                 Icon="Link"
                 Label="{loc:Localize Key=ActionPairDevice}" />
-            <!--
-                The internet path (PROTOCOL.md §9). Apple and Android pin it as a synthetic
-                first row in the list; here it is a command, because the ListView is bound
-                straight to the registry's append-only collection and wrapping that
-                collection just to inject one non-device row is exactly the kind of
-                indirection the ordering rules exist to keep out.
-            -->
+            <!-- The internet path (PROTOCOL.md §9) is a command here, not a synthetic row: the ListView binds straight to the append-only collection. -->
             <AppBarButton
                 Click="OnOtherDeviceClick"
                 Icon="Globe"
@@ -50,10 +44,7 @@
                 Label="{loc:Localize Key=ActionSettings}" />
         </CommandBar>
 
-        <!--
-            Shown when the core could not start. Wooosh says so instead of presenting an
-            empty device list that looks like "nobody is nearby".
-        -->
+        <!-- A failed core start is stated outright, never left looking like "nobody is nearby". -->
         <InfoBar
             Grid.Row="1"
             Margin="16,0,16,8"
@@ -63,7 +54,6 @@
             Severity="Error"
             Visibility="{x:Bind ViewModel.StartupError, Mode=OneWay, Converter={StaticResource StringToVisibility}}" />
 
-        <!-- Transfers in flight and the ones that just finished, newest first. -->
         <ItemsControl
             Grid.Row="2"
             Margin="16,0,16,8"
@@ -75,7 +65,6 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Empty state: explains the visibility mode and offers the pairing route. -->
         <StackPanel
             Grid.Row="3"
             Margin="32"
@@ -109,10 +98,7 @@
                 Click="OnPairClick"
                 Content="{loc:Localize Key=ActionPairDevice}"
                 Style="{ThemeResource AccentButtonStyle}" />
-            <!--
-                No devices nearby is exactly when someone reaches for the internet path, and
-                the command bar is easy to miss from the middle of an empty page.
-            -->
+            <!-- Repeated from the command bar: an empty list is exactly when the internet path is wanted. -->
             <Button
                 HorizontalAlignment="Center"
                 Click="OnOtherDeviceClick"
@@ -124,15 +110,7 @@
                 Text="{loc:Localize Key=OtherDeviceSubtitle}" />
         </StackPanel>
 
-        <!--
-            The device list.
-
-            ItemsSource is the registry's append-only collection. There is no sort
-            descriptor, no grouping and no CollectionViewSource here on purpose: the
-            collection is already in first-discovery order and must never be re-ordered
-            (DESIGN.md §5). Adding a sort to this ListView would break the one rule the
-            whole screen exists to keep.
-        -->
+        <!-- No sort, grouping or CollectionViewSource: the collection is already in first-discovery order and must never be re-ordered (DESIGN.md §5). -->
         <ListView
             x:Name="PeerList"
             Grid.Row="3"
@@ -143,12 +121,7 @@
             SelectionMode="None">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="peers:Peer">
-                    <!--
-                        Opacity and hit-testing are bound to the peer's own state, so a peer
-                        that goes away dims and stops responding *in place*: same index,
-                        same height, no reflow. Rows shifting under the pointer is how a
-                        user sends a file to the wrong device.
-                    -->
+                    <!-- A departed peer dims and stops responding in place, same index and height: rows shifting under the pointer cause mis-sends. -->
                     <Grid
                         Padding="8,10"
                         ColumnSpacing="12"

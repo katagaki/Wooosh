@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// Transfers with a device that is not on this network (PROTOCOL.md §9).
-///
-/// Sending and receiving are two directions of one job, so they are two
-/// segments of a single screen rather than a question asked before the screen
-/// opens. Asking first makes the user commit to a direction while looking at
-/// nothing, and gets it wrong often enough that the dialog was really a
-/// speed bump: here both directions are visible and switching costs a tap.
+/// Transfers with a device that is not on this network (PROTOCOL.md §9). Send and receive
+/// are segments of one screen, not a question asked first: switching costs a tap.
 struct OtherDeviceView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -29,10 +24,8 @@ struct OtherDeviceView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
-                // Each side owns its own state and its own bottom actions. The
-                // switch tears the other one down, which is what ends a live
-                // code: it authorises one transfer and must not outlive the
-                // screen that is showing it.
+                // Switching tears the other side down, which ends any live code: a code
+                // authorises one transfer and must not outlive the screen showing it.
                 switch direction {
                 case .send:
                     SendOverInternetView()

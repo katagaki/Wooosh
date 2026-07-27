@@ -52,8 +52,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class Screen { MAIN, SETTINGS, PAIRING, OTHER_DEVICE }
 
-// Spelled out rather than using Manifest.permission.ACCESS_LOCAL_NETWORK so the
-// build does not depend on the constant being un-gated in the compile SDK.
+// Spelled out so the build does not depend on the constant existing in the compile SDK.
 private const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
 
 @Composable
@@ -89,9 +88,8 @@ private fun AppRoot(viewModel: MainViewModel) {
         onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
-    // Asked just before a transfer starts: POST_NOTIFICATIONS (API 33+) for the
-    // foreground-service notification, WRITE_EXTERNAL_STORAGE (API 26–28) for the
-    // direct-to-Downloads receive path. The transfer proceeds whatever the user answers.
+    // POST_NOTIFICATIONS (API 33+) and WRITE_EXTERNAL_STORAGE (API 26–28); the transfer
+    // proceeds whatever the user answers.
     var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -100,9 +98,8 @@ private fun AppRoot(viewModel: MainViewModel) {
         pendingPermissionAction = null
     }
 
-    // ACCESS_LOCAL_NETWORK gates mDNS itself on SDK 37+, so it has to be asked
-    // for at launch rather than at transfer time: without it NsdManager throws
-    // and the device list stays empty forever.
+    // ACCESS_LOCAL_NETWORK gates mDNS on SDK 37+, so it must be asked at launch: without
+    // it NsdManager throws and the device list stays empty forever.
     val localNetworkLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) viewModel.refresh() }
@@ -160,8 +157,6 @@ private fun AppRoot(viewModel: MainViewModel) {
 
         screen == Screen.OTHER_DEVICE -> {
             BackHandler { screen = Screen.MAIN }
-            // Redeeming *is* the whole receive flow: once it lands, the files are already
-            // on their way and the only thing worth looking at is the transfer list.
             LaunchedEffect(Unit) {
                 viewModel.ticketRedeemed.collect {
                     viewModel.ticketRedemptionHandled()
@@ -227,8 +222,7 @@ private fun AppRoot(viewModel: MainViewModel) {
     pendingOffer?.let { offer ->
         IncomingOfferSheet(
             offer = offer,
-            // `trusted` is the core's own answer; the trust list is the same fact seen
-            // again, keyed by DeviceID.
+            // `paired` is the core's own answer; the trust list is that fact keyed by DeviceID.
             senderIsPaired = offer.from.paired ||
                 pairedDevices.any { it.deviceId == offer.from.id },
             onAccept = {
@@ -245,7 +239,6 @@ private fun AppRoot(viewModel: MainViewModel) {
         )
     }
 
-    // Covers the whole window from "scanned" to "outcome known", on any screen.
     pairingAttempt?.let { attempt ->
         PairingProgressDialog(
             attempt = attempt,

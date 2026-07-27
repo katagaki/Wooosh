@@ -14,24 +14,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 
-/**
- * Storage routing (DESIGN.md §6): on FileReady, everything goes to Downloads.
- *
- * - API 29+: MediaStore.Downloads insert with IS_PENDING=1, stream, then publish.
- * - API 26–28: direct write to the public Downloads directory (WRITE_EXTERNAL_STORAGE,
- *   maxSdkVersion 28) + media scan.
- * - Transfers with more than 20 files land in `Wooosh/<yyyy-MM-dd>/` under Downloads
- *   (the caller passes [subfolder]); otherwise Downloads root.
- * - Name collisions get " (2)", " (3)", ... — never overwrite.
- */
-/**
- * Where a received file ended up: the user-visible location
- * ("Download/Wooosh/2026-07-24/IMG_0001 (2).jpeg") and, when one could be obtained, the
- * content URI to hand to `ACTION_VIEW` so the completion notification can open it.
- *
- * [uri] is nullable because the pre-API-29 media scan is best effort: a routed file with
- * no URI is still correctly saved, it just is not directly openable from the notification.
- */
+/** [uri] is null when the pre-API-29 media scan produced none; the file is still saved. */
 data class RoutedFile(val location: String, val uri: Uri?)
 
 class StorageRouter(context: Context) {
@@ -39,7 +22,8 @@ class StorageRouter(context: Context) {
     private val appContext = context.applicationContext
 
     /**
-     * Moves [staged] into public Downloads. Deletes [staged] on success.
+     * Moves [staged] into public Downloads (DESIGN.md §6) and deletes it on success. API
+     * 29+ goes through MediaStore; 26-28 writes directly under WRITE_EXTERNAL_STORAGE.
      */
     @Throws(IOException::class)
     suspend fun routeToDownloads(
@@ -104,7 +88,6 @@ class StorageRouter(context: Context) {
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val targetDir = if (subfolder != null) File(downloads, subfolder) else downloads
         if (!targetDir.isDirectory && !targetDir.mkdirs()) {
-            // Log detail only; the user-facing wording is chosen by the caller.
             throw IOException("cannot create " + targetDir.path)
         }
         val uniqueName = firstFreeName(name) { candidate -> File(targetDir, candidate).exists() }
@@ -118,12 +101,8 @@ class StorageRouter(context: Context) {
     }
 
     /**
-     * Media-scans [file] and waits for the content URI it produces, which is the only way
-     * to get an openable URI on API 26-28 without shipping a FileProvider (a `file://` URI
-     * in an ACTION_VIEW intent throws `FileUriExposedException`).
-     *
-     * Best effort: the file is already saved and visible either way, so a scan that stalls
-     * must not hold up the transfer. On timeout the caller simply gets no URI.
+     * The only route to an openable URI on API 26-28 without a FileProvider (`file://` in
+     * ACTION_VIEW throws `FileUriExposedException`). Best effort: the file is saved anyway.
      */
     private suspend fun scan(file: File): Uri? = try {
         withTimeout(SCAN_TIMEOUT_MS) {
@@ -137,7 +116,7 @@ class StorageRouter(context: Context) {
         null
     }
 
-    /** " (2)", " (3)", ... before the extension; never overwrites. */
+    /** Never overwrites: " (2)", " (3)", ... before the extension. */
     private fun firstFreeName(name: String, isTaken: (String) -> Boolean): String {
         if (!isTaken(name)) return name
         val dot = name.lastIndexOf('.')

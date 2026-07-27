@@ -5,11 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Holds files staged by the share-target entry point until the user picks a device in
- * the (armed) device list. In-memory by design: staged copies live in cacheDir and a
- * fresh share always re-arms it.
- */
+/** In-memory by design: staged copies live in cacheDir and a fresh share always re-arms. */
 class OutboxRepository {
 
     data class StagedShare(

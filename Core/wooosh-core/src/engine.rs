@@ -1,9 +1,5 @@
-//! The connection / pairing / transfer engine.
-//!
-//! One `Engine` owns a QUIC endpoint (server + client on one UDP socket), the
-//! trust store, the peer table and all transfer state. Events leave through a
-//! std mpsc channel; the API layer pumps them to the host on its own thread so
-//! host callbacks never block the tokio runtime.
+//! The connection / pairing / transfer engine. Events leave through a std mpsc
+//! channel, pumped to the host off-runtime so callbacks never block tokio.
 
 use crate::api::{
     CoreEvent, DeviceType, FileKind, OfferedFile, TransferDirection, TrustedPeer, Visibility,
@@ -29,38 +25,19 @@ use tokio::sync::{mpsc, oneshot, Notify};
 
 const HELLO_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-/// Total connect budget for a QR pairing attempt, not per hint — the hints are
-/// raced (`race_connect_qr`). Shorter than `CONNECT_TIMEOUT` because a human is
-/// watching a spinner; 6 s still covers three quinn initial-packet PTO
-/// retransmissions (~1+2+4 s) on lossy Wi-Fi, so a slow-but-alive peer is not
-/// abandoned.
+/// Whole-attempt budget, not per hint; covers three quinn PTO retries.
 const PAIR_CONNECT_TIMEOUT: Duration = Duration::from_secs(6);
 const DECISION_TIMEOUT: Duration = Duration::from_secs(120);
 const PAIR_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
-/// Internet dial budget (PROTOCOL.md §9.3). Longer than the LAN's 10 s: an
-/// iroh dial may have to reach the home relay, exchange candidates and try a
-/// hole punch before any packet flows.
+/// Internet dial budget (§9.3): relay, candidates and punching precede data.
 const NET_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
-/// How long `begin_internet_ticket` waits for a home relay before publishing.
-/// Exceeding it is not fatal — the ticket still carries direct candidates —
-/// but a ticket with neither relay nor reachable candidate is useless.
+/// Home-relay wait before publishing; direct candidates may still suffice.
 const RELAY_READY_TIMEOUT: Duration = Duration::from_secs(15);
-/// How long a send waits for hole punching to upgrade a relayed internet
-/// connection to a direct one before falling back to the relay (DESIGN.md
-/// §9.1). Generous because a direct path is strictly better and punching
-/// normally completes within a couple of seconds of the connection coming up;
-/// by send time it has usually already happened.
+/// Hole-punch upgrade wait before falling back to the relay (DESIGN.md §9.1).
 const DIRECT_PATH_TIMEOUT: Duration = Duration::from_secs(15);
 
-/// Largest single file Wooosh will move over a **relayed** connection
-/// (DESIGN.md §9.1). No limit at all applies on a direct path, which includes
-/// every LAN transfer and every internet transfer that hole punched.
-///
-/// The cap exists because a relay is somebody else's bandwidth: n0's public
-/// relays are free, rate-limited and shared, and a self-hosted one is still a
-/// server someone pays for. 100 MB keeps the everyday case (photos, documents,
-/// a video clip) working from anywhere while keeping a 4 GB archive on the
-/// direct path it should have been on.
+/// Per-file cap on a **relayed** connection (DESIGN.md §9.1); direct is
+/// uncapped. A relay is somebody else's bandwidth.
 pub const RELAY_MAX_FILE_BYTES: u64 = 100 * 1024 * 1024;
 const SMALL_FILE_LIMIT: u64 = 1024 * 1024; // <1 MiB => pipelined
 const MAX_SLOTS: usize = 4;
@@ -97,10 +74,8 @@ pub struct Peer {
     pub pubkey: [u8; 32],
     pub device_id: String,
     pub trusted: AtomicBool,
-    /// This connection redeemed a valid ticket (PROTOCOL.md §9.4). Distinct
-    /// from `trusted`: it authorises exactly one transfer session on *this*
-    /// connection and is never persisted. Nothing else may send file data to
-    /// an unpinned internet peer.
+    /// Redeemed ticket (§9.4): one session, never persisted. The only gate to
+    /// file data for an unpinned internet peer.
     pub ticket_authorized: AtomicBool,
     pub dn: Mutex<String>,
     /// Peer's HELLO `dt` (PROTOCOL.md §4.1), verbatim wire string.
@@ -160,9 +135,7 @@ struct RecvTransfer {
     peer_id: String,
     peer_pubkey: [u8; 32],
     dir: PathBuf,
-    /// In-memory authority for `staging/<tid>/ledger.json`. Up to 4 slot
-    /// streams persist concurrently, so it is mutated and written under this
-    /// one lock and never re-read from disk mid-transfer.
+    /// Authority for `staging/<tid>/ledger.json`; 4 slot streams write it.
     ledger: Mutex<Option<Ledger>>,
     files: Mutex<BTreeMap<u32, RecvFileState>>,
     invalid: Mutex<Vec<(u32, String)>>,
@@ -187,17 +160,11 @@ pub struct Engine {
 struct Inner {
     identity: Identity,
     endpoint: quinn::Endpoint,
-    /// The runtime the engine was built on, so the synchronous `shutdown`
-    /// can still drive iroh's asynchronous close.
+    /// Lets the synchronous `shutdown` drive iroh's asynchronous close.
     rt: tokio::runtime::Handle,
-    /// Relay selection for the internet path. Mutable at runtime: changing it
-    /// drops the bound endpoint so the next ticket operation rebinds against
-    /// the new set (see `set_relay_urls`).
+    /// Changing this rebinds the endpoint; see `set_relay_urls`.
     relay_urls: Mutex<Option<Vec<String>>>,
-    /// Internet path (PROTOCOL.md §9). Bound lazily on the first ticket
-    /// operation so a LAN-only install never talks to a relay. The async
-    /// mutex is deliberate: binding awaits, and two concurrent ticket calls
-    /// must not bind two endpoints on the same key.
+    /// Bound lazily so a LAN-only install never talks to a relay.
     iroh: tokio::sync::Mutex<Option<iroh::Endpoint>>,
     ticket_pending: Mutex<Option<TicketPending>>,
     local_addr: SocketAddr,
@@ -260,11 +227,8 @@ fn kind_for_mime(mime: &str) -> FileKind {
     }
 }
 
-/// Rejections travel as QUIC application close codes, never as control frames
-/// (PROTOCOL.md §4.1) — `close()` discards buffered stream data, so a frame
-/// would often be lost. Translating the code gives shells the real reason
-/// instead of a generic "connection lost". `None` when the connection is still
-/// open, closed at the transport level, or carries an unknown code.
+/// Rejections travel as close codes, never frames (§4.1): `close()` discards
+/// buffered stream data.
 fn close_reason_error(conn: &Conn) -> Option<WoooshError> {
     app_close_error(&conn.close_reason()?)
 }
@@ -285,15 +249,11 @@ fn app_close_error(err: &ConnErr) -> Option<WoooshError> {
     })
 }
 
-/// A failed QR pairing attempt, carrying enough context for the single
-/// `PairingResult { success: false }` emission in `pair_with_qr`.
 struct PairFailure {
     err: WoooshError,
-    /// The key the QR promised, so the event names the peer the user *thinks*
-    /// they are pairing with. `None` only when the payload did not parse.
+    /// The key the QR promised; `None` only when the payload did not parse.
     pubkey: Option<[u8; 32]>,
-    /// A `PairingResult` was already emitted for this attempt elsewhere (the
-    /// PAIR_REJECT dispatch path); emitting a second would show two failures.
+    /// A `PairingResult` was already emitted by the PAIR_REJECT dispatch.
     reported: bool,
 }
 
@@ -307,9 +267,7 @@ impl PairFailure {
     }
 }
 
-/// How informative a per-hint connect failure is, for picking which one to
-/// report when every hint in a QR failed: a typed close-code / key error beats
-/// a transport error, which beats a bare timeout.
+/// Typed close-code / key error beats transport error beats bare timeout.
 fn connect_error_rank(e: &WoooshError) -> u8 {
     match e {
         WoooshError::Connect(m) if m.starts_with("connect timeout") => 0,
@@ -324,16 +282,9 @@ fn local_ip() -> Option<std::net::IpAddr> {
     s.local_addr().ok().map(|a| a.ip())
 }
 
-/// Address hints to embed in a pairing QR (PROTOCOL.md §4.2), best-first.
-///
-/// A QR is normally scanned by a *different* device, so loopback goes strictly
-/// last, purely as the same-machine fallback (macOS app ↔ `wooosh-cli`): a
-/// remote scanner reaching it dials its own loopback and at worst hits an
-/// unrelated local service.
-///
-/// Only advertise what the bind address makes truthful — a wildcard bind means
-/// every interface is live (LAN, then loopback), while a specific bind means
-/// every *other* address is a lie no packet can reach. Duplicates collapse.
+/// Address hints for a pairing QR (PROTOCOL.md §4.2), best-first. Loopback is
+/// last: a QR is normally scanned by another device. Only advertise what the
+/// bind address makes truthful.
 fn pairing_hints(bind_ip: IpAddr, lan_ip: Option<IpAddr>, port: u16) -> Vec<String> {
     let mut hints: Vec<String> = Vec::new();
     let mut push = |ip: IpAddr| {
@@ -409,9 +360,7 @@ impl Engine {
 
     pub fn shutdown(&self) {
         self.inner.endpoint.close(close_codes::BYE.into(), b"bye");
-        // Invalidate any outstanding ticket, then close the iroh endpoint.
-        // Merely dropping it makes iroh log an error and abort its socket, so
-        // the close is driven to completion (bounded) on the engine's runtime.
+        // Dropping the iroh endpoint unclosed aborts its socket.
         *self.inner.ticket_pending.lock().unwrap() = None;
         let ep = self.inner.iroh.try_lock().ok().and_then(|mut g| g.take());
         if let Some(ep) = ep {
@@ -426,7 +375,6 @@ impl Engine {
         }
     }
 
-    /// The pinned set, for the shell's trust list (PROTOCOL.md §4.5).
     pub fn trusted_peers(&self) -> Vec<TrustedPeer> {
         self.inner
             .trust
@@ -479,11 +427,8 @@ impl Engine {
         .encode()
     }
 
-    /// Sender side of QR pairing (PROTOCOL.md §4.2).
-    ///
-    /// Every exit must also report a `PairingResult` event: shells drive their
-    /// pairing UI off events, so a path that only returns `Err` leaves that UI
-    /// hanging forever.
+    /// Sender side of QR pairing (PROTOCOL.md §4.2). Every exit must also emit
+    /// a `PairingResult`, or the shell's event-driven pairing UI hangs.
     pub async fn pair_with_qr(&self, payload: &str) -> Result<String, WoooshError> {
         match self.pair_with_qr_inner(payload).await {
             Ok(peer_id) => Ok(peer_id),
@@ -518,12 +463,7 @@ impl Engine {
         self.redeem_pair_token(peer, qr.token, key).await
     }
 
-    /// Present a single-use pairing token on an established connection and
-    /// wait for `PAIR_ACCEPT` (PROTOCOL.md §4.2 steps 3–4).
-    ///
-    /// Shared verbatim by QR pairing on the LAN and ticket redemption over the
-    /// internet: the ceremony is identical once a channel exists, and the two
-    /// paths must never drift apart.
+    /// §4.2 steps 3–4; LAN QR and internet tickets must never drift apart.
     async fn redeem_pair_token(
         &self,
         peer: Arc<Peer>,
@@ -537,10 +477,8 @@ impl Engine {
             .unwrap()
             .insert(peer.device_id.clone(), tx);
         peer.send_msg(Msg::PairRequest { token: Some(token.to_vec()) });
-        // A rejecting peer sends PAIR_REJECT *and* closes with TOKEN_INVALID,
-        // and `close()` discards buffered stream data, so the frame is often
-        // lost. Race the reply against the close, otherwise a rejection reads
-        // as a 20 s timeout.
+        // A rejecting peer's close discards the buffered PAIR_REJECT frame, so
+        // race the two or a rejection reads as a timeout.
         let conn = peer.conn.clone();
         let outcome = tokio::time::timeout(PAIR_REPLY_TIMEOUT, async move {
             tokio::select! {
@@ -549,8 +487,7 @@ impl Engine {
             }
         })
         .await;
-        // This attempt is over: a dead waiter left behind would be resolved by
-        // a later reply on the same device_id.
+        // A leftover waiter would be resolved by a later reply on this id.
         if !matches!(outcome, Ok(Ok(Ok(_)))) {
             self.inner.qr_waiters.lock().unwrap().remove(&peer.device_id);
         }
@@ -577,25 +514,10 @@ impl Engine {
         }
     }
 
-    // ---------- internet path (PROTOCOL.md §9) ----------
-
-    /// Publish this device on iroh and mint a redeemable ticket.
-    ///
-    /// **The publisher is the sender** (PROTOCOL.md §9.2): it has already
-    /// chosen the files, so it is the side with something to publish. This
-    /// inverts the LAN rule that the connector originates `OFFER` — here the
-    /// connector redeems and the acceptor offers — but the transfer engine
-    /// carries either direction unchanged, so no reversed path is needed.
-    /// Both directions are covered in `tests/integration.rs`.
+    /// **The publisher is the sender** (§9.2), inverting the LAN OFFER rule.
     pub async fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
         let ep = self.inner.iroh_endpoint().await?;
-        // A freshly bound endpoint knows neither its home relay nor its local
-        // interface addresses yet, and a ticket carrying neither cannot be
-        // dialled at all. Poll until there is something usable to publish,
-        // bounded so a network-less device still gets a (useless but honest)
-        // ticket rather than a hang. Which address counts depends on the mode:
-        // with relays on, the home relay is the one that works from anywhere;
-        // with relays off, only direct candidates can ever work.
+        // A ticket with no relay and no direct candidate cannot be dialled.
         let relays_off = self
             .inner
             .relay_urls
@@ -616,12 +538,7 @@ impl Engine {
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
-        // Relays on but none reachable: the endpoint never acquired a home
-        // relay, so the ticket could only carry local interface addresses.
-        // Publishing that would hand the user a code that looks fine and can
-        // only ever work on their own network — the one thing they did not ask
-        // for. Fail instead, so a wrong relay URL or a dead network is
-        // reported rather than disguised.
+        // Relays on but none reachable: the code would only work on their LAN.
         if !relays_off && addr.relay_urls().next().is_none() {
             return Err(WoooshError::Connect(
                 "no relay could be reached to publish a ticket".into(),
@@ -646,21 +563,11 @@ impl Engine {
         Ok(ticket.encode())
     }
 
-    /// Choose the relays used by the internet path (DESIGN.md §9.1).
-    ///
-    /// `None` is n0's public set, `Some(&[])` is no relay and no address
-    /// lookup at all, and a non-empty list is a chosen or self-hosted relay.
-    /// The publishing device's home relay is what a ticket advertises, so
-    /// setting this here is what makes a redeemer use *your* relay without
-    /// configuring anything on their side.
-    ///
-    /// Rebinding rather than restarting: the iroh endpoint is independent of
-    /// the LAN QUIC socket, so the endpoint is closed and dropped and the next
-    /// ticket operation binds a fresh one. Any outstanding ticket dies with
-    /// it, since it advertises a relay this device no longer uses.
+    /// DESIGN.md §9.1. `None` is n0's public set, `Some(&[])` disables relays
+    /// and address lookup entirely. Rebinding invalidates outstanding tickets,
+    /// which advertise a relay this device no longer uses.
     pub async fn set_relay_urls(&self, urls: Option<Vec<String>>) -> Result<(), WoooshError> {
-        // Validated before anything is torn down, so a typo leaves the working
-        // configuration in place.
+        // Validated before teardown, so a typo leaves the working config up.
         if let Some(list) = &urls {
             for u in list {
                 u.parse::<iroh::RelayUrl>()
@@ -671,22 +578,17 @@ impl Engine {
         *self.inner.relay_urls.lock().unwrap() = urls;
         *self.inner.ticket_pending.lock().unwrap() = None;
         if let Some(ep) = guard.take() {
-            // Dropping without closing makes iroh log an error and abort its
-            // socket, exactly as in `shutdown`.
+            // Dropping without closing aborts iroh's socket; see `shutdown`.
             ep.close().await;
         }
         Ok(())
     }
 
-    /// Invalidate the outstanding ticket. A ticket the user has stopped
-    /// expecting must stop working immediately, not in two minutes.
+    /// A ticket the user stopped expecting must stop working immediately.
     pub fn end_internet_ticket(&self) {
         *self.inner.ticket_pending.lock().unwrap() = None;
     }
 
-    /// Redeem a ticket: dial its node over iroh, run the standard HELLO
-    /// exchange, then present the token to pair. Returns the peer_id, which
-    /// the caller passes straight to `send`.
     pub async fn redeem_ticket(&self, ticket: &str) -> Result<String, WoooshError> {
         match self.redeem_ticket_inner(ticket).await {
             Ok(peer_id) => Ok(peer_id),
@@ -716,10 +618,7 @@ impl Engine {
             .map_err(|_| fail(WoooshError::Connect("ticket connect timed out".into())))?
             .map_err(|e| fail(WoooshError::Connect(format!("iroh connect: {e}"))))?;
         let conn = Conn::Net(conn);
-        // iroh's handshake already authenticates the remote to exactly the
-        // EndpointId we dialled, so the ticket's node id *is* the pin. Assert
-        // it anyway: pinning must never be implicit in someone else's library
-        // (PROTOCOL.md §4.5, §9.3).
+        // Pinning must never be implicit in someone else's library (§4.5).
         let presented = conn.peer_pubkey().map_err(fail)?;
         if presented != key {
             conn.close(close_codes::KEY_CHANGED, b"KEY_CHANGED");
@@ -906,9 +805,7 @@ impl Inner {
         let _ = self.events.send(ev);
     }
 
-    /// Report a pairing attempt that failed before (or instead of) any
-    /// PAIR_ACCEPT / PAIR_REJECT frame. A connect timeout or bad QR must still
-    /// produce a terminal event, or the shell's sheet spins forever.
+    /// Without a terminal event the shell's pairing sheet spins forever.
     fn emit_pairing_failure(&self, pubkey: Option<[u8; 32]>, message: String) {
         let (peer_id, peer_pubkey, fingerprint) = match pubkey {
             Some(k) => (
@@ -937,11 +834,7 @@ impl Inner {
             .ok_or_else(|| WoooshError::UnknownPeer(peer_id.to_string()))
     }
 
-    // ---------- internet endpoint ----------
-
-    /// The iroh endpoint, bound on first use (see `inet.rs` for why it is
-    /// lazy). Holding the async mutex across the bind is what keeps two
-    /// concurrent ticket calls from binding two endpoints on one key.
+    /// The async mutex prevents two endpoints bound on one key.
     async fn iroh_endpoint(self: &Arc<Self>) -> Result<iroh::Endpoint, WoooshError> {
         let mut guard = self.iroh.lock().await;
         if let Some(ep) = guard.as_ref() {
@@ -956,9 +849,7 @@ impl Inner {
         Ok(ep)
     }
 
-    /// Incoming iroh connections join the *same* connection lifecycle as LAN
-    /// ones: HELLO, visibility checks, trust, transfers. Nothing below this
-    /// line knows which transport it is on.
+    /// Nothing below this line knows which transport it is on.
     async fn iroh_accept_loop(self: Arc<Self>, ep: iroh::Endpoint) {
         while let Some(incoming) = ep.accept().await {
             let inner = self.clone();
@@ -979,8 +870,6 @@ impl Inner {
             });
         }
     }
-
-    // ---------- connections ----------
 
     async fn accept_loop(self: Arc<Self>) {
         while let Some(incoming) = self.endpoint.accept().await {
@@ -1015,17 +904,10 @@ impl Inner {
         self.clone().run_connection(conn, true).await
     }
 
-    /// Dial every hint from a pairing QR at once and keep the first connection
-    /// that comes up.
-    ///
     /// A dead hint is indistinguishable from a slow one until it times out, so
-    /// dialling in sequence costs a full connect timeout per dead entry ahead
-    /// of the live one. Racing bounds the wait by the slowest *useful* attempt
-    /// instead of the sum of the useless ones. Never make this serial again.
-    ///
-    /// Only the QUIC handshake is raced: HELLO and PAIR_REQUEST run afterwards
-    /// on the single winner, so there is never more than one registered peer
-    /// or one redemption of the single-use token in flight.
+    /// serial dialling costs a full timeout per dead entry. Never make this
+    /// serial again. Only the handshake is raced, so the single-use token is
+    /// redeemed once.
     async fn race_connect_qr(
         self: &Arc<Self>,
         hints: &[String],
@@ -1071,9 +953,7 @@ impl Inner {
                 Err(_) => {}
             }
         }
-        // Cancel losers still dialling, and hang up on any that also succeeded
-        // (two hints can reach the same device) so no second connection to
-        // that peer is left alive.
+        // Two hints can reach the same device; hang up on late winners.
         set.abort_all();
         while let Some(joined) = set.join_next().await {
             if let Ok((_, Ok(conn))) = joined {
@@ -1086,9 +966,7 @@ impl Inner {
         }
     }
 
-    /// The QUIC half of a dial: address resolution, pinning, handshake. Kept
-    /// separate from `connect_to` so pairing can race it across hints without
-    /// also racing the HELLO exchange in `run_connection`.
+    /// Separate from `connect_to` so pairing races only the handshake.
     async fn connect_quic(
         self: &Arc<Self>,
         addr: &str,
@@ -1102,9 +980,7 @@ impl Inner {
             .next()
             .ok_or_else(|| WoooshError::Connect(format!("no address for {addr}")))?;
         // Pinning must not depend on the shell passing the right argument
-        // (PROTOCOL.md §4.5): with no caller key, resolve the identity last
-        // authenticated at exactly this `ip:port` from our own trust store and
-        // pin to that. A caller-supplied key always wins.
+        // (§4.5): fall back to the identity last seen at this exact `ip:port`.
         let expected_pubkey = match expected_pubkey {
             Some(k) => Some(k),
             None => {
@@ -1147,8 +1023,6 @@ impl Inner {
         Ok(Conn::Lan(conn))
     }
 
-    /// Handshake bookkeeping + HELLO exchange, then spawn the long-lived
-    /// reader / writer / uni-stream tasks. Returns the registered peer.
     async fn run_connection(
         self: Arc<Self>,
         conn: Conn,
@@ -1177,12 +1051,8 @@ impl Inner {
                 caps: vec![],
             }
         };
-        // HELLO exchange (PROTOCOL.md §4.1). The client speaks first; the
-        // server answers only after reading the peer's HELLO and deciding to
-        // keep the connection. Answering earlier would leak our display name
-        // to a peer we are about to refuse, and would race the
-        // CONNECTION_CLOSE so the client sees a torn read instead of the
-        // close code.
+        // HELLO (PROTOCOL.md §4.1): answering before deciding to keep the
+        // connection leaks the display name and races the CONNECTION_CLOSE.
         if is_client {
             write_frame(&mut send, &hello).await?;
         }
@@ -1209,10 +1079,8 @@ impl Inner {
             conn.close(close_codes::VERSION_MISMATCH, b"no common version");
             return Err(WoooshError::VersionMismatch);
         }
-        // Identity binding (PROTOCOL.md §4.1.1): the DeviceID announced in
-        // HELLO must derive from the key the peer just proved possession of.
-        // Claiming an identity we have pinned is the KEY_CHANGED signal
-        // (§4.5), whichever side dialled.
+        // Identity binding (§4.1.1): the HELLO DeviceID must derive from the
+        // proven key; claiming a pinned identity is KEY_CHANGED (§4.5).
         if !claimed_device_id.is_empty()
             && claimed_device_id.as_slice() != identity::device_id_for(&pubkey).as_slice()
         {
@@ -1233,12 +1101,9 @@ impl Inner {
             ));
         }
 
-        // PairedOnly: reject untrusted peers right after HELLO (server side).
         if !is_client && !trusted {
             let vis = self.cfg.lock().unwrap().visibility.clone();
-            // A live ticket is an explicit invitation, so PairedOnly must not
-            // slam the door before the caller can present its token — the same
-            // carve-out QR pairing already gets (PROTOCOL.md §4.2).
+            // A live ticket is an invitation; the token needs a chance (§4.2).
             let invited =
                 conn.is_internet() && self.ticket_pending.lock().unwrap().is_some();
             if matches!(vis, Visibility::PairedOnly) && !invited {
@@ -1251,10 +1116,9 @@ impl Inner {
         }
 
         if trusted {
-            // Remember where this pinned peer authenticated so a later
-            // connect_peer(addr, None) can re-apply the pin itself (§4.5).
-            // Internet connections have no stable `ip:port` to record, and a
-            // relayed address recorded here would mis-pin a LAN dial later.
+            // Lets a later connect_peer(addr, None) re-apply the pin (§4.5).
+            // Skipped for internet connections: a relayed address would
+            // mis-pin a LAN dial.
             if let Some(addr) = conn.remote_address() {
                 self.trust.note_addr(&pubkey, &addr.to_string());
             }
@@ -1315,8 +1179,6 @@ impl Inner {
         Ok(peer)
     }
 
-    // ---------- control dispatch ----------
-
     async fn control_read_loop(
         self: Arc<Self>,
         peer: Arc<Peer>,
@@ -1346,12 +1208,8 @@ impl Inner {
                 log::warn!("peer {} does not support message t={t}", peer.device_id)
             }
 
-            // ----- pairing -----
             Msg::PairRequest { token: Some(token) } => {
-                // A token only redeems on the transport it was issued for. A
-                // QR is shown in the room; a ticket travels through a chat
-                // app. Letting either stand in for the other would widen the
-                // capability well beyond what the user authorized.
+                // A token only redeems on the transport it was issued for.
                 let ok = if peer.conn.is_internet() {
                     let mut pending = self.ticket_pending.lock().unwrap();
                     let ok = pending.as_mut().map(|p| p.redeem(&token)).unwrap_or(false);
@@ -1369,13 +1227,7 @@ impl Inner {
                 };
                 if ok {
                     if peer.conn.is_internet() {
-                        // The internet path never pairs (PROTOCOL.md §9.4): the
-                        // token authorises exactly one transfer session and
-                        // nothing is written to the trust store. Marking the
-                        // connection is what lets this device send to an
-                        // otherwise untrusted peer, and it is the only gate
-                        // between staged files and anyone who learned the
-                        // endpoint id.
+                        // §9.4: one session, nothing written to the trust store.
                         peer.ticket_authorized.store(true, Ordering::SeqCst);
                         peer.send_msg(Msg::PairAccept);
                         self.emit(CoreEvent::TicketRedeemed {
@@ -1457,13 +1309,9 @@ impl Inner {
                 });
             }
 
-            // ----- transfers -----
             Msg::Offer { tid, files, total, note } => {
                 let vis = self.cfg.lock().unwrap().visibility.clone();
-                // A redeemed ticket is the authorisation on the internet path,
-                // which never pairs (PROTOCOL.md §9.4) — `trusted` is false for
-                // a legitimate transfer, so PairedOnly would otherwise close the
-                // connection here, one step after the token was already burned.
+                // §9.4: `trusted` is false even for a legitimate transfer.
                 let invited = peer.ticket_authorized.load(Ordering::SeqCst);
                 if !trusted && !invited && !matches!(vis, Visibility::Everyone) {
                     peer.conn.close(close_codes::PAIRING_REQUIRED, b"PAIRING_REQUIRED");
@@ -1474,9 +1322,7 @@ impl Inner {
             Msg::Decision { tid, accept } => {
                 let st = self.sends.lock().unwrap().get(&tid).cloned();
                 match st {
-                    // DECISION answers an OFFER we initiated on this
-                    // connection, so it is honored even untrusted
-                    // (accept-once transfers, PROTOCOL.md §4.4).
+                    // Honored even untrusted (accept-once, PROTOCOL.md §4.4).
                     Some(st) if st.peer_id == peer.device_id => {
                         *st.accepted.lock().unwrap() = Some(accept);
                         st.decision_notify.notify_waiters();
@@ -1491,7 +1337,7 @@ impl Inner {
             Msg::ResumeQ { tid } => {
                 if !trusted {
                     // Untrusted channels carry only HELLO / PAIR_* / OFFER
-                    // (PROTOCOL.md §4.1); accept-once transfers cannot resume.
+                    // (§4.1); accept-once cannot resume.
                     self.untrusted_violation(peer, "RESUME_Q");
                     return Ok(());
                 }
@@ -1592,10 +1438,7 @@ impl Inner {
         Ok(())
     }
 
-    /// Persist the pin for a newly paired peer: key, display name, device type
-    /// and the address it authenticated at, so a later
-    /// `connect_peer(addr, None)` re-applies the pin by itself (§4.5).
-    /// Returns the recorded display name.
+    /// Persist the pin for a newly paired peer; returns its display name.
     fn pin_peer(&self, peer: &Arc<Peer>) -> Result<String, WoooshError> {
         let dn = peer.dn.lock().unwrap().clone();
         let dt = peer.dt.lock().unwrap().clone();
@@ -1671,8 +1514,6 @@ impl Inner {
         });
     }
 
-    // ---------- receiving ----------
-
     fn handle_offer(
         self: &Arc<Self>,
         peer: &Arc<Peer>,
@@ -1681,11 +1522,8 @@ impl Inner {
         total: u64,
         _note: Option<String>,
     ) -> Result<(), WoooshError> {
-        // The relayed per-file cap is enforced on both ends (DESIGN.md §9.1).
-        // The sender already checked, but the relay being spent is usually the
-        // *receiver's* home relay, so this side does not take a well-behaved
-        // sender on trust. Declined outright rather than partially, so the
-        // outcome does not depend on which files happened to be small.
+        // The cap is enforced on both ends (DESIGN.md §9.1): the relay spent
+        // is usually the *receiver's*. Declined outright, never partially.
         if !peer.conn.is_direct() && files.iter().any(|f| f.size > RELAY_MAX_FILE_BYTES) {
             log::warn!(
                 "declining relayed offer from {}: a file exceeds {} bytes",
@@ -1778,7 +1616,6 @@ impl Inner {
             .cloned()
             .ok_or_else(|| WoooshError::UnknownTransfer(tid_hex(&tid)))?;
         let peer = self.get_peer(&rt.peer_id)?;
-        // Only offered-and-valid fids can be accepted.
         let valid: Vec<u32> = {
             let files = rt.files.lock().unwrap();
             accept.iter().copied().filter(|f| files.contains_key(f)).collect()
@@ -1851,7 +1688,6 @@ impl Inner {
             });
         }
         peer.send_msg(Msg::Decision { tid, accept: valid });
-        // Report invalid (unsanitizable) files as failed immediately.
         for (fid, err) in rt.invalid.lock().unwrap().drain(..) {
             peer.send_msg(Msg::Done { tid, fid, ok: false, err: Some(err) });
         }
@@ -1938,9 +1774,7 @@ impl Inner {
             }
         };
 
-        // Prime hashers by re-hashing .part prefixes: the ledger's
-        // verified_off is a hint, the bytes on disk are the authority
-        // (DESIGN.md §6/§7).
+        // Bytes on disk outrank the ledger's verified_off (DESIGN.md §6/§7).
         let mut have = Vec::new();
         let fids: Vec<u32> = rt.files.lock().unwrap().keys().copied().collect();
         for fid in fids {
@@ -2020,8 +1854,7 @@ impl Inner {
         }
     }
 
-    /// One unidirectional stream = one big file, or several small files
-    /// back-to-back (PROTOCOL.md §6).
+    /// One uni stream = one big file, or small files back-to-back (§6).
     async fn handle_file_stream(
         self: &Arc<Self>,
         peer: Arc<Peer>,
@@ -2055,8 +1888,7 @@ impl Inner {
                 acc.as_ref().map(|a| a.contains(&header.fid)).unwrap_or(false)
             };
             if !accepted {
-                // Sender must not open file streams before DECISION
-                // (PROTOCOL.md §5).
+                // No file streams before DECISION (PROTOCOL.md §5).
                 stream.stop(close_codes::UNTRUSTED_MSG);
                 return Err(WoooshError::Protocol("stream for unaccepted file".into()));
             }
@@ -2129,9 +1961,8 @@ impl Inner {
             since_progress += n as u64;
             rt.bytes_this_attempt.fetch_add(n as u64, Ordering::SeqCst);
 
-            // Ledger fsync every 16 MiB (PROTOCOL.md §6). Failures must
-            // `break Err`, never `?`: `?` skips the cleanup arm below and
-            // leaves the file pinned `active`, unable to retry or resume.
+            // Ledger fsync every 16 MiB (§6). Failures must `break Err`: `?`
+            // skips cleanup and leaves the file pinned `active`.
             if since_sync >= FSYNC_INTERVAL {
                 since_sync = 0;
                 if let Err(e) = file.flush().await {
@@ -2156,8 +1987,7 @@ impl Inner {
                 let actual = hasher.finalize();
                 let ok = actual.as_bytes() == &expected_b3;
                 if ok {
-                    // Verify-then-report: nothing leaves staging, and no
-                    // FileReady is emitted, until the hash matches.
+                    // Nothing leaves staging until the hash matches.
                     let final_path = self.finalize_file(rt, fid).await?;
                     self.persist_file_done(rt, fid, size);
                     {
@@ -2229,13 +2059,8 @@ impl Inner {
         });
     }
 
-    /// Mutate + atomically rewrite the transfer's ledger under its lock.
-    ///
-    /// Best-effort by design: the ledger only accelerates a future resume, the
-    /// `.part` file plus the BLAKE3 check being authoritative. A write failure
-    /// is logged and never propagated into the transfer path — propagating it
-    /// would tear down a whole pipelined slot stream and strand every file
-    /// queued behind it.
+    /// Best-effort: the ledger only accelerates a resume, and propagating a
+    /// write failure would strand every file queued on a pipelined slot.
     fn write_ledger(&self, rt: &RecvTransfer, fid: u32, f: impl FnOnce(&mut LedgerFile)) {
         let mut guard = rt.ledger.lock().unwrap_or_else(|e| e.into_inner());
         let Some(ledger) = guard.as_mut() else { return };
@@ -2263,8 +2088,7 @@ impl Inner {
         });
     }
 
-    /// Move a verified `.part` to `files/<rel_path or name>` inside the
-    /// transfer's staging dir. The shell routes it from there (`FileReady`).
+    /// The shell routes the file from staging on `FileReady`.
     async fn finalize_file(&self, rt: &RecvTransfer, fid: u32) -> Result<PathBuf, WoooshError> {
         let (part, mut dest) = {
             let files = rt.files.lock().unwrap();
@@ -2323,18 +2147,14 @@ impl Inner {
         }
     }
 
-    // ---------- sending ----------
-
     async fn run_send(
         self: Arc<Self>,
         tid: [u8; 16],
         peer: Arc<Peer>,
         paths: Vec<PathBuf>,
     ) -> Result<(), WoooshError> {
-        // The internet path never pairs (PROTOCOL.md §9.4), so `trusted` is
-        // false for a legitimate ticket transfer and cannot be the gate. The
-        // gate is the redeemed token: without it, anyone who learned this
-        // device's endpoint id could dial in and be handed the staged files.
+        // §9.4: the redeemed token is the gate, since `trusted` is false.
+        // Without it, anyone who learned the endpoint id gets the files.
         if peer.conn.is_internet()
             && !peer.ticket_authorized.load(Ordering::SeqCst)
             && !peer.trusted.load(Ordering::SeqCst)
@@ -2343,15 +2163,10 @@ impl Inner {
                 "refusing to send to an internet peer that has not redeemed a ticket".into(),
             ));
         }
-        // An internet connection comes up relayed and upgrades once hole
-        // punching lands, so wait for the upgrade before deciding which limits
-        // apply. Always true on the LAN, where there is no relay at all.
+        // Which limits apply cannot be decided until punching resolves.
         if !peer.conn.wait_for_direct(DIRECT_PATH_TIMEOUT).await {
-            // Still relayed, so the per-file cap applies (DESIGN.md §9.1).
-            // Checked on metadata only, before any hashing, so an oversized
-            // file fails in milliseconds rather than after a full BLAKE3 pass —
-            // and before the OFFER, so the receiver is never asked to accept a
-            // transfer that cannot run.
+            // Still relayed, so the cap applies (DESIGN.md §9.1). Metadata
+            // only, and before the OFFER, so nothing is hashed or accepted.
             let to_check = paths.clone();
             let oversized = tokio::task::spawn_blocking(move || {
                 to_check.iter().any(|p| {
@@ -2493,8 +2308,7 @@ impl Inner {
         }
         *st.accepted.lock().unwrap() = Some(accepted.clone());
         st.done.lock().unwrap().clear();
-        // Files the receiver already has send no DONE, so mark them done
-        // locally or the transfer never completes.
+        // Files the receiver already has send no DONE.
         let mut fully_done = Vec::new();
         {
             let offsets = st.offsets.lock().unwrap();
@@ -2515,9 +2329,8 @@ impl Inner {
         self.stream_files(&st, &peer, &accepted).await
     }
 
-    /// ≤4 concurrent slots; big files get their own uni stream, small files
-    /// (<1 MiB) are pipelined back-to-back over shared slot streams
-    /// (PROTOCOL.md §6).
+    /// ≤4 slots; big files get a uni stream each, small files (<1 MiB) are
+    /// pipelined over shared slot streams (PROTOCOL.md §6).
     async fn stream_files(
         self: &Arc<Self>,
         st: &Arc<SendTransfer>,
@@ -2559,7 +2372,6 @@ impl Inner {
                     let off = offsets.get(&fid).copied().unwrap_or(0);
                     inner.send_one_file(&st, &peer, fid, off, None).await?;
                 }
-                // Small files share one stream, pipelined until drained.
                 let has_small = !small.lock().unwrap().is_empty();
                 if has_small {
                     let mut stream = peer
@@ -2597,8 +2409,7 @@ impl Inner {
             });
             return Err(e);
         }
-        // A pure catch-up resume sends no bytes, so no DONE arrives: check
-        // completion locally as well.
+        // A pure catch-up resume sends no bytes, so no DONE arrives.
         let all_done = {
             let done = st.done.lock().unwrap();
             accepted.iter().all(|f| done.contains_key(f))
@@ -2622,8 +2433,7 @@ impl Inner {
         Ok(())
     }
 
-    /// Write one file's frame(s) onto a stream. `shared` = Some(pipelined
-    /// slot stream) for small files; None = open a dedicated stream.
+    /// `shared` is the pipelined slot stream; `None` opens a dedicated one.
     async fn send_one_file(
         self: &Arc<Self>,
         st: &Arc<SendTransfer>,
@@ -2708,8 +2518,6 @@ impl Inner {
     }
 }
 
-// ---------- stream framing helpers ----------
-
 async fn read_u32_or_eof(stream: &mut RecvStream) -> Result<Option<u32>, WoooshError> {
     let mut b = [0u8; 4];
     match stream.read_exact(&mut b).await {
@@ -2763,15 +2571,12 @@ mod tests {
 
     #[test]
     fn qr_hints_put_lan_first_and_loopback_last() {
-        // Default bind (wildcard): a scanner on another device must see the
-        // routable address first; loopback stays only for same-machine pairing.
         let h = pairing_hints(ip("0.0.0.0"), Some(ip("10.229.10.242")), 57364);
         assert_eq!(h, vec!["10.229.10.242:57364", "127.0.0.1:57364"]);
     }
 
     #[test]
     fn qr_hints_omit_lan_guess_that_is_itself_loopback() {
-        // No duplicate, and nothing that claims to be a LAN address but is not.
         let h = pairing_hints(ip("0.0.0.0"), Some(ip("127.0.0.1")), 5000);
         assert_eq!(h, vec!["127.0.0.1:5000"]);
         let h = pairing_hints(ip("0.0.0.0"), None, 5000);
@@ -2780,10 +2585,8 @@ mod tests {
 
     #[test]
     fn qr_hints_follow_a_specific_bind() {
-        // Bound to loopback only: the LAN guess is unreachable, so it is a lie.
         let h = pairing_hints(ip("127.0.0.1"), Some(ip("10.229.10.242")), 5000);
         assert_eq!(h, vec!["127.0.0.1:5000"]);
-        // Bound to one interface: loopback is unreachable, so it is a lie too.
         let h = pairing_hints(ip("192.168.1.5"), Some(ip("192.168.1.5")), 5000);
         assert_eq!(h, vec!["192.168.1.5:5000"]);
     }

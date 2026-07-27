@@ -2,25 +2,14 @@ import Foundation
 import Network
 import os
 
-/// Turns a browsed `_wooosh._tcp` instance into a concrete `host:port` for
-/// `connect_peer` (DESIGN.md §4).
-///
-/// `NWBrowser` hands back an opaque `.service` endpoint, not an address, and
-/// the core needs a literal `ip:port`.
-///
-/// `NetService.resolve` is primary because it does the SRV/A/AAAA lookup
-/// without opening a socket: the service is advertised over `_tcp`
-/// (PROTOCOL.md §3.1) while the transport is QUIC over UDP, so nothing is
-/// listening on TCP to connect to. `NWConnection` is the fallback when it
-/// yields nothing. The port comes from TXT `p` whenever present — that is the
-/// UDP port the peer's core actually bound; SRV only mirrors it.
+/// `NWBrowser` returns an opaque `.service` endpoint; `connect_peer` needs a
+/// literal `ip:port`. `NetService.resolve` is primary because it looks up
+/// SRV/A/AAAA without opening a socket, and nothing listens on the advertised
+/// TCP port. TXT `p` beats SRV: it is the UDP port the peer's core bound.
 @MainActor
 enum BonjourResolver {
     private static let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "discovery")
 
-    /// - Parameters:
-    ///   - result: the browse result for the peer.
-    ///   - txtPort: the peer's QUIC port from TXT `p`, if it published one.
     static func resolve(
         result: NWBrowser.Result,
         txtPort: UInt16?,
@@ -63,8 +52,7 @@ enum BonjourResolver {
     private static func resolveWithNetService(
         name: String, type: String, domain: String, timeout: TimeInterval
     ) async -> (address: String, port: UInt16)? {
-        // NWBrowser reports the domain without the trailing dot and the type
-        // without it too; NetService wants both fully qualified.
+        // NWBrowser drops the trailing dots; NetService wants both qualified.
         let service = NetService(
             domain: domain.hasSuffix(".") ? domain : domain + ".",
             type: type.hasSuffix(".") ? type : type + ".",
@@ -73,8 +61,7 @@ enum BonjourResolver {
         let delegate = ResolveDelegate()
         service.delegate = delegate
         return await withCheckedContinuation { continuation in
-            // `NetService.delegate` is weak and the service must outlive the
-            // resolve, so both are held by this closure.
+            // `NetService.delegate` is weak and the service must outlive the resolve.
             delegate.finish = {
                 service.stop()
                 continuation.resume(returning: bestAddress(of: service))
@@ -85,16 +72,10 @@ enum BonjourResolver {
         }
     }
 
-    /// Ranks the resolved addresses: routable IPv4 first, then routable IPv6,
-    /// then loopback.
-    ///
-    /// - IPv4 over IPv6 because an IPv6 link-local address needs a scope
-    ///   suffix the core's `lookup_host` would have to re-parse.
-    /// - Routable over loopback because a peer's `127.0.0.1` is meaningless
-    ///   from another machine, and peers bind `0.0.0.0` so the LAN address
-    ///   reaches a same-machine peer anyway. mDNS hands back `127.0.0.1` first
-    ///   for a locally registered service, and dialling it was observed to hang
-    ///   the QUIC handshake from inside the app bundle.
+    /// IPv4 first: an IPv6 link-local needs a scope suffix `lookup_host` would
+    /// have to re-parse. Loopback last: mDNS returns `127.0.0.1` first for a local
+    /// service and dialling it was observed to hang the QUIC handshake, while
+    /// peers bind `0.0.0.0` so the LAN address reaches them anyway.
     private static func bestAddress(of service: NetService?) -> (address: String, port: UInt16)? {
         guard let service, let addresses = service.addresses, !addresses.isEmpty else { return nil }
         let ranked = addresses.compactMap(parse(sockaddr:)).sorted { lhs, rhs in
@@ -157,9 +138,7 @@ enum BonjourResolver {
     nonisolated private static func resolveWithConnection(
         endpoint: NWEndpoint, timeout: TimeInterval
     ) async -> (address: String, port: UInt16)? {
-        // UDP: the transport really is UDP, and a TCP probe would be refused
-        // (nothing listens on the advertised TCP port) before the path is
-        // populated.
+        // UDP: a TCP probe is refused before the path is populated.
         let connection = NWConnection(to: endpoint, using: .udp)
         let box = ResumeBox()
         return await withCheckedContinuation { continuation in

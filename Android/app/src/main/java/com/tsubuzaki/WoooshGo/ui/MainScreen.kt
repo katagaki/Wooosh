@@ -72,23 +72,16 @@ import kotlinx.coroutines.flow.SharedFlow
 @Composable
 fun MainScreen(
     peers: List<Peer>,
-    /**
-     * DeviceIDs of the core's pinned peers. A row can only be matched once it has a
-     * DeviceID of its own — i.e. after a connection — because the mDNS TXT carries a
-     * rotating rid, not an identity (PROTOCOL.md §3.1). Never match on display name: that
-     * puts a "Paired" checkmark on any device sharing a name with a paired one.
-     */
+    /** Never match on display name: a shared name would fake a "Paired" badge (PROTOCOL.md §3.1). */
     pairedDeviceIds: Set<String>,
     visibility: Visibility?,
     transfers: List<TransferUi>,
-    /** Offers on the wire whose receiver has not answered yet (PROTOCOL.md §4.4). */
     outgoingOffers: List<OutgoingOffer>,
-    /** This device's own 6-word phrase, straight from `core.fingerprintPhrase()`. */
+    /** Straight from `core.fingerprintPhrase()`; the shell never derives it. */
     ownFingerprint: String?,
     stagedShare: OutboxRepository.StagedShare?,
     statusMessages: SharedFlow<String>,
     onSendFiles: (Peer, List<Uri>) -> Unit,
-    /** Internet path entry point (PROTOCOL.md §9); hidden when it is switched off. */
     internetEnabled: Boolean,
     onOtherDevice: () -> Unit,
     onSendStaged: (Peer) -> Unit,
@@ -104,7 +97,6 @@ fun MainScreen(
         statusMessages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    // Peer awaiting a "photos or documents?" choice, then a system picker result.
     var pickerPeer by remember { mutableStateOf<Peer?>(null) }
 
     var launchTarget by remember { mutableStateOf<Peer?>(null) }
@@ -122,9 +114,7 @@ fun MainScreen(
         launchTarget = null
     }
 
-    // Direct Share arrival: auto-send once the targeted device is alive in the list.
-    // The display-name fallback exists only because a freshly discovered row has no
-    // DeviceID until something connects to it.
+    // The display-name fallback exists because a fresh row has no DeviceID until it connects.
     LaunchedEffect(stagedShare, peers) {
         val share = stagedShare ?: return@LaunchedEffect
         val alive = peers.filterNot { it.isStale }
@@ -173,8 +163,7 @@ fun MainScreen(
                     .padding(padding),
             )
         } else {
-            // Order comes straight from the registry: append-only by first sighting.
-            // Never sort or animate reorders here (DESIGN.md §5).
+            // Registry order is append-only by first sighting: never re-sort (DESIGN.md §5).
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -188,8 +177,7 @@ fun MainScreen(
                         )
                     }
                 }
-                // The verification window: the receiver is on its consent sheet, so an
-                // unpaired send must be showing our fingerprint here (PROTOCOL.md §4.4).
+                // An unpaired send must show our fingerprint opposite the receiver's sheet.
                 items(outgoingOffers, key = { "offer-${it.transferId}" }) { offer ->
                     OutgoingOfferCard(
                         offer = offer,
@@ -204,12 +192,8 @@ fun MainScreen(
                         onDismiss = { onDismissTransfer(transfer.id) },
                     )
                 }
-                // Pinned FIRST, never appended: a synthetic row at the end would be
-                // pushed down by every new discovery, which is the moving-target mis-tap
-                // the list rules exist to prevent (DESIGN.md §5).
+                // Pinned FIRST: appended, every new discovery would push it down (DESIGN.md §5).
                 if (internetEnabled) {
-                    // Its own section: it is not a discovered device and must not read
-                    // as one sitting among them.
                     item(key = "other-device") {
                         OtherDeviceRow(onOtherDevice)
                     }
@@ -220,8 +204,7 @@ fun MainScreen(
                 items(peers, key = { it.rid }) { peer ->
                     PeerRow(
                         peer = peer,
-                        // A ticket row is never paired, whatever the trust store says: the
-                        // pin admitted nothing on the internet path (DESIGN.md §9).
+                        // A ticket row is never paired, whatever the trust store says.
                         isPaired = !peer.viaTicket &&
                             peer.peerId != null && peer.peerId in pairedDeviceIds,
                         armedToSend = stagedShare != null,
@@ -343,10 +326,6 @@ private fun StagedShareBanner(
     }
 }
 
-/**
- * The one row that is not a discovered device: the entry point to the internet path
- * (PROTOCOL.md §9). Tapping it scans a code from a device that is not on this network.
- */
 @Composable
 private fun OtherDeviceRow(onClick: () -> Unit) {
     Row(
@@ -396,7 +375,6 @@ private fun PeerRow(
     ) {
         Icon(
             imageVector = peer.deviceType.icon(),
-            // The glyph is the only place the platform is stated, so name it.
             contentDescription = peer.deviceType.label(),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,
@@ -412,8 +390,7 @@ private fun PeerRow(
                     when {
                         peer.isStale -> R.string.peer_state_away
                         armedToSend -> R.string.peer_state_tap_to_send
-                        // Said plainly, because the row is otherwise indistinguishable
-                        // from a device on this network and it is not one.
+                        // Said plainly: the row is otherwise indistinguishable from a LAN device.
                         peer.viaTicket -> R.string.peer_state_ready_internet
                         isPaired -> R.string.peer_state_ready_paired
                         else -> R.string.peer_state_ready
@@ -485,9 +462,7 @@ private fun EmptyState(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.action_pair_device))
             }
-            // No devices nearby is exactly when someone reaches for the internet
-            // path, and the row that offers it lives in the list this state
-            // replaces — so without this it is unreachable here.
+            // The row that offers this lives in the list this state replaces.
             if (internetEnabled) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = onOtherDevice) {

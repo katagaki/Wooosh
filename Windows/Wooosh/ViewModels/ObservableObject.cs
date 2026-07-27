@@ -3,16 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Wooosh.ViewModels;
 
-/// <summary>
-/// Minimal INotifyPropertyChanged base.
-///
-/// Partial because INotifyPropertyChanged is projected onto a WinRT interface, and CsWinRT
-/// wants such classes declared partial so it can generate the vtable alongside them.
-///
-/// Hand-rolled rather than taken from the MVVM Toolkit: the Windows shell needs exactly
-/// this, and a source-generator dependency on a project that also has to line up a Rust
-/// DLL, an MSIX manifest and a WinAppSDK version is one moving part too many.
-/// </summary>
+/// <summary>Partial because CsWinRT projects INotifyPropertyChanged onto a WinRT interface and generates the vtable alongside the class.</summary>
 public abstract partial class ObservableObject : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;

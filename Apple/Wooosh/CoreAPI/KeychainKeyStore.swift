@@ -2,24 +2,18 @@ import Foundation
 import os
 import WoooshCoreFFI
 
-/// The core's `KeyStore` adapter (DESIGN.md §4 `PlatformAdapters.key_store`).
-/// The app lends the core storage only; it derives no identity of its own.
+/// Storage only; the app derives no identity of its own (DESIGN.md §4).
 ///
-/// The stored blob is the raw 32-byte Ed25519 seed — what
-/// `Curve25519.Signing.PrivateKey.rawRepresentation` produces and what
-/// `ed25519_dalek::SigningKey::from_bytes` expects. Keeping that format is what
-/// lets an existing install keep its key, so there is never a second keypair.
-///
-/// Called from a core thread inside `WoooshCore.start`, so this type is
-/// deliberately not actor-isolated and touches no UI state.
+/// The blob is the raw 32-byte Ed25519 seed, the format `ed25519_dalek` expects;
+/// changing it would strand an existing install's key. Called from a core thread
+/// inside `start`, so this is not actor-isolated and touches no UI state.
 final class KeychainKeyStore: KeyStore, @unchecked Sendable {
     private static let service = "com.tsubuzaki.Wooosh"
     private static let account = "identity.ed25519.private"
 
     private let logger = Logger(subsystem: "com.tsubuzaki.Wooosh", category: "identity")
 
-    /// Set when the Keychain refused us and the file fallback was used, so
-    /// callers can log it instead of silently degrading.
+    /// Lets callers log the degradation instead of failing silently.
     private(set) var usedFallback = false
 
     func loadIdentity() -> Data? {
@@ -40,8 +34,7 @@ final class KeychainKeyStore: KeyStore, @unchecked Sendable {
             }
             return data
         case errSecItemNotFound:
-            // Nothing pinned yet — but a previous run may have fallen back to
-            // the file store (unsigned dev builds), so check that too.
+            // A previous unsigned run may have fallen back to the file store.
             return fallbackLoad()
         default:
             logger.error("Keychain read failed (OSStatus \(status)); trying file fallback")
@@ -80,11 +73,8 @@ final class KeychainKeyStore: KeyStore, @unchecked Sendable {
 
     // MARK: - File fallback
     //
-    // Ad-hoc-signed local builds (CODE_SIGNING_ALLOWED=NO) get no keychain
-    // access group, so SecItemAdd fails with errSecMissingEntitlement.
-    // Regenerating on every launch would break the one-keypair-per-install
-    // invariant, so those builds fall back to an app-private file. Properly
-    // signed builds never reach this path.
+    // Ad-hoc-signed builds get no keychain access group, and regenerating each
+    // launch would break one-keypair-per-install. Signed builds never get here.
 
     private var fallbackURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

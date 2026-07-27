@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// SAS numeric-comparison sheet (PROTOCOL.md §4.3): both devices display a
-/// 6-digit code derived from the TLS exporter secret; the user visually
-/// compares. 60 s timeout, mismatch or timeout aborts without storing keys.
-///
-/// The code is symmetric — both devices show the same thing at the same time —
-/// so, unlike the offer sheet, nothing here asks the user to compare against
-/// something the other screen isn't showing.
+/// SAS numeric-comparison sheet (PROTOCOL.md §4.3): both devices show the same 6-digit
+/// code from the TLS exporter secret. 60 s timeout; mismatch or timeout stores no keys.
 struct SASSheet: View {
     let request: SASRequest
 
@@ -25,11 +20,8 @@ struct SASSheet: View {
                 ProgressView(L.t("sas_confirming"))
                     .padding(.vertical, 24)
             } else {
-                // `defaultAction: false` is security, not style. The sheet is
-                // presented by an event from the other device, so it can appear
-                // under the user's hands at any moment; binding Return to
-                // "Codes Match" would let a stray keystroke confirm the pairing,
-                // the exact failure SAS exists to prevent.
+                // `defaultAction: false` is security: this sheet appears unbidden, so Return
+                // must never confirm the pairing.
                 SheetActions(defaultAction: false) {
                     Button(L.t("action_codes_match")) {
                         model.confirmSAS(accepted: true)

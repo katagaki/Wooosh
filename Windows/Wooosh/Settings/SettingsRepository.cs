@@ -5,25 +5,17 @@ namespace Wooosh.Settings;
 
 public sealed record WoooshSettings
 {
-    /// <summary>What nearby devices see. Defaults to the machine name.</summary>
     public required string DisplayName { get; init; }
 
     public required CoreVisibility Visibility { get; init; }
 
-    /// <summary>
-    /// Closing the window leaves Wooosh in the notification area so it can keep receiving
-    /// (DESIGN.md §7). On by default: a receiver that quits when its window is closed is a
-    /// receiver that misses transfers.
-    /// </summary>
+    /// <summary>On by default: a receiver that quits with its window is one that misses transfers.</summary>
     public required bool KeepRunningInBackground { get; init; }
 }
 
 /// <summary>
-/// Settings, persisted in the packaged app's roaming-free local store.
-///
-/// Deliberately not a general-purpose settings framework: three values, read once, written
-/// through. Anything that has to survive a reinstall (the identity key, the trust store)
-/// belongs to the core, not here.
+/// Three values, read once and written through. Anything that must survive a reinstall
+/// (the identity key, the trust store) belongs to the core, not here.
 /// </summary>
 public sealed class SettingsRepository
 {
@@ -33,7 +25,6 @@ public sealed class SettingsRepository
 
     private readonly ApplicationDataContainer _store = ApplicationData.Current.LocalSettings;
 
-    /// <summary>Raised after any change, on the caller's thread.</summary>
     public event Action? Changed;
 
     public SettingsRepository()
@@ -43,8 +34,7 @@ public sealed class SettingsRepository
             DisplayName = _store.Values[DisplayNameKey] as string is { Length: > 0 } name
                 ? name
                 : Environment.MachineName,
-            // Paired only by default: a fresh install should not accept transfers
-            // from strangers on a shared network before the user has opted in.
+            // Paired only by default: a fresh install must not accept strangers unopted-in.
             Visibility = (_store.Values[VisibilityKey] as string) switch
             {
                 "everyone" => CoreVisibility.Everyone,

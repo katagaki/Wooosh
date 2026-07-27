@@ -1,34 +1,21 @@
-//! One QUIC connection, two stacks.
+//! One QUIC connection, two stacks: our own `quinn` endpoint on the LAN and an
+//! `iroh` endpoint keyed by the same Ed25519 identity over the internet.
 //!
-//! Wooosh speaks the same protocol (PROTOCOL.md §4–§6) over two transports:
-//!
-//! - **LAN**: our own `quinn` endpoint with self-signed Ed25519 certificates
-//!   and above-TLS key pinning (`transport.rs`).
-//! - **Internet**: an [`iroh`] endpoint keyed by the *same* Ed25519 identity,
-//!   which hole-punches and falls back to relaying (PROTOCOL.md §9).
-//!
-//! iroh 1.x does not use upstream `quinn`; it ships n0's fork (`noq`), so
-//! `iroh::endpoint::Connection`, `SendStream` and `RecvStream` are distinct
-//! types from ours and cannot be fed into the engine directly. This module is
-//! the entire adaptation layer: three enums with the ~12 operations the engine
-//! actually performs. **Everything above it — HELLO, OFFER/DECISION, the file
-//! streams, the resume ledger, the trust logic — exists exactly once** and is
-//! transport-blind. Do not fork the protocol code to add a transport; extend
-//! these enums.
+//! iroh 1.x ships n0's `quinn` fork, so its connection and stream types are
+//! distinct from ours. This module is the entire adaptation layer; everything
+//! above it is transport-blind. Do not fork the protocol code to add a
+//! transport, extend these enums.
 
 use crate::error::WoooshError;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
-/// How often `wait_for_direct` re-checks the selected path. Hole punching
-/// completes in a handful of round trips, so a coarse poll costs nothing.
+/// Hole punching completes in a handful of round trips, so a coarse poll costs
+/// nothing.
 const DIRECT_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
-/// A closed/failed connection, normalized across the two stacks.
-///
-/// `app_code` is the QUIC *application* close code, which PROTOCOL.md §4.1.2
-/// makes the only reliable rejection signal; transport-level failures leave it
-/// `None`.
+/// `app_code` is the QUIC *application* close code, the only reliable
+/// rejection signal (PROTOCOL.md §4.1.2); transport failures leave it `None`.
 #[derive(Debug, Clone)]
 pub struct ConnErr {
     pub app_code: Option<u32>,
@@ -69,11 +56,10 @@ impl From<ConnErr> for WoooshError {
     }
 }
 
-/// Outcome of a `read_exact` that must distinguish "clean end of stream" from
-/// a real error: a slot stream FINs at a file boundary (PROTOCOL.md §6).
+/// A slot stream FINs at a file boundary (PROTOCOL.md §6), so a clean end of
+/// stream must be distinguishable from a real error.
 #[derive(Debug)]
 pub enum ReadErr {
-    /// The stream finished after `0` further bytes — a clean boundary.
     FinishedEarly(usize),
     Other(String),
 }
@@ -104,8 +90,6 @@ impl From<iroh::endpoint::ReadExactError> for ReadErr {
         }
     }
 }
-
-// ---------- streams ----------
 
 pub enum SendStream {
     Lan(quinn::SendStream),
@@ -145,7 +129,6 @@ impl RecvStream {
         }
     }
 
-    /// Ask the peer to stop sending, with a wooosh close code.
     pub fn stop(&mut self, code: u32) {
         match self {
             RecvStream::Lan(s) => {
@@ -158,8 +141,6 @@ impl RecvStream {
     }
 }
 
-// ---------- connections ----------
-
 #[derive(Clone)]
 pub enum Conn {
     Lan(quinn::Connection),
@@ -167,20 +148,14 @@ pub enum Conn {
 }
 
 impl Conn {
-    /// True for the internet (iroh) path. Used where the two transports have
-    /// genuinely different semantics — currently only address bookkeeping.
     pub fn is_internet(&self) -> bool {
         matches!(self, Conn::Net(_))
     }
 
-    /// The peer's authenticated Ed25519 identity key.
-    ///
-    /// LAN: the SubjectPublicKeyInfo of the certificate the peer proved
-    /// possession of in the TLS handshake. Internet: iroh's `EndpointId`,
-    /// which *is* an Ed25519 public key authenticated by the same TLS
-    /// handshake. Both are the same 32 bytes for the same device, which is
-    /// why a peer paired on the LAN is already pinned over the internet
-    /// (PROTOCOL.md §2, §9.3).
+    /// The peer's authenticated Ed25519 identity key: the cert SPKI on the
+    /// LAN, iroh's `EndpointId` over the internet. Both are the same 32 bytes
+    /// for the same device, so a LAN pairing is already pinned over the
+    /// internet (PROTOCOL.md §2, §9.3).
     pub fn peer_pubkey(&self) -> Result<[u8; 32], WoooshError> {
         match self {
             Conn::Lan(c) => crate::transport::quic_peer_pubkey(c),
@@ -188,16 +163,10 @@ impl Conn {
         }
     }
 
-    /// Whether bulk data may flow over this connection right now.
-    ///
-    /// A LAN connection is point-to-point by construction. An internet
-    /// connection comes up **relayed** and only becomes direct once hole
-    /// punching succeeds, so this is the check that keeps a multi-gigabyte
-    /// transfer off shared relay infrastructure (DESIGN.md §9.1): relays
-    /// introduce peers, they do not carry files.
-    ///
-    /// The *selected* path is what matters — an open-but-unselected direct
-    /// path is not where the bytes would go.
+    /// Whether bulk data may flow right now. An internet connection comes up
+    /// relayed and only becomes direct once hole punching succeeds; this is
+    /// what keeps large transfers off shared relays (DESIGN.md §9.1). Only the
+    /// *selected* path counts, since that is where the bytes would go.
     pub fn is_direct(&self) -> bool {
         match self {
             Conn::Lan(_) => true,
@@ -205,11 +174,8 @@ impl Conn {
         }
     }
 
-    /// Waits for hole punching to produce a direct path, up to `timeout`.
-    ///
-    /// Polled rather than driven off `paths_stream`, matching how the ticket
-    /// code waits for a home relay: the wait happens once per transfer and a
-    /// borrowed stream would have to be kept alive across it for no gain.
+    /// Polled rather than driven off `paths_stream`: the wait happens once per
+    /// transfer and a borrowed stream would have to outlive it for no gain.
     pub async fn wait_for_direct(&self, timeout: Duration) -> bool {
         if self.is_direct() {
             return true;
@@ -224,12 +190,9 @@ impl Conn {
         false
     }
 
-    /// The peer's `ip:port`, when there is a stable one to record.
-    ///
     /// `None` on the internet path on purpose: an iroh connection may be
-    /// relayed or may migrate between paths, so there is no address that could
-    /// serve as the §4.5 `last_addr` pin hint. Writing one would poison
-    /// `pinned_key_for_addr` for the LAN path.
+    /// relayed or migrate, so it has no stable §4.5 `last_addr` pin hint and
+    /// writing one would poison `pinned_key_for_addr` for the LAN path.
     pub fn remote_address(&self) -> Option<SocketAddr> {
         match self {
             Conn::Lan(c) => Some(c.remote_address()),
@@ -299,8 +262,7 @@ impl Conn {
     }
 
     /// TLS 1.3 exporter, the input to the SAS derivation (PROTOCOL.md §4.3).
-    /// Available on both stacks, so SAS is transcript-bound and MITM-detecting
-    /// over the internet path exactly as it is on the LAN.
+    /// Available on both stacks, so SAS is transcript-bound on either path.
     pub fn export_keying_material(
         &self,
         out: &mut [u8],

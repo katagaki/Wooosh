@@ -2,25 +2,17 @@ import Foundation
 import Network
 import os
 
-/// Bonjour advertise + browse for `_wooosh._tcp` (PROTOCOL.md §3.1).
+/// Advertise + browse for `_wooosh._tcp` (PROTOCOL.md §3.1). The core owns the
+/// socket, so this is a pure mDNS registration and TXT `p` carries its UDP port.
 ///
-/// The core owns the socket, so advertising is a pure mDNS registration with no
-/// listener of our own; TXT `p` carries the QUIC UDP port the core actually
-/// bound.
-///
-/// Scan cadence is not ours to set. PROTOCOL.md §3.2/§3.3 specify a ≤ 2 s
-/// announce/scan interval, but neither `NWBrowser` (event-driven) nor
-/// `NetService.publish()` exposes one — mDNSResponder owns the timing, so there
-/// is no constant here to retune. Do not restart the browser on a timer to fake
-/// the cadence: each restart re-emits the whole result set as adds/removes,
-/// churning `PeerRegistry` and flickering rows that DESIGN.md §5 requires to
-/// hold still. The staleness grace stays 10 s (`PeerRegistry.staleGrace`).
+/// Scan cadence is mDNSResponder's: neither API exposes the ≤ 2 s interval
+/// §3.2/§3.3 specify. Do not fake it by restarting the browser on a timer, which
+/// re-emits the whole result set and flickers rows DESIGN.md §5 holds still.
 @MainActor
 final class Discovery {
     static let serviceType = "_wooosh._tcp"
 
-    /// Rotating discovery ID: 8 random bytes, lowercase hex, regenerated each
-    /// app launch. Deliberately not derived from the identity key.
+    /// Regenerated each launch, and deliberately not derived from the identity key.
     let rid: String
 
     private let registry: PeerRegistry
@@ -30,9 +22,7 @@ final class Discovery {
     private var service: NetService?
     private var serviceDelegate: PublishDelegate?
     private var browser: NWBrowser?
-    /// rids present in the last browse-results snapshot (excluding our own).
     private var visibleRIDs: Set<String> = []
-    /// Latest browse result + advertised QUIC port per rid, for resolution.
     private var sightings: [String: (result: NWBrowser.Result, port: UInt16?)] = [:]
 
     init(registry: PeerRegistry) {
@@ -42,8 +32,7 @@ final class Discovery {
 
     // MARK: - Advertising
 
-    /// - Parameter quicPort: the core's bound UDP port, published as TXT `p`
-    ///   (and mirrored into the SRV record so resolvers agree).
+    /// `quicPort` is published as TXT `p` and mirrored into SRV so resolvers agree.
     func startAdvertising(
         displayName: String,
         deviceKind: DeviceKind,
@@ -68,8 +57,7 @@ final class Discovery {
             "p": Data(String(quicPort).utf8),
             "vis": Data(vis.utf8),
         ]
-        // Guard against an over-long display name pushing the record past the
-        // 255-byte TXT limit; the name is a UI hint, the rid is not.
+        // Keep under the 255-byte TXT limit; the name is a hint, the rid is not.
         if let data = NetService.data(fromTXTRecord: txt) as Data?, data.count > 255 {
             txt["dn"] = Data(displayName.prefix(40).utf8)
         }
@@ -114,8 +102,7 @@ final class Discovery {
                       let rid = txt["rid"], !rid.isEmpty,
                       let dn = txt["dn"]
                 else { return nil }
-                // Unknown/absent/retired values stay nil — a neutral glyph is
-                // always acceptable, a confidently wrong one is not.
+                // Unknown values stay nil: a neutral glyph beats a wrong one.
                 let dt = DeviceKind(wire: txt["dt"])
                 return Sighting(rid: rid, displayName: dn, deviceKind: dt,
                                 port: txt["p"].flatMap(UInt16.init), result: result)
@@ -144,7 +131,6 @@ final class Discovery {
 
     // MARK: - Resolution (DESIGN.md §4 `connect_peer`)
 
-    /// Resolves a discovered peer to the `ip:port` the core can dial.
     func address(forRID rid: String) async -> String? {
         guard let sighting = sightings[rid] else { return nil }
         return await BonjourResolver.resolve(result: sighting.result, txtPort: sighting.port)
@@ -158,9 +144,7 @@ final class Discovery {
         let result: NWBrowser.Result
     }
 
-    /// Diffs each browse snapshot against the last: presence is a sighting,
-    /// absence starts the staleness grace period (NWBrowser emits add/remove
-    /// events, not periodic announces — see PeerRegistry.lost).
+    /// NWBrowser emits add/remove, not announces, so absence starts the grace.
     private func process(snapshot: [Sighting]) {
         var current = Set<String>()
         for sighting in snapshot where sighting.rid != rid {

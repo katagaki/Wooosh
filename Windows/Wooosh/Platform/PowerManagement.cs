@@ -3,17 +3,9 @@ using System.Runtime.InteropServices;
 namespace Wooosh.Platform;
 
 /// <summary>
-/// Keeps the machine awake while a transfer is running (DESIGN.md §7).
-///
-/// <c>ES_CONTINUOUS | ES_SYSTEM_REQUIRED</c> and nothing else: the system stays up so the
-/// transfer completes, but the display is free to sleep. A desktop file transfer has no
-/// business holding the screen on, and <c>ES_DISPLAY_REQUIRED</c> on a laptop closing its
-/// lid overnight is a flat battery.
-///
-/// The flags are per-thread state, so the acquire and the release must happen on the same
-/// thread. <see cref="Acquire"/> is therefore expected to be called from the UI thread on
-/// TransferStarted and released on TransferDone, and it refcounts so several concurrent
-/// transfers do not release each other's hold.
+/// Keeps the machine awake for a transfer (DESIGN.md §7). System only, no
+/// <c>ES_DISPLAY_REQUIRED</c>: holding a laptop's screen on overnight is a flat battery.
+/// Per-thread state, so acquire and release must share a thread; holds are refcounted.
 /// </summary>
 public static partial class PowerManagement
 {
@@ -22,10 +14,7 @@ public static partial class PowerManagement
 
     private static int _holds;
 
-    /// <summary>
-    /// Takes a hold. Dispose the returned token to release it; the machine is only allowed
-    /// to sleep again once every hold is gone.
-    /// </summary>
+    /// <summary>The machine may sleep again only once every hold is disposed.</summary>
     public static IDisposable Acquire()
     {
         if (Interlocked.Increment(ref _holds) == 1)

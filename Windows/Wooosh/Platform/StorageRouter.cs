@@ -4,54 +4,23 @@ using System.Text;
 namespace Wooosh.Platform;
 
 /// <summary>
-/// Moves a verified file out of the core's staging directory into its final place
-/// (DESIGN.md §6). On Windows every received file goes to Downloads, photos included.
-///
-/// <para>Three rules, all of them load-bearing:</para>
-/// <list type="bullet">
-/// <item><b>Never overwrite.</b> A name collision appends " (2)", " (3)" and so on, before
-/// the extension. A received file silently replacing one the user already had is data
-/// loss, and it is not recoverable.</item>
-/// <item><b>Never rename otherwise.</b> The original filename is preserved exactly,
-/// including its extension and case.</item>
-/// <item><b>Mark of the Web.</b> Anything that arrived over the network gets a
-/// <c>Zone.Identifier</c> alternate data stream marking it zone 3 (internet), the same as a
-/// browser download. That is what makes SmartScreen warn, Office open in Protected View,
-/// and unblocking a deliberate step. A file transfer app that strips this is handing the
-/// user an unmarked executable from another machine.</item>
-/// </list>
+/// Hash-verified files leave staging for Downloads, photos included (DESIGN.md §6). Never
+/// overwrite: collisions append " (2)", because silent replacement is unrecoverable. Never
+/// otherwise rename. Always mark zone 3, or the user gets an unmarked foreign executable.
 /// </summary>
 public static partial class StorageRouter
 {
-    /// <summary>
-    /// Moves <paramref name="stagedPath"/> into Downloads and returns the final path.
-    /// The move is what makes the transfer complete: nothing is reported as received until
-    /// the file is where the user can find it.
-    /// </summary>
     public static string RouteToDownloads(string stagedPath, string originalName)
     {
         var destination = NextAvailablePath(DownloadsPath(), originalName);
 
-        // TODO(DESIGN.md §6): when a single receive brings more than 20 files, land them in
-        // a Wooosh/<date> subfolder of Downloads instead of the root. That needs the file
-        // count for the whole transfer, which lives in TransferStarted, so it belongs to the
-        // transfer coordinator rather than to this per-file call.
+        // TODO(DESIGN.md §6): >20-file receives belong in a Wooosh/<date> subfolder, which needs a count this call lacks.
         File.Move(stagedPath, destination, overwrite: false);
         ApplyMarkOfTheWeb(destination);
         return destination;
     }
 
-    /// <summary>
-    /// The user's Downloads folder (DESIGN.md §6).
-    ///
-    /// <para>There is no <c>KnownFolders.DownloadsFolder</c>: the WinRT <c>KnownFolders</c>
-    /// class only exposes the libraries (Documents, Pictures, Music, Video), and
-    /// <c>Windows.Storage.DownloadsFolder</c> creates files under system-chosen names without
-    /// ever revealing the folder, which would break the "never rename" rule. Nor does
-    /// <c>Environment.SpecialFolder</c> have an entry for it. <c>SHGetKnownFolderPath</c> with
-    /// <c>FOLDERID_Downloads</c> is the supported way to ask, and it honours a Downloads
-    /// folder the user has redirected elsewhere.</para>
-    /// </summary>
+    /// <summary>Neither <c>KnownFolders</c> nor <c>SpecialFolder</c> exposes Downloads, and <c>DownloadsFolder</c> renames.</summary>
     private static string DownloadsPath()
     {
         var hr = NativeMethods.SHGetKnownFolderPath(
@@ -71,10 +40,7 @@ public static partial class StorageRouter
         }
     }
 
-    /// <summary>
-    /// "photo.jpg" then "photo (2).jpg" then "photo (3).jpg". The suffix goes before the
-    /// extension so the file still opens with the right application.
-    /// </summary>
+    /// <summary>The suffix goes before the extension, so the file still opens with the right application.</summary>
     private static string NextAvailablePath(string directory, string originalName)
     {
         var stem = Path.GetFileNameWithoutExtension(originalName);
@@ -89,19 +55,13 @@ public static partial class StorageRouter
         return candidate;
     }
 
-    /// <summary>
-    /// Writes the <c>Zone.Identifier</c> alternate data stream. Zone 3 is URLZONE_INTERNET.
-    ///
-    /// The ADS is written with the Win32 API rather than <c>File.WriteAllText</c>, because
-    /// .NET's file APIs reject the <c>path:stream</c> syntax.
-    /// </summary>
+    /// <summary>Zone 3 is URLZONE_INTERNET. Win32, because .NET rejects the <c>path:stream</c> syntax.</summary>
     public static void ApplyMarkOfTheWeb(string path)
     {
         const string content =
             "[ZoneTransfer]\r\n" +
             "ZoneId=3\r\n" +
-            // Recorded for the shell UI's "unblock" prompt. No host name is disclosed:
-            // naming the sending device here would leak it into every file's metadata.
+            // No host name: naming the sender would leak it into every file's metadata.
             "HostUrl=about:internet\r\n";
 
         var stream = NativeMethods.CreateFileW(
@@ -115,8 +75,7 @@ public static partial class StorageRouter
 
         if (stream == NativeMethods.InvalidHandle)
         {
-            // Not fatal: the file itself is already safely in place, and failing the whole
-            // transfer over a missing zone marker would be worse than the missing marker.
+            // Not fatal: the file is already in place, and failing the transfer would be worse.
             System.Diagnostics.Debug.WriteLine(
                 $"[Wooosh] could not write Zone.Identifier for {path}: {Marshal.GetLastWin32Error()}");
             return;
@@ -140,7 +99,7 @@ public static partial class StorageRouter
         public const uint FileAttributeNormal = 0x80;
         public static readonly IntPtr InvalidHandle = new(-1);
 
-        // FOLDERID_Downloads, {374DE290-123F-4565-9164-39C4925E467B}.
+        // FOLDERID_Downloads.
         public static readonly Guid FolderIdDownloads =
             new("374DE290-123F-4565-9164-39C4925E467B");
 

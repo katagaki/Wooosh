@@ -10,12 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * Canonical peer list (DESIGN.md §5 / PROTOCOL.md §3.3).
- *
- * Ordering contract: rows are ordered strictly by the discoveredAt of their FIRST
- * sighting in this process. The list is append-only and is NEVER re-sorted — lost
- * peers are grayed out in place, never removed. It clears only on process restart
- * or an explicit user refresh.
+ * Ordered by a row's FIRST sighting: append-only, never re-sorted, lost peers greyed out
+ * in place rather than removed (DESIGN.md §5).
  */
 class PeerRegistry(private val scope: CoroutineScope) {
 
@@ -24,7 +20,6 @@ class PeerRegistry(private val scope: CoroutineScope) {
 
     private val staleJobs = HashMap<String, Job>()
 
-    /** Last HELLO seen per DeviceID, applied to a row as soon as it learns its peer id. */
     private data class Hello(val displayName: String, val deviceType: DeviceType?)
 
     private val helloByPeerId = HashMap<String, Hello>()
@@ -37,19 +32,18 @@ class PeerRegistry(private val scope: CoroutineScope) {
         port: Int,
         hosts: List<String>,
     ) {
-        // Any sighting cancels a pending stale transition (grace timer restart).
+        // Any sighting cancels a pending stale transition.
         staleJobs.remove(rid)?.cancel()
         _peers.update { list ->
             val index = list.indexOfFirst { it.rid == rid }
             if (index >= 0) {
-                // Re-enable in place; discoveredAt (the ordering key) is preserved.
+                // In place: discoveredAt, the ordering key, is preserved.
                 list.toMutableList().also {
                     it[index] = it[index].copy(
                         displayName = displayName,
                         deviceType = deviceType,
                         port = port,
-                        // A TXT-only update (API 34+ delivers those) carries no
-                        // addresses; keep the ones we already resolved.
+                        // A TXT-only update (API 34+) carries no addresses.
                         hosts = hosts.ifEmpty { it[index].hosts },
                         isStale = false,
                     )
@@ -68,10 +62,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * Records the core's peer id for a row after a successful connect, so a later send
-     * to the same row can pass the pinned key to `connect_peer`.
-     */
+    /** Lets a later send to the same row pass the pinned key to `connect_peer`. */
     @Synchronized
     fun attachPeerId(rid: String, peerId: String) {
         val hello = helloByPeerId[peerId]
@@ -82,8 +73,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
                 } else {
                     it.copy(
                         peerId = peerId,
-                        // The HELLO for this peer usually lands before connect_peer()
-                        // returns, i.e. before the row knew its DeviceID.
+                        // HELLO usually lands before connect_peer() returns.
                         displayName = hello?.displayName?.ifBlank { null } ?: it.displayName,
                         deviceType = hello?.deviceType ?: it.deviceType,
                     )
@@ -93,18 +83,9 @@ class PeerRegistry(private val scope: CoroutineScope) {
     }
 
     /**
-     * A control channel came up (HELLO, PROTOCOL.md §4.1). The display name in HELLO is
-     * authoritative — the mDNS TXT is an unauthenticated hint — and rows tied to this
-     * DeviceID adopt it.
-     *
-     * The device type is adopted only when it is a known platform: the core's HELLO type
-     * arrives as [DeviceType.UNKNOWN], and letting that win would replace a correct
-     * `android-phone` glyph from the TXT record with a neutral one.
-     *
-     * [viaTicket] marks a row whose connection came from a redeemed ticket (see
-     * [Peer.viaTicket]). The core emits `PeerConnected` *before* `TicketRedeemed` for an
-     * internet connection, so the plain call clearing the flag and the ticket call
-     * setting it arrive in that order and the flag ends up right.
+     * The HELLO name is authoritative; the mDNS TXT is an unauthenticated hint. Device
+     * type is adopted only when known, or the core's UNKNOWN overwrites a correct glyph.
+     * [viaTicket] relies on `PeerConnected` arriving before `TicketRedeemed`.
      */
     @Synchronized
     fun onConnected(
@@ -116,7 +97,6 @@ class PeerRegistry(private val scope: CoroutineScope) {
         val known = deviceType?.takeIf { it != DeviceType.UNKNOWN }
         helloByPeerId[peerId] = Hello(displayName, known)
         _peers.update { list ->
-            // Already ours: just refresh it in place.
             if (list.any { it.peerId == peerId }) {
                 return@update list.map { peer ->
                     if (peer.peerId != peerId) {
@@ -131,9 +111,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
                     }
                 }
             }
-            // A discovered row that has not learned its DeviceID yet: adopt it, so a
-            // peer found over mDNS and then connected does not show up twice. HELLO
-            // usually beats connect_peer() returning, so this is the common case.
+            // Adopt a row without a DeviceID, or the peer would show up twice.
             val adoptable = list.indexOfFirst {
                 it.peerId == null && displayName.isNotBlank() && it.displayName == displayName
             }
@@ -147,15 +125,11 @@ class PeerRegistry(private val scope: CoroutineScope) {
                     )
                 }
             }
-            // Nothing matches: a peer the browser never saw. This is how a device
-            // reached over the internet (PROTOCOL.md §9) enters the list at all —
-            // there is no mDNS record behind it, and without a row the user has
-            // nothing to tap. Appended like every other row (DESIGN.md §5).
+            // How a device reached over the internet (PROTOCOL.md §9) enters the list.
             list + Peer(
                 rid = "$CORE_RID_PREFIX$peerId",
                 displayName = displayName,
-                // No TXT record was ever seen, so the glyph stays neutral rather than
-                // being guessed from the coarse HELLO type.
+                // No TXT record was ever seen, so the glyph stays neutral.
                 deviceType = known ?: DeviceType.UNKNOWN,
                 port = 0,
                 hosts = emptyList(),
@@ -168,13 +142,8 @@ class PeerRegistry(private val scope: CoroutineScope) {
     }
 
     /**
-     * The transfer a ticket authorised has finished. The ticket was single-use, so a
-     * connection-only row has nothing left to offer: it greys out in place, disabled,
-     * like any peer that went away (DESIGN.md §5). A row backed by an mDNS sighting is
-     * still reachable on this network and stays live.
-     *
-     * [Peer.viaTicket] is deliberately left set. The row keeps its history until the peer
-     * connects again for real, so it cannot re-acquire a paired badge it never earned.
+     * A connection-only row greys out in place while an mDNS-backed one stays live.
+     * [Peer.viaTicket] stays set so the row cannot re-acquire a badge it never earned.
      */
     @Synchronized
     fun onTicketSessionEnded(peerId: String) {
@@ -192,11 +161,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * The core dropped a connection. A row that only ever existed *because* of that
-     * connection has no address to reconnect with, so it grays out in place rather than
-     * disappearing — rows never move or vanish (DESIGN.md §5).
-     */
+    /** A connection-only row has no address to retry, and rows never vanish (DESIGN.md §5). */
     @Synchronized
     fun onDisconnected(peerId: String) {
         _peers.update { list ->
@@ -210,11 +175,7 @@ class PeerRegistry(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * NsdManager emits onServiceLost rather than periodic announces, so a loss event
-     * starts the 10 s grace period; a re-sighting within it cancels the transition
-     * (avoids flicker from transient mDNS churn).
-     */
+    /** NsdManager has no periodic announces, so a loss starts the 10 s grace period. */
     @Synchronized
     fun onLost(rid: String) {
         if (_peers.value.none { it.rid == rid }) return

@@ -3,14 +3,9 @@ using System.Globalization;
 namespace Wooosh.Localization;
 
 /// <summary>
-/// CLDR cardinal plural categories for the fourteen locales Wooosh ships
-/// (COPY_STYLE.md §5, "Target locales").
-///
-/// Windows resource files have no plural machinery equivalent to Android's
-/// &lt;plurals&gt; or an Apple String Catalog's plural variations, so the selection
-/// happens here and the .resw carries one entry per form (Key.One, Key.Few, …).
-/// The rules below are the integer-only subset of the CLDR cardinal rules: every count
-/// Wooosh formats is a file count, never a fraction.
+/// CLDR cardinal categories for every locale Wooosh ships (COPY_STYLE.md §5). Windows
+/// .resw has no equivalent of Android &lt;plurals&gt; or Apple's variations, so selection
+/// happens here and the .resw carries one entry per form. Integers only: these are counts.
 /// </summary>
 public static class PluralRules
 {
@@ -23,13 +18,11 @@ public static class PluralRules
             // No grammatical plural at all.
             "ja" or "ko" or "zh" => "Other",
 
-            // one: i = 0..1 (so "0 fichier", singular).
+            // i = 0..1, so "0 fichier" is singular.
             "fr" or "pt" => n is 0 or 1 ? "One" : "Other",
 
-            // one: n = 1.
             "en" or "de" or "es" or "it" or "nl" or "sv" => n == 1 ? "One" : "Other",
 
-            // one: n = 1; few: n % 10 = 2..4 and n % 100 != 12..14; many: everything else.
             "pl" => n switch
             {
                 1 => "One",
@@ -37,7 +30,6 @@ public static class PluralRules
                 _ => "Many",
             },
 
-            // one: n % 10 = 1 and n % 100 != 11; few / many as Polish.
             "ru" => n switch
             {
                 _ when n % 10 == 1 && n % 100 != 11 => "One",

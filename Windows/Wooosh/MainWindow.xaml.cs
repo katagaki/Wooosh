@@ -28,11 +28,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Closing += OnAppWindowClosing;
     }
 
-    /// <summary>
-    /// Closing the window hides it instead of exiting, so Wooosh keeps receiving from the
-    /// notification area (DESIGN.md §7). The user can still quit from the tray menu, and
-    /// the setting turns the behaviour off.
-    /// </summary>
+    /// <summary>Closing hides, so Wooosh keeps receiving from the tray (DESIGN.md §7).</summary>
     private void OnAppWindowClosing(
         Microsoft.UI.Windowing.AppWindow sender,
         Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
@@ -65,8 +61,7 @@ public sealed partial class MainWindow : Window
 
         if (App.ViewModel is { } viewModel)
         {
-            // Stop is blocking (roughly 2 s of runtime shutdown), which is exactly why it
-            // is awaited here rather than run on the way out of a synchronous handler.
+            // Stop blocks for roughly 2 s of runtime shutdown, so it is awaited, not fired off.
             await viewModel.DisposeAsync();
         }
     }

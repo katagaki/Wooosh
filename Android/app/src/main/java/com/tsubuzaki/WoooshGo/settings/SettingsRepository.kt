@@ -16,23 +16,17 @@ enum class Visibility(val txtValue: String) {
 }
 
 /**
- * Which relays the internet path may use (DESIGN.md §9.1).
- *
- * A relay only ever introduces two devices; file data always travels directly, and a
- * transfer that cannot find a direct path is refused rather than relayed. So this picks
- * who helps the two devices meet, not who carries the files.
+ * A relay only introduces two devices (DESIGN.md §9.1); file data always travels directly
+ * and a transfer with no direct path is refused rather than relayed.
  */
 enum class RelayMode {
-    /** n0's free public relays, shared with every other iroh user. */
+    /** n0's free public relays. */
     PUBLIC,
 
-    /** A relay the user runs or chose. Tickets from this device advertise it. */
+    /** Advertised in this device's tickets. */
     CUSTOM,
 
-    /**
-     * Internet transfers are off. Wooosh contacts nothing and neither publishes nor
-     * redeems tickets; only devices on the same network.
-     */
+    /** Wooosh contacts nothing and neither publishes nor redeems tickets. */
     OFF,
 }
 
@@ -40,30 +34,17 @@ data class Settings(
     val displayName: String,
     val visibility: Visibility,
     val relayMode: RelayMode,
-    /**
-     * Only meaningful for [RelayMode.CUSTOM]; kept across mode changes so switching away
-     * and back does not lose what was typed.
-     */
+    /** Kept across mode changes so switching away and back does not lose what was typed. */
     val relayUrl: String,
 ) {
-    /**
-     * Whether the internet path is available at all. When false the UI neither publishes
-     * nor redeems tickets, so nothing can bind an endpoint.
-     */
     val internetEnabled: Boolean
         get() = relayMode != RelayMode.OFF
 
-    /**
-     * The value `setRelayUrls` takes: null for the public set, empty for no relays at
-     * all. A CUSTOM mode with a blank address is not a valid configuration, so it falls
-     * back to the public set rather than silently disabling the internet path.
-     */
+    /** A blank CUSTOM address falls back to the public set, never to no path at all. */
     val relayUrls: List<String>?
         get() = when (relayMode) {
             RelayMode.PUBLIC -> null
-            // OFF still resolves to "no relays" rather than being left unset: the UI is
-            // what stops a ticket being made, and this makes sure a code path that got
-            // past it cannot reach a relay either.
+            // Explicitly empty, not unset, so nothing that got past the UI reaches a relay.
             RelayMode.OFF -> emptyList()
             RelayMode.CUSTOM -> relayUrl.trim().takeIf { it.isNotEmpty() }?.let { listOf(it) }
         }
@@ -79,8 +60,7 @@ class SettingsRepository(context: Context) {
         .map { prefs ->
             Settings(
                 displayName = prefs[KEY_DISPLAY_NAME]?.takeIf { it.isNotBlank() } ?: Build.MODEL,
-                // Paired only by default: a fresh install should not accept transfers
-                // from strangers on a shared network before the user has opted in.
+                // A fresh install must not accept transfers from strangers unopted-in.
                 visibility = prefs[KEY_VISIBILITY]
                     ?.let { stored -> Visibility.entries.firstOrNull { it.name == stored } }
                     ?: Visibility.PAIRED_ONLY,

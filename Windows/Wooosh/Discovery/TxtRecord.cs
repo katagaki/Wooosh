@@ -3,22 +3,9 @@ using Wooosh.Peers;
 
 namespace Wooosh.Discovery;
 
-/// <summary>
-/// The mDNS TXT record of PROTOCOL.md §3.1. Exactly six short keys, all UTF-8:
-///
-/// <list type="table">
-/// <item><term>v</term><description>protocol version, always <c>1</c></description></item>
-/// <item><term>rid</term><description>rotating discovery ID, 8 random bytes as lowercase hex</description></item>
-/// <item><term>dn</term><description>display name</description></item>
-/// <item><term>dt</term><description>device type; <c>windows</c> for this shell</description></item>
-/// <item><term>p</term><description>QUIC UDP port</description></item>
-/// <item><term>vis</term><description><c>e</c> (everyone) or <c>p</c> (paired only)</description></item>
-/// </list>
-///
-/// The long-term public key is deliberately absent: identity is proven in the handshake,
-/// and <c>rid</c> is what stops a passive listener tracking a device across networks.
-/// Everything read out of a TXT record is untrusted UI hint material.
-/// </summary>
+/// <summary>The mDNS TXT record of PROTOCOL.md §3.1: <c>v rid dn dt p vis</c>. The long-term
+/// public key is deliberately absent, since identity is proven in the handshake, and
+/// everything read out of a TXT record is untrusted UI hint material.</summary>
 public sealed record TxtRecord
 {
     public const string ProtocolVersion = "1";
@@ -33,11 +20,8 @@ public sealed record TxtRecord
 
     public required CoreVisibility Visibility { get; init; }
 
-    /// <summary>
-    /// Key/value pairs to publish. <c>dt</c> is omitted rather than guessed when the type
-    /// is unknown, because an absent value reads as unknown on the far side and a wrong
-    /// one renders a confidently wrong icon.
-    /// </summary>
+    /// <summary><c>dt</c> is omitted rather than guessed when unknown: an absent value reads
+    /// as unknown on the far side, a wrong one renders a confidently wrong icon.</summary>
     public IReadOnlyDictionary<string, string> ToAttributes()
     {
         var attributes = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -63,11 +47,8 @@ public sealed record TxtRecord
         return attributes;
     }
 
-    /// <summary>
-    /// Parses the <c>System.Devices.Dnssd.TextAttributes</c> property, which arrives as
-    /// "key=value" strings. Returns null when the record is not a usable Wooosh announce:
-    /// a wrong protocol version, a missing <c>rid</c>, or a port that is not a port.
-    /// </summary>
+    /// <summary>Takes <c>System.Devices.Dnssd.TextAttributes</c>, which arrives as "key=value"
+    /// strings. Null when the record is not a usable Wooosh announce.</summary>
     public static TxtRecord? Parse(IEnumerable<string> textAttributes, string instanceName)
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -102,8 +83,7 @@ public sealed record TxtRecord
         return new TxtRecord
         {
             Rid = rid,
-            // The instance name is the fallback label; a peer that advertises no dn still
-            // needs something to show, and the instance name is what the OS resolved.
+            // A peer advertising no dn still needs a label; the instance name is what the OS resolved.
             DisplayName = map.TryGetValue("dn", out var name) && !string.IsNullOrWhiteSpace(name)
                 ? name
                 : instanceName,

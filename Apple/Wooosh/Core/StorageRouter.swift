@@ -3,16 +3,10 @@ import Foundation
 import Photos
 #endif
 
-/// Routes a verified staged file to its platform-correct destination on
-/// `fileReady` (DESIGN.md §6):
-///
-/// - iOS: photos/videos → Photos library (add-only permission); documents →
-///   app Documents/ (visible in Files via UIFileSharingEnabled).
-/// - macOS: everything → ~/Downloads (sandbox Downloads entitlement).
-///
-/// Collision policy: append " (2)", " (3)"… — never overwrite. The staged
-/// file is removed once routing succeeds; a transfer is never reported
-/// complete for a file the user can't find.
+/// Destinations for a verified staged file (DESIGN.md §6): iOS sends media to
+/// Photos (add-only) and documents to Documents/ (Files via UIFileSharingEnabled),
+/// macOS everything to ~/Downloads. Collisions append " (2)", never overwrite,
+/// and staging is only cleared once the file has really landed.
 enum StorageRouter {
     enum RoutingError: LocalizedError {
         case photosPermissionDenied
@@ -28,15 +22,12 @@ enum StorageRouter {
         }
     }
 
-    /// Where a received file ended up: a short user-facing label ("Photos",
-    /// "Downloads", "Files") and, when it is a file on disk, its final URL.
-    /// Photos-library insertions have no path the app may keep.
+    /// `url` is nil for Photos insertions: the app may keep no path for those.
     struct Placement {
         let label: String
         let url: URL?
     }
 
-    /// Throws if the file could not be placed.
     static func route(stagedURL: URL, kind: FileKind) async throws -> Placement {
         #if os(iOS)
         switch kind {
@@ -81,7 +72,6 @@ enum StorageRouter {
     }
     #endif
 
-    /// Moves `source` into `directory`, appending " (2)", " (3)"… on collision.
     @discardableResult
     static func moveAvoidingCollision(from source: URL, intoDirectory directory: URL) throws -> URL {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

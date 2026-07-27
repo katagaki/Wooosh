@@ -6,7 +6,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 
-/** Encodes the `wooosh-pair:1?...` payload to a QR bitmap with zxing-core (no Play Services). */
+/** zxing-core, so no Play Services dependency. */
 object QrCodes {
 
     fun encode(payload: String, sizePx: Int): Bitmap {

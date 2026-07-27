@@ -12,10 +12,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!--
-            The product name is never translated (COPY_STYLE.md §2), so it is literal.
-            It is also the only literal string allowed anywhere in the views.
-        -->
+        <!-- The product name is never translated (COPY_STYLE.md §2) and is the only literal string allowed in the views. -->
         <Border
             x:Name="TitleBarArea"
             Grid.Row="0"

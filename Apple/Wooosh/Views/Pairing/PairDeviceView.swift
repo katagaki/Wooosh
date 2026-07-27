@@ -5,15 +5,12 @@ import UIKit
 import AppKit
 #endif
 
-/// "Pair a device" (PROTOCOL.md §4.2): show our QR payload for the other
-/// device to scan, or scan/paste theirs.
+/// "Pair a device" (PROTOCOL.md §4.2): show our QR payload, or scan/paste theirs.
 struct PairDeviceView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
-    /// Two tabs, split by role rather than by transport: showing a code and
-    /// scanning one are the two things a person can do here. Which *kind* of
-    /// code is a choice inside "Show", because it is the same act either way.
+    /// Split by role, not transport: which kind of code is a choice inside "Show".
     private enum Mode: String, CaseIterable, Identifiable {
         case show
         case scan
@@ -56,16 +53,14 @@ struct PairDeviceView: View {
             }
         }
         .onAppear {
-            // No-op while an attempt is in flight, so reopening the sheet
-            // cannot drop the user back into a silent screen.
+            // No-op while an attempt is in flight, so reopening cannot strand the user.
             model.resetPairingPhase()
             payload = model.beginPairingQR()
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 560)
         #else
-        // The QR needs the full sheet; the status screens are a few lines and
-        // look abandoned in it, so they get a half sheet instead.
+        // The QR needs the full sheet; the few-line status screens look abandoned in it.
         .presentationDetents(model.pairingPhase == .idle ? [.large] : [.medium, .large])
         #endif
     }
@@ -98,9 +93,7 @@ struct PairDeviceView: View {
                     QRCodeView(payload: payload)
                         .frame(width: 240, height: 240)
                         .padding(14)
-                        // The code has to stay high-contrast for scanners, so
-                        // this one surface is deliberately opaque white rather
-                        // than glass.
+                        // Opaque white, not glass: scanners need the contrast.
                         .background(.white, in: .rect(cornerRadius: 20))
 
                     Text(L.t("pairing_show_body"))
@@ -182,9 +175,7 @@ struct PairDeviceView: View {
                         .multilineTextAlignment(.center)
                     #endif
 
-                    // The scanner takes both kinds of code and picks the path
-                    // itself, so say so rather than making the user work out
-                    // which tab a code they were sent belongs to.
+                    // The scanner takes both kinds of code and picks the path itself.
                     Text(L.t("pairing_scan_accepts"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -216,8 +207,7 @@ struct PairDeviceView: View {
 
     // MARK: - Phases
 
-    /// Must always offer a way out: a user who cannot cancel a long connect
-    /// force-quits the app instead.
+    /// Must always offer a way out: a user who cannot cancel a long connect force-quits.
     private func pairingProgress(peerName: String?) -> some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)

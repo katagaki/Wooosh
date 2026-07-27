@@ -22,11 +22,7 @@
                     Text="{loc:Localize Key=PairingTitle}" />
             </StackPanel>
 
-            <!--
-                This device's own code (PROTOCOL.md §4.2 step 1). A PC has no camera in the
-                general case, so the paste route below is the primary one and this half is
-                for a phone scanning the PC.
-            -->
+            <!-- This device's own code (PROTOCOL.md §4.2 step 1), for a phone to scan; a PC has no camera, so the paste route below is primary. -->
             <StackPanel Spacing="8">
                 <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="{loc:Localize Key=PairingTabMyCode}" />
                 <TextBlock
@@ -35,12 +31,7 @@
                     Text="{loc:Localize Key=PairingShowBody}"
                     TextWrapping="Wrap" />
 
-                <!--
-                    TODO(pairing): render the payload as a QR code. There is no QR renderer
-                    in the box on Windows, so this is a real dependency decision rather than
-                    a stub to fill in: a blank Image element pretending to be a QR code
-                    would be worse than the copyable text below.
-                -->
+                <!-- TODO(pairing): render the payload as a QR code; Windows ships no QR renderer, so the copyable text below stands in. -->
                 <Border
                     Width="200"
                     Height="200"
@@ -72,7 +63,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- Paste route: the desktop equivalent of scanning. -->
             <StackPanel Spacing="8">
                 <TextBlock
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"

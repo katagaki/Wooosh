@@ -3,15 +3,9 @@ using System.Text;
 
 namespace Wooosh.Core.Interop;
 
-/// <summary>
-/// The UniFFI <c>RustBuffer</c>, laid out exactly as in the generated
-/// <c>Core/bindings/swift/wooosh_coreFFI.h</c>:
-/// <code>
-/// typedef struct RustBuffer { uint64_t capacity; uint64_t len; uint8_t *data; } RustBuffer;
-/// </code>
-/// A mismatch here is silent memory corruption, not a compile error, so the field order,
-/// the widths and the <see cref="LayoutKind.Sequential"/> attribute are load-bearing.
-/// </summary>
+/// <summary><c>struct RustBuffer { uint64_t capacity; uint64_t len; uint8_t *data; }</c>.
+/// Field order, widths and sequential layout are load-bearing: a mismatch is silent memory
+/// corruption, not a compile error.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct RustBuffer
 {
@@ -33,11 +27,8 @@ internal struct RustBuffer
         return bytes;
     }
 
-    /// <summary>
-    /// Copies <paramref name="bytes"/> into a buffer the Rust allocator owns.
-    /// Everything handed across the FFI must come from the Rust allocator: C# and Rust do
-    /// not share a heap, and freeing a CoTaskMem pointer on the Rust side aborts.
-    /// </summary>
+    /// <summary>Everything crossing the FFI must come from the Rust allocator: the two sides
+    /// do not share a heap.</summary>
     public static RustBuffer FromBytes(byte[] bytes)
     {
         var pinned = GCHandle.Alloc(bytes, GCHandleType.Pinned);
@@ -73,7 +64,7 @@ internal struct RustBuffer
     }
 }
 
-/// <summary><c>ForeignBytes</c>: a borrowed view of memory the foreign side owns.</summary>
+/// <summary>A borrowed view of memory the foreign side owns.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct ForeignBytes
 {
@@ -81,10 +72,7 @@ internal struct ForeignBytes
     public IntPtr Data;
 }
 
-/// <summary>
-/// <c>RustCallStatus</c>. <see cref="Code"/> is 0 on success, 1 when
-/// <see cref="ErrorBuf"/> holds a lowered error type, 2 when it holds a panic message.
-/// </summary>
+/// <summary>0 on success, 1 when <see cref="ErrorBuf"/> holds a lowered error, 2 a panic.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct RustCallStatus
 {
@@ -96,7 +84,7 @@ internal struct RustCallStatus
     public const sbyte Panic = 2;
 }
 
-/// <summary>Wraps every scaffolding call so a Rust error or panic becomes a C# exception.</summary>
+/// <summary>Every scaffolding call goes through here so a Rust error or panic becomes a C# exception.</summary>
 internal static class UniffiCall
 {
     internal delegate T RustCallback<out T>(ref RustCallStatus status);
@@ -126,11 +114,9 @@ internal static class UniffiCall
                 return;
 
             case RustCallStatus.Error:
-                // TODO(bindings): the error payload is a lowered CoreError enum. Decoding
-                // it needs the generated reader for that enum (see UniffiSerialization),
-                // so for now the variant is lost and only the fact of failure survives.
-                // The UI maps this to a generic message, which is why CoreErrors.cs
-                // exists: it must key off the decoded variant, not off English text.
+                // TODO(bindings): the payload is a lowered CoreError enum needing the
+                // generated reader, so the variant is lost. CoreErrors.cs must key off the
+                // decoded variant, never off English text.
                 status.ErrorBuf.Free();
                 throw new CoreException(Localization.Strings.Get("ErrorTransferFailed"));
 

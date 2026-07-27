@@ -18,13 +18,8 @@ import com.tsubuzaki.WoooshGo.R
 import kotlin.math.absoluteValue
 
 /**
- * The "files arrived" notification, posted once a received transfer has finished and every
- * file has been routed (DESIGN.md §6).
- *
- * Separate from [TransferService]'s ongoing progress notification in both channel and id:
- * that one is IMPORTANCE_LOW and is torn down with the foreground service the moment the
- * transfer ends, and it is the arrival — not the progress — that the user wants to be told
- * about and to tap.
+ * Separate channel and id from [TransferService]'s progress notification, which is
+ * IMPORTANCE_LOW and dies with the foreground service.
  */
 class ReceivedNotifier(context: Context) {
 
@@ -68,11 +63,7 @@ class ReceivedNotifier(context: Context) {
         }
     }
 
-    /**
-     * Tapping opens the file itself when the transfer carried exactly one, and the system
-     * Downloads list when it carried several. Both fall back to Wooosh when nothing on the
-     * device can handle the intent, so the tap is never a no-op.
-     */
+    /** Falls back to Wooosh when nothing handles the intent, so the tap is never a no-op. */
     private fun openIntent(saved: List<FileState>): PendingIntent {
         val single = saved.singleOrNull()?.takeIf { it.savedUri != null }
         val view = if (single != null) {
@@ -100,12 +91,7 @@ class ReceivedNotifier(context: Context) {
             ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
 
-    /**
-     * One notification per transfer rather than one global "received" notification: two
-     * transfers landing together are two separate things to open. Distinct request codes for
-     * the same reason, or [PendingIntent.FLAG_UPDATE_CURRENT] would rewrite the earlier
-     * notification's intent to point at the later transfer's file.
-     */
+    /** Per transfer, or [PendingIntent.FLAG_UPDATE_CURRENT] repoints the earlier intent. */
     private fun notificationId(transferId: String) =
         RECEIVED_ID_BASE + (transferId.hashCode().absoluteValue % 1000)
 

@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// Consent sheet for an incoming OFFER (DESIGN.md §5, PROTOCOL.md §4.4):
-/// sender identity + trust state, file list with sizes and total, then
-/// Accept (paired) / Accept Once (unpaired) / Decline. After acceptance the
-/// sheet becomes the live progress view.
+/// Consent sheet for an incoming OFFER (DESIGN.md §5, PROTOCOL.md §4.4), which then
+/// becomes the live progress view rather than being replaced.
 struct IncomingOfferSheet: View {
     let offer: Transfer
 
@@ -72,8 +70,7 @@ struct IncomingOfferSheet: View {
             .listStyle(.insetGrouped)
             #endif
 
-            // Pinned below the scrolling list — the decision is always
-            // reachable, however long the manifest is.
+            // Pinned below the list, so the decision stays reachable however long the manifest.
             SheetActions {
                 Button(L.t(offer.peerWasPaired ? "action_accept" : "action_accept_once")) {
                     model.transfers.accept(offer: offer)
@@ -100,9 +97,8 @@ struct IncomingOfferSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
-                // The sender displays this same phrase while it waits (see
-                // `TransferProgressView`), so the comparison the copy asks for
-                // is actually performable.
+                // The sender shows this same phrase while it waits (`TransferProgressView`),
+                // so the comparison the copy asks for is actually performable.
                 Text(offer.peer.fingerprint)
                     .font(.system(.body, design: .monospaced, weight: .semibold))
                     .multilineTextAlignment(.center)

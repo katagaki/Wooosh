@@ -5,9 +5,7 @@ import UniformTypeIdentifiers
 import PhotosUI
 #endif
 
-/// Presented when the user taps an active peer: pick files (or photos on
-/// iOS), then hand off to the core and show live progress. If a share-
-/// extension batch is pre-armed, it is sent immediately.
+/// A pre-armed share-extension batch is sent immediately instead of prompting for a pick.
 struct SendTransferSheet: View {
     let peer: Peer
 
@@ -17,8 +15,7 @@ struct SendTransferSheet: View {
     @State private var transfer: Transfer?
     @State private var showingFileImporter = false
     @State private var sendFailed = false
-    /// Connecting to the peer (mDNS resolve + QUIC handshake) happens before
-    /// the first byte moves, and can fail with a typed reason.
+    /// mDNS resolve + QUIC handshake, before the first byte moves; can fail on its own.
     @State private var connecting = false
     #if os(iOS)
     @State private var photoItems: [PhotosPickerItem] = []
@@ -50,7 +47,6 @@ struct SendTransferSheet: View {
         }
         .interactiveDismissDisabled(transfer?.isActive == true)
         .task {
-            // Share-extension handoff: device list was pre-armed, send now.
             guard model.pendingShareBatch != nil else { return }
             await deliver { await model.sendPendingBatch(to: peer) }
         }
@@ -80,9 +76,7 @@ struct SendTransferSheet: View {
         sendFailed = result == nil
     }
 
-    /// Whether this device's own fingerprint has to be on screen: the peer is
-    /// unpaired, so its consent sheet is asking its user to compare against
-    /// exactly this phrase.
+    /// The unpaired peer's consent sheet asks its user to compare against exactly this phrase.
     private var showsFingerprint: Bool {
         !model.isPaired(peer) && !model.fingerprintPhrase.isEmpty
     }
@@ -103,9 +97,8 @@ struct SendTransferSheet: View {
     }
 
     #if os(iOS)
-    /// Last resort when a picked item exposes no file representation: keep the
-    /// bytes, and at least keep the *extension* honest by asking the item for
-    /// its own content type instead of assuming .jpg.
+    /// Last resort when a picked item exposes no file representation: keep the bytes and
+    /// ask the item for its content type rather than assuming .jpg.
     private func fallbackImport(_ item: PhotosPickerItem, index: Int) async -> URL? {
         Logger(subsystem: "com.tsubuzaki.Wooosh", category: "photos")
             .error("Picked item \(index) had no file representation; original filename unavailable")
@@ -140,9 +133,8 @@ struct SendTransferSheet: View {
                             .font(.subheadline)
                             .foregroundStyle(.green)
                     } else if showsFingerprint {
-                        // Shown from the moment the user targets an unpaired
-                        // device, so the phrase is already on screen when the
-                        // other side is asked to verify it.
+                        // On screen from the moment an unpaired device is targeted, so it is
+                        // already there when the other side is asked to verify it.
                         FingerprintCallout(phrase: model.fingerprintPhrase)
                             .padding(.top, 4)
                     }
@@ -179,16 +171,13 @@ struct SendTransferSheet: View {
             guard !items.isEmpty else { return }
             loadingPhotos = true
             Task {
-                // Imported as a file, never as `Data`, so the asset's own name
-                // and extension survive (see `PickedMediaFile`).
+                // Imported as a file, never as `Data`, so the asset's own name survives.
                 var imported: [URL] = []
                 for (index, item) in items.enumerated() {
                     if let media = try? await item.loadTransferable(type: PickedMediaFile.self) {
                         imported.append(media.url)
                     } else if let url = await fallbackImport(item, index: index) {
-                        // Should not happen; keeps a pick working rather than
-                        // silently dropping items if a provider ever vends no
-                        // file representation at all.
+                        // Should not happen; beats silently dropping the item.
                         imported.append(url)
                     }
                 }

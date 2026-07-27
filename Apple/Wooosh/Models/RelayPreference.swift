@@ -1,19 +1,13 @@
 import Foundation
 
-/// Which relays the internet path may use (DESIGN.md §9.1).
-///
-/// A relay only ever introduces two devices; file data always travels
-/// directly, and a transfer that cannot find a direct path is refused rather
-/// than relayed. So this setting decides who helps the two devices meet, not
-/// who carries the files.
+/// A relay only introduces two devices (DESIGN.md §9.1): file data always
+/// travels directly, and a transfer with no direct path is refused, not relayed.
 enum RelayMode: String, CaseIterable, Identifiable {
     /// n0's free public relays, shared with every other iroh user.
     case publicRelays
-    /// A relay the user runs or chose. This device's tickets advertise it, so
-    /// the other device uses it without configuring anything.
+    /// Advertised in this device's tickets, so the redeemer needs no setup.
     case custom
-    /// Internet transfers are off. Wooosh contacts nothing and neither
-    /// publishes nor redeems tickets; only devices on the same network.
+    /// Wooosh contacts nothing and neither publishes nor redeems tickets.
     case off
 
     var id: String { rawValue }
@@ -30,24 +24,17 @@ enum RelayMode: String, CaseIterable, Identifiable {
 /// The resolved setting, in the shape `setRelayURLs` takes.
 struct RelayPreference: Equatable {
     var mode: RelayMode
-    /// Only meaningful for `.custom`; kept across mode changes so switching
-    /// away and back does not lose what the user typed.
+    /// Kept across mode changes so switching away and back loses nothing typed.
     var customURL: String
 
     static let `default` = RelayPreference(mode: .publicRelays, customURL: "")
 
-    /// Whether the internet path is available at all. When false the shells
-    /// neither publish nor redeem tickets, so nothing can bind an endpoint.
+    /// When false, nothing publishes or redeems, so no endpoint can be bound.
     var internetEnabled: Bool { mode != .off }
 
-    /// `nil` = n0's public set, `[]` = no relays at all, otherwise the chosen
-    /// relay. A `.custom` mode with a blank URL is not a valid configuration,
-    /// so it falls back to the public set rather than silently disabling the
-    /// internet path.
-    ///
-    /// `.off` still resolves to `[]` rather than being left unset: the UI is
-    /// what stops a ticket being made, and this makes sure that even a code
-    /// path that got past it cannot reach a relay.
+    /// `nil` = public set, `[]` = none. `.custom` with a blank URL falls back to
+    /// public rather than silently disabling the path; `.off` resolves to `[]` so
+    /// that a code path slipping past the UI still cannot reach a relay.
     var coreValue: [String]? {
         switch mode {
         case .publicRelays: nil

@@ -9,11 +9,7 @@ import com.tsubuzaki.WoooshGo.MainActivity
 import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 
-/**
- * Direct Share (DESIGN.md §8): publish paired devices as sharing shortcuts so they
- * appear as one-tap targets in the system share sheet. The category matches
- * res/xml/shortcuts.xml.
- */
+/** Direct Share (DESIGN.md §8); [CATEGORY] must match res/xml/shortcuts.xml. */
 object ShortcutPublisher {
 
     const val CATEGORY = "com.tsubuzaki.WoooshGo.category.SHARE_TARGET"

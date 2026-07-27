@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-/// Public error type crossing the FFI boundary.
 #[derive(Debug, Error, uniffi::Error)]
 #[uniffi(flat_error)]
 pub enum WoooshError {
@@ -20,11 +19,9 @@ pub enum WoooshError {
     KeyChanged,
     #[error("QR_KEY_MISMATCH: presented certificate key does not match the QR key")]
     QrKeyMismatch,
-    /// Peer is in PairedOnly visibility and we are not paired (§4.1). Shells
-    /// should offer to pair rather than report a generic failure.
+    /// §4.1. Shells should offer to pair rather than report a generic failure.
     #[error("PAIRING_REQUIRED: peer only accepts connections from paired devices")]
     PairingRequired,
-    /// No common protocol version (§4.1/§8).
     #[error("VERSION_MISMATCH: no common protocol version with peer")]
     VersionMismatch,
     #[error("pairing failed: {0}")]
@@ -39,11 +36,8 @@ pub enum WoooshError {
     Protocol(String),
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
-    /// Hole punching never produced a direct path, so the route to the peer
-    /// runs through a relay, and at least one file is over the relayed size
-    /// limit (DESIGN.md §9.1). Shells should name the limit rather than report
-    /// a generic transfer failure: the same files would send fine on a direct
-    /// connection, so this is about the route, not the files.
+    /// DESIGN.md §9.1. About the route, not the files: shells should name the
+    /// relayed size limit rather than report a generic transfer failure.
     #[error("RELAY_FILE_TOO_LARGE: no direct path to the peer and a file exceeds the relayed size limit")]
     RelayFileTooLarge,
 }
@@ -54,7 +48,7 @@ impl From<std::io::Error> for WoooshError {
     }
 }
 
-/// QUIC application-level close codes (u32 varint) used by wooosh/1.
+/// QUIC application-level close codes (u32 varint), wooosh/1.
 pub mod close_codes {
     pub const VERSION_MISMATCH: u32 = 1;
     pub const PAIRING_REQUIRED: u32 = 2;

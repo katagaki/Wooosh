@@ -1,18 +1,11 @@
-//! Control protocol messages + framing (PROTOCOL.md §5).
-//!
-//! CBOR maps with string keys and an integer `t` type tag, length-prefixed
-//! with u32 big-endian on the control stream. Unknown map keys are ignored
-//! (forward compatibility); unknown `t` values yield `Msg::Unknown`.
-//!
-//! PROTOCOL.md gives HELLO no explicit tag and reserves t:16..19 for PAIR_*
-//! without assigning them individually, so these are wire-compatibility
-//! commitments, not free choices: HELLO=0, PAIR_REQUEST=16, PAIR_ACCEPT=17,
-//! PAIR_CONFIRM=18, PAIR_REJECT=19, ERR_UNSUPPORTED=254, BYE=255.
+//! Control protocol (PROTOCOL.md §5); unknown map keys are ignored for forward
+//! compat. §5 leaves HELLO and t:16..19 unassigned, so these are wire
+//! commitments, not free choices: HELLO=0, PAIR_REQUEST=16..PAIR_REJECT=19.
 
 use ciborium::Value;
 
 pub const PROTOCOL_VERSION: u64 = 1;
-/// Sanity cap for control frames (a 10k-file manifest fits comfortably).
+/// Sanity cap; a 10k-file manifest fits comfortably.
 pub const MAX_FRAME: u32 = 32 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,11 +40,9 @@ pub enum Msg {
     PairReject,
     ErrUnsupported { t: u64 },
     Bye,
-    /// Unknown `t` — must be answered with ErrUnsupported, connection stays up.
+    /// Must be answered with ErrUnsupported; the connection stays up.
     Unknown { t: u64 },
 }
-
-// ---------- encoding helpers ----------
 
 fn map(entries: Vec<(&str, Value)>) -> Value {
     Value::Map(entries.into_iter().map(|(k, v)| (Value::Text(k.into()), v)).collect())
@@ -268,8 +259,7 @@ impl Msg {
     }
 }
 
-// ---------- file-stream header (PROTOCOL.md §6) ----------
-
+/// File-stream header (PROTOCOL.md §6).
 #[derive(Debug, Clone, PartialEq)]
 pub struct StreamHeader {
     pub tid: [u8; 16],
@@ -296,8 +286,6 @@ impl StreamHeader {
     }
 }
 
-// ---------- framing ----------
-
 /// Frame = u32 BE length + CBOR body.
 pub fn frame(body: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(4 + body.len());
@@ -305,8 +293,6 @@ pub fn frame(body: &[u8]) -> Vec<u8> {
     out.extend_from_slice(body);
     out
 }
-
-// ---------- map helpers ----------
 
 type CborMap = [(Value, Value)];
 
@@ -408,7 +394,6 @@ mod tests {
 
     #[test]
     fn unknown_keys_ignored() {
-        // A BYE with an extra key must still parse (forward compat).
         let v = Value::Map(vec![
             (Value::Text("t".into()), Value::Integer(255.into())),
             (Value::Text("future".into()), Value::Text("stuff".into())),

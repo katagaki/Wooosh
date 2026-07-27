@@ -3,8 +3,7 @@ import AVFoundation
 import SwiftUI
 import UIKit
 
-/// Camera QR scanner for the pairing payload (AVCaptureMetadataOutput).
-/// Requires NSCameraUsageDescription.
+/// Camera QR scanner for the pairing payload. Requires NSCameraUsageDescription.
 struct QRScannerView: UIViewControllerRepresentable {
     let onScan: (String) -> Void
 
@@ -78,14 +77,11 @@ struct QRScannerView: UIViewControllerRepresentable {
 
         // MARK: - Tap to focus
 
-        /// A pairing QR is often small and close-up, which is exactly where
-        /// continuous autofocus hunts. Tapping the viewfinder pins focus and
-        /// exposure to that point.
+        /// Continuous autofocus hunts on a small close-up QR, so a tap pins focus and exposure.
         @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
             let point = recognizer.location(in: view)
             guard let previewLayer, let device = captureDevice else { return }
-            // Layer point → the device's own normalized coordinate space; doing
-            // this by hand breaks under `.resizeAspectFill` cropping.
+            // Converting by hand breaks under `.resizeAspectFill` cropping.
             let focusPoint = previewLayer.captureDevicePointConverted(fromLayerPoint: point)
             showFocusIndicator(at: point)
             sessionQueue.async {
@@ -105,8 +101,7 @@ struct QRScannerView: UIViewControllerRepresentable {
                         }
                     }
                 } catch {
-                    // Focus is a nicety; a device that won't lock just keeps
-                    // its continuous autofocus.
+                    // A device that won't lock just keeps its continuous autofocus.
                 }
             }
         }
@@ -122,7 +117,7 @@ struct QRScannerView: UIViewControllerRepresentable {
             indicator.isUserInteractionEnabled = false
             view.addSubview(indicator)
             focusIndicator = indicator
-            // Respect Reduce Motion: no scale animation, just a fade.
+            // Reduce Motion: no scale animation, just a fade.
             let animated = !UIAccessibility.isReduceMotionEnabled
             UIView.animate(withDuration: animated ? 0.5 : 0, delay: animated ? 0.35 : 0.6) {
                 indicator.alpha = 0
@@ -140,10 +135,8 @@ struct QRScannerView: UIViewControllerRepresentable {
                   object.type == .qr,
                   let payload = object.stringValue else { return }
             didDeliver = true
-            // Acknowledged here rather than by whatever the payload triggers:
-            // parsing, dialling and hole punching each take long enough that a
-            // viewfinder which merely stopped moving reads as a jam. Neutral
-            // impact, not `.success` — the code may still turn out to be stale.
+            // Acknowledged before dialling, which is slow enough that a frozen viewfinder
+            // reads as a jam. Neutral, not `.success`: the code may still be stale.
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             sessionQueue.async { [session] in
                 if session.isRunning { session.stopRunning() }

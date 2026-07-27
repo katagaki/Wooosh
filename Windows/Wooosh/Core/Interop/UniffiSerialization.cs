@@ -3,31 +3,17 @@ using System.Text;
 
 namespace Wooosh.Core.Interop;
 
-/// <summary>
-/// The primitive half of the UniFFI codec.
-///
-/// UniFFI's buffer format is fixed and small: every multi-byte integer is big-endian, a
-/// string is an i32 byte count followed by UTF-8, a sequence is an i32 count followed by
-/// its items, an Option is a u8 tag (0 = None, 1 = Some) followed by the payload, and a
-/// record is simply its fields in declaration order. Enums are an i32 one-based variant
-/// index followed by that variant's fields.
-///
-/// Everything in this file is that format and is complete. What is deliberately NOT here
-/// is the per-type codec for the core's own <c>Config</c>, <c>PeerRef</c>,
-/// <c>TrustedPeer</c>, <c>FileMeta</c>, <c>StagedFile</c> and <c>CoreEvent</c> types:
-/// those depend on the exact field order the Rust side declares, and transcribing them
-/// from memory produces code that compiles, runs, and reads a public key from the wrong
-/// offset. Generate them instead (Windows/README.md).
-/// </summary>
+/// <summary>UniFFI wire format: multi-byte integers big-endian; a string or sequence is an
+/// i32 count then its contents; an Option is a u8 tag (0 = None) then the payload; a record
+/// is its fields in declaration order; an enum is a one-based i32 variant index then its
+/// fields. Per-type codecs for the core's own records must be generated, not hand-written,
+/// because they depend on the exact Rust field order (Windows/README.md).</summary>
 internal static class UniffiSerialization
 {
-    // ---- top-level lowering (argument position) --------------------------------------
-
     /// <summary>A string argument is a RustBuffer of raw UTF-8, with no length prefix.</summary>
     public static RustBuffer LowerString(string value) =>
         RustBuffer.FromBytes(Encoding.UTF8.GetBytes(value));
 
-    /// <summary>A string return value is the buffer's whole contents.</summary>
     public static string LiftString(RustBuffer buffer)
     {
         try
@@ -61,7 +47,6 @@ internal static class UniffiSerialization
         }
     }
 
-    /// <summary>An <c>Option&lt;bytes&gt;</c> argument: u8 tag, then the payload if present.</summary>
     public static RustBuffer LowerOptionalBytes(byte[]? value)
     {
         var writer = new BufferWriter();
@@ -91,7 +76,6 @@ internal static class UniffiSerialization
         }
     }
 
-    /// <summary>A <c>Vec&lt;u32&gt;</c> argument, used for accepted file ids.</summary>
     public static RustBuffer LowerUInt32Sequence(IReadOnlyList<uint> values)
     {
         var writer = new BufferWriter();
@@ -103,8 +87,6 @@ internal static class UniffiSerialization
 
         return RustBuffer.FromBytes(writer.ToArray());
     }
-
-    // ---- buffer primitives -----------------------------------------------------------
 
     internal sealed class BufferWriter
     {
@@ -155,7 +137,7 @@ internal static class UniffiSerialization
             _bytes.AddRange(value);
         }
 
-        /// <summary>Enum variant indices are one-based i32, per the UniFFI wire format.</summary>
+        /// <summary>One-based, per the UniFFI wire format.</summary>
         public void WriteEnumVariant(int oneBasedIndex) => WriteInt32(oneBasedIndex);
 
         public byte[] ToArray() => [.. _bytes];

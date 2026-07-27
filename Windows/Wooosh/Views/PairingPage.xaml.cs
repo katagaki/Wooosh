@@ -6,10 +6,7 @@ using Wooosh.Localization;
 
 namespace Wooosh.Views;
 
-/// <summary>
-/// QR pairing (PROTOCOL.md §4.2) from the desktop side: this device shows a code for a
-/// phone to scan, and accepts a pasted code for the other direction.
-/// </summary>
+/// <summary>QR pairing (PROTOCOL.md §4.2) from the desktop side, where a pasted code stands in for scanning.</summary>
 public sealed partial class PairingPage : Page
 {
     public PairingPage()
@@ -27,8 +24,7 @@ public sealed partial class PairingPage : Page
 
         try
         {
-            // The core mints the payload, including the single-use token and its 120 s
-            // expiry. The shell never builds a pairing URL itself.
+            // The core mints the payload; the shell never builds a pairing URL itself.
             MyCodeBox.Text = viewModel.Core.BeginPairingQr();
         }
         catch (CoreException e)
@@ -73,10 +69,7 @@ public sealed partial class PairingPage : Page
             return;
         }
 
-        // TODO(pairing): parse the payload locally first so an expired or malformed code is
-        // rejected instantly instead of after a network timeout, then run PairWithQrAsync on
-        // a background thread and drive this page off the PairingResult event rather than off
-        // the call returning. Both steps need the core bindings.
+        // TODO(pairing): parse locally first, then run PairWithQrAsync off the UI thread and drive this page off the PairingResult event.
         ShowStatus(Strings.Get("ErrorNotStarted"), InfoBarSeverity.Informational);
     }
 

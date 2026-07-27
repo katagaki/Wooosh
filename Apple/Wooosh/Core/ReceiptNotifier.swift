@@ -7,21 +7,14 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// The "files arrived" notification and what tapping it opens.
-///
-/// Posted once a received transfer has finished and every file has been routed
-/// (DESIGN.md §6). Tapping opens the file itself: a document through Quick Look
-/// inside Wooosh, a photo or video by handing off to Photos, which is as far as
-/// add-only library access can go. Wooosh never holds a readable URL for
-/// anything it put in the photo library, so there is nothing to preview here.
+/// Posted once a transfer is finished *and* routed (DESIGN.md §6). A document
+/// opens in Quick Look; a photo hands off, add-only access leaving no URL.
 @MainActor
 @Observable
 final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
 
     static let shared = ReceiptNotifier()
 
-    /// Set when the user taps a notification for a received document. The root
-    /// view presents Quick Look on it and clears it.
     var previewURL: URL?
 
     @ObservationIgnored
@@ -33,9 +26,7 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().delegate = self
     }
 
-    /// Asked for the first time when a transfer is actually incoming, not at
-    /// launch: a permission prompt means more when the thing it is for is
-    /// about to happen.
+    /// Asked when a transfer is incoming, so the prompt has visible cause.
     func requestAuthorizationIfNeeded() {
         guard !didRequestAuthorization else { return }
         didRequestAuthorization = true
@@ -61,8 +52,7 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
             ? saved[0].name
             : L.f("notification_received_from", transfer.peer.displayName)
         content.sound = .default
-        // Only a lone file has an unambiguous thing to open. Several at once
-        // just bring Wooosh forward, where the transfer card lists them.
+        // Only a lone file has an unambiguous thing to open.
         if let single = saved.first, saved.count == 1 {
             content.userInfo = single.savedURL.map { [Self.pathKey: $0.path] }
                 ?? [Self.photosKey: true]
@@ -84,8 +74,7 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        // Read out of the payload here: `userInfo` is `[AnyHashable: Any]` and
-        // so cannot cross into the main actor, but these two can.
+        // `userInfo` is `[AnyHashable: Any]` and cannot cross actors; these can.
         let userInfo = response.notification.request.content.userInfo
         let savedPath = userInfo[Self.pathKey] as? String
         let inPhotos = userInfo[Self.photosKey] as? Bool == true
@@ -104,8 +93,7 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// Wooosh is already on screen, so a banner over its own transfer card
-    /// would be noise. The card is the notification in that case.
+    /// Wooosh is already on screen: the transfer card is the notification.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
@@ -115,9 +103,7 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - Internals
 
-    /// There is no public API to open the photo library at a specific asset,
-    /// and add-only access cannot read one back to show it here either, so the
-    /// most Wooosh can do is bring Photos forward.
+    /// No public API opens the library at an asset, so this is the most possible.
     private func openPhotos() {
         guard let url = URL(string: "photos-redirect://") else { return }
         UIApplication.shared.open(url) { [logger] opened in
@@ -130,8 +116,6 @@ final class ReceiptNotifier: NSObject, UNUserNotificationCenterDelegate {
     private nonisolated static let photosKey = "inPhotos"
 }
 
-/// Presents Quick Look on whatever document the user tapped a notification for.
-/// Applied once at the root so the preview survives whichever screen is up.
 struct ReceivedFilePreview: ViewModifier {
     @Bindable private var notifier = ReceiptNotifier.shared
 

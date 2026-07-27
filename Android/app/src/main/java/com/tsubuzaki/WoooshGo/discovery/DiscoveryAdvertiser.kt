@@ -6,13 +6,10 @@ import android.util.Log
 import com.tsubuzaki.WoooshGo.peers.DeviceType
 import com.tsubuzaki.WoooshGo.settings.Visibility
 
-/**
- * Advertises this device via NSD (mDNS/DNS-SD) with the TXT layout of PROTOCOL.md §3.1.
- * The advertised port is the core's QUIC listener (`core.listenAddr()`).
- */
+/** TXT layout of PROTOCOL.md §3.1; the port is the core's QUIC listener. */
 class DiscoveryAdvertiser(private val nsdManager: NsdManager) {
 
-    /** Actual registered instance name (NSD may rename on conflict); used for self-filtering. */
+    /** NSD may rename on conflict, and self-filtering needs the name it actually used. */
     @Volatile
     var registeredServiceName: String? = null
         private set
@@ -35,13 +32,12 @@ class DiscoveryAdvertiser(private val nsdManager: NsdManager) {
         val serviceInfo = NsdServiceInfo().apply {
             serviceName = "$displayName (${rid.takeLast(4)})"
             serviceType = SERVICE_TYPE
-            // DNS-SD convention: the SRV port mirrors the QUIC UDP port (PROTOCOL.md §1).
+            // DNS-SD convention: SRV mirrors the QUIC UDP port (PROTOCOL.md §1).
             this.port = port
             setAttribute("v", "1")
             setAttribute("rid", rid)
             setAttribute("dn", displayName)
-            // UNKNOWN has no wire value: omit `dt` rather than advertise a guess
-            // (PROTOCOL.md §3.1 — absent reads as unknown on the far side).
+            // UNKNOWN has no wire value; an absent `dt` reads as unknown (PROTOCOL.md §3.1).
             deviceType.txtValue?.let { setAttribute("dt", it) }
             setAttribute("p", port.toString())
             setAttribute("vis", visibility.txtValue)
@@ -62,8 +58,8 @@ class DiscoveryAdvertiser(private val nsdManager: NsdManager) {
             override fun onUnregistrationFailed(info: NsdServiceInfo, errorCode: Int) = Unit
         }
         registrationListener = listener
-        // SDK 37+ throws SecurityException without ACCESS_LOCAL_NETWORK. Losing
-        // discovery is bad; taking the whole app down with it is worse.
+        // SDK 37+ throws SecurityException without ACCESS_LOCAL_NETWORK; losing discovery
+        // must not take the app down.
         try {
             nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, listener)
         } catch (e: SecurityException) {

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Live progress for one transfer: per-file rows, aggregate rate/ETA, cancel.
 struct TransferProgressView: View {
     let transfer: Transfer
     var onDone: () -> Void = {}
@@ -34,11 +33,8 @@ struct TransferProgressView: View {
         }
     }
 
-    /// The receiver's consent sheet tells its user to check the sender's
-    /// fingerprint. That is only possible if this — the sending device — puts
-    /// the phrase on screen during exactly that window: an outgoing transfer
-    /// to an unpaired peer, still waiting for the DECISION. Paired peers never
-    /// see it; it would be noise.
+    /// The receiver is told to check the sender's fingerprint, so the sender must show it
+    /// during exactly that window: outgoing, unpaired, still awaiting the decision.
     private var showSenderFingerprint: Bool {
         transfer.direction == .outgoing
             && !transfer.peerWasPaired
@@ -77,9 +73,8 @@ struct TransferProgressView: View {
         }
     }
 
-    /// Counts inflect through the String Catalog, and the elapsed time is a
-    /// second placeholder in the same format string rather than a fragment
-    /// glued on afterwards.
+    /// Counts inflect through the String Catalog; elapsed time is a second placeholder
+    /// in the same format string, never a fragment glued on afterwards.
     private func doneLine(_ summary: TransferSummary) -> String {
         let sent = transfer.direction == .outgoing
         guard summary.duration > 0 else {
@@ -89,9 +84,7 @@ struct TransferProgressView: View {
                    summary.fileCount, TransferFormat.duration(summary.duration))
     }
 
-    /// Three self-contained measurements, each formatted by the system, joined
-    /// by a separator. Nothing here is a sentence, so there is no word order
-    /// for a translator to reorder.
+    /// Self-contained system-formatted measurements joined by a separator, never a sentence.
     private var transferringLine: String {
         var parts = [
             L.f("transfer_progress_bytes",
@@ -113,8 +106,7 @@ struct TransferProgressView: View {
             ProgressView(value: transfer.overallFraction)
                 .padding(.horizontal, 20)
                 .padding(.top, 14)
-            // Cancelling is destructive, so it stays in the secondary slot —
-            // it should never be the big prominent thing you hit by reflex.
+            // Destructive, so never the prominent button you hit by reflex.
             SheetActions {
                 EmptyView()
             } secondary: {
@@ -197,14 +189,11 @@ enum TransferFormat {
         value.formatted(.byteCount(style: .file))
     }
 
-    /// Bytes per second, as "12 MB/s".
     static func rate(_ bytesPerSecond: Double) -> String {
         L.f("transfer_progress_rate", bytes(Int64(bytesPerSecond)))
     }
 
-    /// Durations come from the system's own units formatter, so the unit
-    /// names and their spacing follow the reader's locale rather than an
-    /// English abbreviation hard-coded here.
+    /// The system units formatter, so unit names and spacing follow the reader's locale.
     static func duration(_ seconds: TimeInterval) -> String {
         let rounded = max(seconds.rounded(), 1)
         let allowed: Set<Duration.UnitsFormatStyle.Unit> =

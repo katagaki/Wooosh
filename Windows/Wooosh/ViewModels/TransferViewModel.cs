@@ -3,7 +3,6 @@ using Wooosh.Localization;
 
 namespace Wooosh.ViewModels;
 
-/// <summary>One transfer card: its header, its progress line and its per-file outcome.</summary>
 public sealed partial class TransferViewModel : ObservableObject
 {
     private readonly Dictionary<FileId, string> _names;
@@ -38,7 +37,7 @@ public sealed partial class TransferViewModel : ObservableObject
 
     public int FileCount { get; }
 
-    /// <summary>"Sending to Kirsi" / "Receiving from Kirsi". One format string, no fragments.</summary>
+    /// <summary>One format string, never concatenated fragments (COPY_STYLE.md §5).</summary>
     public string Header => Direction == TransferDirection.Send
         ? Strings.Format("TransferSendingTo", Peer.DisplayName)
         : Strings.Format("TransferReceivingFrom", Peer.DisplayName);
@@ -55,7 +54,6 @@ public sealed partial class TransferViewModel : ObservableObject
         private set => Set(ref _isFinished, value);
     }
 
-    /// <summary>0 to 100 for the ProgressBar. Zero total means the bar stays indeterminate.</summary>
     public double PercentComplete =>
         _totalBytes <= 0 ? 0 : Math.Clamp(_bytesTransferred * 100.0 / _totalBytes, 0, 100);
 
@@ -67,8 +65,7 @@ public sealed partial class TransferViewModel : ObservableObject
         _rate = progress.Rate;
         _etaSeconds = progress.EtaSeconds;
 
-        // One format string per line, filled positionally, so translators can reorder
-        // freely (COPY_STYLE.md §5). Never concatenated sentence fragments.
+        // Filled positionally so translators can reorder freely (COPY_STYLE.md §5).
         var line = Strings.Format(
             "TransferProgressBytes",
             Formatters.ByteSize(_bytesTransferred),
@@ -121,8 +118,7 @@ public sealed partial class TransferViewModel : ObservableObject
         _ = finalPath;
         _ = fileId;
 
-        // Received files always land in Downloads on Windows (DESIGN.md §6), so the label
-        // is the folder name and never a path: paths are not user-facing copy.
+        // Paths are not user-facing copy, so the label is the folder name (DESIGN.md §6).
         StatusLine = Strings.Format(
             "TransferSavedTo",
             Formatters.ByteSize(_bytesTransferred),

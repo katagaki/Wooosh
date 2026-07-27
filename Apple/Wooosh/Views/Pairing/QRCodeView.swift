@@ -1,13 +1,9 @@
 import CoreImage.CIFilterBuiltins
 import SwiftUI
 
-/// Renders a `wooosh-pair:` or `wooosh-net:` payload as a QR code (CoreImage
-/// CIQRCodeGenerator).
 struct QRCodeView: View {
     let payload: String
-    /// Which kind of code this is, for VoiceOver. The two payloads look
-    /// identical on screen but mean different things, so the label must say
-    /// which one is being shown.
+    /// The two payloads look identical on screen, so VoiceOver must say which is shown.
     var accessibilityKey = "pairing_qr_a11y"
 
     var body: some View {

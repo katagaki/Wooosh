@@ -35,12 +35,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Share entry point (DESIGN.md §8): receives ACTION_SEND / ACTION_SEND_MULTIPLE,
- * stages the shared items (copies them into cacheDir — share-sheet URI grants do not
- * outlive this activity reliably), then opens the device list armed to send on tap.
- *
- * When launched from a Direct Share shortcut, the target paired device rides along and
- * the main screen auto-sends as soon as that device is alive in the list.
+ * Items are copied into cacheDir because share-sheet URI grants do not reliably outlive
+ * this activity (DESIGN.md §8). A Direct Share shortcut carries its target device along.
  */
 class ShareTargetActivity : ComponentActivity() {
 
@@ -120,7 +116,6 @@ class ShareTargetActivity : ComponentActivity() {
         return (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
     }
 
-    /** Copies each shared item into cacheDir/share_staging and returns file:// URIs. */
     private fun stageAll(uris: List<Uri>): List<Uri> {
         val stagingRoot = File(cacheDir, "share_staging/${UUID.randomUUID()}").apply { mkdirs() }
         val staged = uris.mapNotNull { uri ->

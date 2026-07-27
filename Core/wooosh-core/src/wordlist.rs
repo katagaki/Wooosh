@@ -1,5 +1,4 @@
-//! Embedded 256-word list (subset of the EFF short wordlist) used for the
-//! 6-word device fingerprint phrase. One byte indexes one word.
+//! 256 words from the EFF short wordlist; one fingerprint byte indexes one word.
 
 pub const WORDS: [&str; 256] = [
     "acid", "acorn", "acre", "acts", "afar", "affix", "aged", "agent",
