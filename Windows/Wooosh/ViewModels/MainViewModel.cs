@@ -189,7 +189,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
         try
         {
-            var finalPath = await StorageRouter.RouteToDownloadsAsync(ready.StagedPath, name);
+            var finalPath = await Task.Run(
+                () => StorageRouter.RouteToDownloads(ready.StagedPath, name));
             _dispatcher.TryEnqueue(() => transfer?.ApplyStored(ready.FileId, finalPath));
         }
         catch (Exception e)

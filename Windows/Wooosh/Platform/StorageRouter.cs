@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using Windows.Storage;
 
 namespace Wooosh.Platform;
 
@@ -29,12 +28,9 @@ public static partial class StorageRouter
     /// The move is what makes the transfer complete: nothing is reported as received until
     /// the file is where the user can find it.
     /// </summary>
-    public static async Task<string> RouteToDownloadsAsync(string stagedPath, string originalName)
+    public static string RouteToDownloads(string stagedPath, string originalName)
     {
-        // KnownFolders.DownloadsFolder is the documented Windows destination (DESIGN.md §6).
-        // A packaged app gets write access to it without a broadFileSystemAccess capability.
-        var downloads = KnownFolders.DownloadsFolder;
-        var destination = await NextAvailablePathAsync(downloads, originalName);
+        var destination = NextAvailablePath(DownloadsPath(), originalName);
 
         // TODO(DESIGN.md §6): when a single receive brings more than 20 files, land them in
         // a Wooosh/<date> subfolder of Downloads instead of the root. That needs the file
@@ -46,12 +42,41 @@ public static partial class StorageRouter
     }
 
     /// <summary>
+    /// The user's Downloads folder (DESIGN.md §6).
+    ///
+    /// <para>There is no <c>KnownFolders.DownloadsFolder</c>: the WinRT <c>KnownFolders</c>
+    /// class only exposes the libraries (Documents, Pictures, Music, Video), and
+    /// <c>Windows.Storage.DownloadsFolder</c> creates files under system-chosen names without
+    /// ever revealing the folder, which would break the "never rename" rule. Nor does
+    /// <c>Environment.SpecialFolder</c> have an entry for it. <c>SHGetKnownFolderPath</c> with
+    /// <c>FOLDERID_Downloads</c> is the supported way to ask, and it honours a Downloads
+    /// folder the user has redirected elsewhere.</para>
+    /// </summary>
+    private static string DownloadsPath()
+    {
+        var hr = NativeMethods.SHGetKnownFolderPath(
+            NativeMethods.FolderIdDownloads, dwFlags: 0, hToken: IntPtr.Zero, out var buffer);
+        if (hr != 0 || buffer == IntPtr.Zero)
+        {
+            throw new IOException($"Could not locate the Downloads folder (HRESULT 0x{hr:X8}).");
+        }
+
+        try
+        {
+            return Marshal.PtrToStringUni(buffer)!;
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(buffer);
+        }
+    }
+
+    /// <summary>
     /// "photo.jpg" then "photo (2).jpg" then "photo (3).jpg". The suffix goes before the
     /// extension so the file still opens with the right application.
     /// </summary>
-    private static async Task<string> NextAvailablePathAsync(StorageFolder folder, string originalName)
+    private static string NextAvailablePath(string directory, string originalName)
     {
-        var directory = folder.Path;
         var stem = Path.GetFileNameWithoutExtension(originalName);
         var extension = Path.GetExtension(originalName);
 
@@ -61,9 +86,6 @@ public static partial class StorageRouter
             candidate = Path.Combine(directory, $"{stem} ({index}){extension}");
         }
 
-        // Touching the folder through the WinRT API first surfaces a denied Downloads
-        // folder as a clean failure here rather than as an IOException mid-move.
-        _ = await folder.GetBasicPropertiesAsync();
         return candidate;
     }
 
@@ -117,6 +139,17 @@ public static partial class StorageRouter
         public const uint CreateAlways = 2;
         public const uint FileAttributeNormal = 0x80;
         public static readonly IntPtr InvalidHandle = new(-1);
+
+        // FOLDERID_Downloads, {374DE290-123F-4565-9164-39C4925E467B}.
+        public static readonly Guid FolderIdDownloads =
+            new("374DE290-123F-4565-9164-39C4925E467B");
+
+        [LibraryImport("shell32.dll")]
+        public static partial int SHGetKnownFolderPath(
+            in Guid rfid,
+            uint dwFlags,
+            IntPtr hToken,
+            out IntPtr ppszPath);
 
         [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true,
             StringMarshalling = StringMarshalling.Utf16)]

@@ -45,7 +45,7 @@ public sealed class SettingsRepository
                 : Environment.MachineName,
             // Paired only by default: a fresh install should not accept transfers
             // from strangers on a shared network before the user has opted in.
-            Visibility = _store.Values[VisibilityKey] as string switch
+            Visibility = (_store.Values[VisibilityKey] as string) switch
             {
                 "everyone" => CoreVisibility.Everyone,
                 "off" => CoreVisibility.Off,
