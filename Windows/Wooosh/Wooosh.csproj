@@ -16,6 +16,8 @@
     <WindowsPackageType>MSIX</WindowsPackageType>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <!-- [LibraryImport] in Core/Interop and Platform emits unsafe P/Invoke stubs. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
     <DefaultLanguage>en-US</DefaultLanguage>
     <AppxBundlePlatforms>x64|ARM64</AppxBundlePlatforms>
