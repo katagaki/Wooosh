@@ -522,9 +522,352 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
- * Event sink implemented by the host. Called on the core's dedicated event
- * thread; implementations may block briefly, but calling back into the core
- * re-entrantly from the callback forfeits strict event ordering.
+ * Platform attestation for rendezvous admission, implemented by the shell
+ * because App Attest, Play Integrity and the Windows TPM are platform APIs.
+ * Every method may block (network calls to Apple or Google, TPM I/O) and is
+ * always called off the UI thread. Returning `None` admits this device as
+ * Unverified rather than failing the transfer.
+ */
+public protocol Attestor: AnyObject, Sendable {
+    
+    func kind()  -> AttestationKind
+    
+    /**
+     * App Attest. `attest = true`: generate a new key and attest it over
+     * `client_data_hash`. `false`: sign an assertion with the existing key.
+     */
+    func appAttest(clientDataHash: Data, attest: Bool)  -> AppAttestEvidence?
+    
+    /**
+     * Play Integrity standard request with this `requestHash`; returns the token.
+     */
+    func playIntegrity(requestHash: String)  -> String?
+    
+    func tpmEvidence()  -> TpmEvidence?
+    
+    /**
+     * TPM2_ActivateCredential with the attestation key; returns the recovered secret.
+     */
+    func tpmActivate(credentialBlob: Data, encryptedSecret: Data)  -> Data?
+    
+}
+/**
+ * Platform attestation for rendezvous admission, implemented by the shell
+ * because App Attest, Play Integrity and the Windows TPM are platform APIs.
+ * Every method may block (network calls to Apple or Google, TPM I/O) and is
+ * always called off the UI thread. Returning `None` admits this device as
+ * Unverified rather than failing the transfer.
+ */
+open class AttestorImpl: Attestor, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_wooosh_core_fn_clone_attestor(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_wooosh_core_fn_free_attestor(pointer, $0) }
+    }
+
+    
+
+    
+open func kind() -> AttestationKind  {
+    return try!  FfiConverterTypeAttestationKind_lift(try! rustCall() {
+    uniffi_wooosh_core_fn_method_attestor_kind(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * App Attest. `attest = true`: generate a new key and attest it over
+     * `client_data_hash`. `false`: sign an assertion with the existing key.
+     */
+open func appAttest(clientDataHash: Data, attest: Bool) -> AppAttestEvidence?  {
+    return try!  FfiConverterOptionTypeAppAttestEvidence.lift(try! rustCall() {
+    uniffi_wooosh_core_fn_method_attestor_app_attest(self.uniffiClonePointer(),
+        FfiConverterData.lower(clientDataHash),
+        FfiConverterBool.lower(attest),$0
+    )
+})
+}
+    
+    /**
+     * Play Integrity standard request with this `requestHash`; returns the token.
+     */
+open func playIntegrity(requestHash: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_wooosh_core_fn_method_attestor_play_integrity(self.uniffiClonePointer(),
+        FfiConverterString.lower(requestHash),$0
+    )
+})
+}
+    
+open func tpmEvidence() -> TpmEvidence?  {
+    return try!  FfiConverterOptionTypeTpmEvidence.lift(try! rustCall() {
+    uniffi_wooosh_core_fn_method_attestor_tpm_evidence(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * TPM2_ActivateCredential with the attestation key; returns the recovered secret.
+     */
+open func tpmActivate(credentialBlob: Data, encryptedSecret: Data) -> Data?  {
+    return try!  FfiConverterOptionData.lift(try! rustCall() {
+    uniffi_wooosh_core_fn_method_attestor_tpm_activate(self.uniffiClonePointer(),
+        FfiConverterData.lower(credentialBlob),
+        FfiConverterData.lower(encryptedSecret),$0
+    )
+})
+}
+    
+
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceAttestor {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // This creates 1-element array, since this seems to be the only way to construct a const
+    // pointer that we can pass to the Rust code.
+    static let vtable: [UniffiVTableCallbackInterfaceAttestor] = [UniffiVTableCallbackInterfaceAttestor(
+        kind: { (
+            uniffiHandle: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> AttestationKind in
+                guard let uniffiObj = try? FfiConverterTypeAttestor.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.kind(
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterTypeAttestationKind_lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        appAttest: { (
+            uniffiHandle: UInt64,
+            clientDataHash: RustBuffer,
+            attest: Int8,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> AppAttestEvidence? in
+                guard let uniffiObj = try? FfiConverterTypeAttestor.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.appAttest(
+                     clientDataHash: try FfiConverterData.lift(clientDataHash),
+                     attest: try FfiConverterBool.lift(attest)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionTypeAppAttestEvidence.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        playIntegrity: { (
+            uniffiHandle: UInt64,
+            requestHash: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> String? in
+                guard let uniffiObj = try? FfiConverterTypeAttestor.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.playIntegrity(
+                     requestHash: try FfiConverterString.lift(requestHash)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionString.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        tpmEvidence: { (
+            uniffiHandle: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> TpmEvidence? in
+                guard let uniffiObj = try? FfiConverterTypeAttestor.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.tpmEvidence(
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionTypeTpmEvidence.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        tpmActivate: { (
+            uniffiHandle: UInt64,
+            credentialBlob: RustBuffer,
+            encryptedSecret: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Data? in
+                guard let uniffiObj = try? FfiConverterTypeAttestor.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.tpmActivate(
+                     credentialBlob: try FfiConverterData.lift(credentialBlob),
+                     encryptedSecret: try FfiConverterData.lift(encryptedSecret)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionData.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterTypeAttestor.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface Attestor: handle missing in uniffiFree")
+            }
+        }
+    )]
+}
+
+private func uniffiCallbackInitAttestor() {
+    uniffi_wooosh_core_fn_init_callback_vtable_attestor(UniffiCallbackInterfaceAttestor.vtable)
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttestor: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<Attestor>()
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Attestor
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Attestor {
+        return AttestorImpl(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Attestor) -> UnsafeMutableRawPointer {
+        guard let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: handleMap.insert(obj: value))) else {
+            fatalError("Cast to UnsafeMutableRawPointer failed")
+        }
+        return ptr
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Attestor {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Attestor, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttestor_lift(_ pointer: UnsafeMutableRawPointer) throws -> Attestor {
+    return try FfiConverterTypeAttestor.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttestor_lower(_ value: Attestor) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeAttestor.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Called on the core's dedicated event thread; calling back into the core
+ * re-entrantly from here forfeits strict event ordering.
  */
 public protocol CoreEventListener: AnyObject, Sendable {
     
@@ -532,9 +875,8 @@ public protocol CoreEventListener: AnyObject, Sendable {
     
 }
 /**
- * Event sink implemented by the host. Called on the core's dedicated event
- * thread; implementations may block briefly, but calling back into the core
- * re-entrantly from the callback forfeits strict event ordering.
+ * Called on the core's dedicated event thread; calling back into the core
+ * re-entrantly from here forfeits strict event ordering.
  */
 open class CoreEventListenerImpl: CoreEventListener, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -705,13 +1047,13 @@ public func FfiConverterTypeCoreEventListener_lower(_ value: CoreEventListener) 
 
 
 /**
- * File-based KeyStore used by the CLI (and available to any host).
+ * File-based KeyStore used by the CLI.
  */
 public protocol FileKeyStoreProtocol: AnyObject, Sendable {
     
 }
 /**
- * File-based KeyStore used by the CLI (and available to any host).
+ * File-based KeyStore used by the CLI.
  */
 open class FileKeyStore: FileKeyStoreProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -833,30 +1175,23 @@ public func FfiConverterTypeFileKeyStore_lower(_ value: FileKeyStore) -> UnsafeM
 
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- *
- * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it, and may block — which is
- * why `start` must never be called on a UI thread.
+ * Both methods run synchronously inside `WoooshCore.start` and may block,
+ * which is why `start` must never be called on a UI thread.
  */
 public protocol KeyStore: AnyObject, Sendable {
     
     /**
-     * Return the stored 32-byte Ed25519 secret key, or None on first launch.
+     * 32-byte Ed25519 secret key, or None on first launch.
      */
     func loadIdentity()  -> Data?
     
-    /**
-     * Persist the (newly generated) 32-byte secret key.
-     */
     func storeIdentity(secret: Data) 
     
 }
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- *
- * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it, and may block — which is
- * why `start` must never be called on a UI thread.
+ * Both methods run synchronously inside `WoooshCore.start` and may block,
+ * which is why `start` must never be called on a UI thread.
  */
 open class KeyStoreImpl: KeyStore, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -911,7 +1246,7 @@ open class KeyStoreImpl: KeyStore, @unchecked Sendable {
 
     
     /**
-     * Return the stored 32-byte Ed25519 secret key, or None on first launch.
+     * 32-byte Ed25519 secret key, or None on first launch.
      */
 open func loadIdentity() -> Data?  {
     return try!  FfiConverterOptionData.lift(try! rustCall() {
@@ -920,9 +1255,6 @@ open func loadIdentity() -> Data?  {
 })
 }
     
-    /**
-     * Persist the (newly generated) 32-byte secret key.
-     */
 open func storeIdentity(secret: Data)  {try! rustCall() {
     uniffi_wooosh_core_fn_method_keystore_store_identity(self.uniffiClonePointer(),
         FfiConverterData.lower(secret),$0
@@ -1061,55 +1393,40 @@ public func FfiConverterTypeKeyStore_lower(_ value: KeyStore) -> UnsafeMutableRa
 
 
 
-/**
- * The engine handle the platform apps bind against.
- */
 public protocol WoooshCoreProtocol: AnyObject, Sendable {
     
     /**
-     * Receiver side of the internet path: publish this device on iroh and
-     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
-     * sender redeems it with `redeem_ticket` and then offers files, so the
-     * roles match the LAN path exactly (connector = sender).
+     * Sender side of the internet path (PROTOCOL.md §9.3): join a rendezvous
+     * room and return a `wooosh-net:2?...` ticket for the receiver to redeem.
+     * The ticket is a capability: single-use token, 120 s expiry. Call
+     * `end_internet_ticket` as soon as the user leaves the screen.
      *
-     * The ticket carries this device's identity key, a single-use pairing
-     * token and a 120 s expiry. It is a capability: anyone holding an
-     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
-     * as the user leaves the screen.
-     *
-     * **BLOCKING — never call this on a UI thread.** The first call binds the
-     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
-     * first moment Wooosh contacts any relay at all.
+     * **BLOCKING — never call this on a UI thread.** Admission may call the
+     * `Attestor`, which talks to Apple or Google, and is the first moment
+     * Wooosh contacts the rendezvous at all.
      */
     func beginInternetTicket() throws  -> String
     
     /**
-     * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
-     * to render as a QR code. Single-use token, 120 s expiry.
+     * Receiver side of QR pairing. Single-use token, 120 s expiry.
      */
     func beginPairingQr() throws  -> String
     
     /**
-     * Cancel a whole transfer (file_id = None) or one file.
+     * `file_id = None` cancels the whole transfer.
      */
     func cancel(transferId: String, fileId: UInt32?) throws 
     
     func confirmSas(peerId: String, accepted: Bool) throws 
     
     /**
-     * Connect to a peer address discovered by the native shell. Returns the
-     * peer_id.
+     * Connect to an address the shell discovered; returns the peer_id.
      *
-     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
-     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
-     * hard with `KeyChanged` and no connection is established.
-     *
-     * Passing `None` does **not** opt out of pinning — the core re-applies
-     * the pin from its own trust store whenever it can resolve the identity
-     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
-     * protected even if the shell forgets the key. Passing it explicitly is
-     * still preferred: it also pins the very first reconnect, before the core
-     * has ever seen that address.
+     * `expected_pubkey` (32 raw bytes) pins the TLS handshake: a different
+     * key fails hard with `KeyChanged`. `None` does **not** opt out of
+     * pinning — the core re-applies its own pin whenever it can resolve the
+     * identity behind `addr` (PROTOCOL.md §4.5) — but passing it also pins
+     * the very first reconnect, before that address has been seen.
      *
      * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
      * unreachable address.
@@ -1119,73 +1436,63 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
     func deviceId() throws  -> String
     
     /**
-     * Invalidate the outstanding ticket immediately.
+     * Invalidate the outstanding ticket immediately. A transfer already
+     * running on it continues.
      */
     func endInternetTicket() throws 
     
     func fingerprintPhrase() throws  -> String
     
     /**
-     * Actual bound listen address ("ip:port") — the shell advertises this
-     * over its native mDNS discovery.
+     * Bound "ip:port" — the shell advertises this over its own mDNS.
      */
     func listenAddr() throws  -> String
     
     /**
-     * Sender side of QR pairing: parse payload, connect (pinned to the QR
-     * key), redeem the token. Returns the paired peer_id.
-     *
-     * The QR's address hints are dialled concurrently; the first connection
-     * to come up wins, so a stale hint never delays the ones behind it.
-     *
-     * Every outcome — success, rejection, bad or expired QR, nothing
-     * reachable — also arrives as a `PairingResult` event, so a shell can
-     * drive its pairing UI entirely off events and never wedge.
+     * Sender side of QR pairing, pinned to the QR key; returns the peer_id.
+     * Hints are dialled concurrently, first up wins. Every outcome also
+     * arrives as a `PairingResult` event, so a shell can drive off events.
      *
      * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
-     * timeout (total, not per hint) plus a 20 s reply timeout.
+     * (total, not per hint) plus a 20 s reply timeout.
      */
     func pairWithQr(payload: String) throws  -> String
     
     func publicKey() throws  -> Data
     
     /**
-     * Sender side of the internet path: dial the ticket's node over iroh,
-     * redeem its token, and return the peer_id to pass to `send`.
+     * Receiver side of the internet path: join the ticket's room, connect to
+     * the publisher pinned to its key, redeem the token. Returns the peer_id;
+     * the publisher then sends.
      *
-     * **This does not pair** (PROTOCOL.md §9.4). Success arrives as
-     * `TicketRedeemed`, never `PairingResult`, and nothing is written to the
-     * trust store — a shell that waits for `PairingResult` here will wait for
-     * ever. Failures do still arrive as `PairingResult { success: false }`.
+     * **This does not pair** (PROTOCOL.md §9.8). Success arrives as
+     * `TicketRedeemed`, never `PairingResult`; failures do still arrive as
+     * `PairingResult { success: false }`.
      *
-     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
-     * punching plus a 20 s pairing-reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Admission, up to ~5 s
+     * of hole punching, a 20 s handshake budget and a 20 s pairing reply.
      */
     func redeemTicket(ticket: String) throws  -> String
     
     /**
-     * Start SAS pairing with a connected (untrusted) peer. Both sides then
-     * receive `PairingSas { code }` and must call `confirm_sas`.
+     * Both sides then receive `PairingSas { code }` and must `confirm_sas`.
      */
     func requestSasPairing(peerId: String) throws 
     
     /**
-     * Answer an IncomingOffer. Empty list = decline all.
+     * Empty list = decline all.
      */
     func respondToOffer(transferId: String, acceptedFileIds: [UInt32]) throws 
     
     /**
-     * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
-     *
+     * RESUME_Q/RESUME_A (PROTOCOL.md §5); verified bytes are never re-sent.
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
     func resumeTransfer(peerId: String, transferId: String) throws 
     
     /**
-     * Remove a pinned key; next contact with that device is untrusted again.
-     * `pubkey` is the raw 32 bytes from `TrustedPeer.pubkey` or from any
-     * event's `peer_pubkey`. Returns false if the key was not pinned.
+     * Next contact with that device is untrusted again. Returns false if the
+     * key was not pinned.
      */
     func revokePeer(pubkey: Data) throws  -> Bool
     
@@ -1193,67 +1500,48 @@ public protocol WoooshCoreProtocol: AnyObject, Sendable {
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
-     * background and report through events, but registering the transfer
-     * blocks on the core's runtime.
+     * **BLOCKING — not for a UI thread.** Registering the transfer blocks on
+     * the core's runtime.
      */
     func send(peerId: String, files: [String]) throws  -> String
     
     /**
-     * Choose the relays the internet path uses (DESIGN.md §9.1).
-     *
-     * - `None` — n0's free public relays. Shared infrastructure with no
-     * uptime guarantee; fine because Wooosh only ever uses a relay to
-     * introduce two devices, never to carry file data.
-     * - `Some([])` — no relay and no address lookup. Nothing leaves this
-     * device except to addresses carried in a ticket.
-     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
-     * tickets advertise it, so a redeemer uses it with no configuration of
-     * their own.
-     *
-     * Takes effect on the next ticket operation, and invalidates any
-     * outstanding ticket, which advertises a relay that is no longer in use.
-     * Errors on a malformed URL without disturbing the current setting.
-     *
-     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
-     * endpoint, which is an asynchronous shutdown.
+     * Install the platform's attestation (PROTOCOL.md §9.2). Without one,
+     * this device is admitted as Unverified: direct connections only.
      */
-    func setRelayUrls(urls: [String]?) throws 
+    func setAttestor(attestor: Attestor) throws 
+    
+    /**
+     * Choose the rendezvous service (DESIGN.md §9.1): `None` = this build's
+     * default, `Some("")` = internet sharing off, `Some(url)` = a
+     * self-deployed Worker. Invalidates any outstanding ticket. A malformed
+     * URL errors without disturbing the current setting.
+     */
+    func setRendezvousUrl(url: String?) throws 
     
     func setVisibility(mode: Visibility) throws 
     
     /**
-     * Boot the engine: load or create the identity through the KeyStore
-     * adapter, bind the QUIC endpoint, start the event pump.
-     *
-     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
-     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
-     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
-     * (first unlock, biometric prompt). Dispatch to a background executor.
+     * **BLOCKING — never call this on a UI thread.** Runs entirely on the
+     * calling thread and invokes `KeyStore` synchronously; Keychain /
+     * Keystore / DPAPI can take arbitrarily long.
      */
     func start(config: Config, keyStore: KeyStore, listener: CoreEventListener) throws 
     
     /**
-     * Shut down: closes the endpoint and stops the event pump.
-     *
      * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
-     * then joins the event thread, so it can also block behind an in-flight
-     * `CoreEventListener.on_event` call.
+     * then joins the event thread behind any in-flight `on_event`.
      */
     func stop() 
     
     /**
-     * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` rather than a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read after every
-     * `PairingResult { success: true }` and after `revoke_peer`.
+     * The pinned peer set (PROTOCOL.md §4.5), read straight from
+     * `trust.json` rather than a local mirror that drifts. Ordered by
+     * `paired_at`, then device id.
      */
     func trustedPeers() throws  -> [TrustedPeer]
     
 }
-/**
- * The engine handle the platform apps bind against.
- */
 open class WoooshCore: WoooshCoreProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
@@ -1314,19 +1602,14 @@ public convenience init() {
 
     
     /**
-     * Receiver side of the internet path: publish this device on iroh and
-     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
-     * sender redeems it with `redeem_ticket` and then offers files, so the
-     * roles match the LAN path exactly (connector = sender).
+     * Sender side of the internet path (PROTOCOL.md §9.3): join a rendezvous
+     * room and return a `wooosh-net:2?...` ticket for the receiver to redeem.
+     * The ticket is a capability: single-use token, 120 s expiry. Call
+     * `end_internet_ticket` as soon as the user leaves the screen.
      *
-     * The ticket carries this device's identity key, a single-use pairing
-     * token and a 120 s expiry. It is a capability: anyone holding an
-     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
-     * as the user leaves the screen.
-     *
-     * **BLOCKING — never call this on a UI thread.** The first call binds the
-     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
-     * first moment Wooosh contacts any relay at all.
+     * **BLOCKING — never call this on a UI thread.** Admission may call the
+     * `Attestor`, which talks to Apple or Google, and is the first moment
+     * Wooosh contacts the rendezvous at all.
      */
 open func beginInternetTicket()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1336,8 +1619,7 @@ open func beginInternetTicket()throws  -> String  {
 }
     
     /**
-     * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
-     * to render as a QR code. Single-use token, 120 s expiry.
+     * Receiver side of QR pairing. Single-use token, 120 s expiry.
      */
 open func beginPairingQr()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1347,7 +1629,7 @@ open func beginPairingQr()throws  -> String  {
 }
     
     /**
-     * Cancel a whole transfer (file_id = None) or one file.
+     * `file_id = None` cancels the whole transfer.
      */
 open func cancel(transferId: String, fileId: UInt32?)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_cancel(self.uniffiClonePointer(),
@@ -1366,19 +1648,13 @@ open func confirmSas(peerId: String, accepted: Bool)throws   {try rustCallWithEr
 }
     
     /**
-     * Connect to a peer address discovered by the native shell. Returns the
-     * peer_id.
+     * Connect to an address the shell discovered; returns the peer_id.
      *
-     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
-     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
-     * hard with `KeyChanged` and no connection is established.
-     *
-     * Passing `None` does **not** opt out of pinning — the core re-applies
-     * the pin from its own trust store whenever it can resolve the identity
-     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
-     * protected even if the shell forgets the key. Passing it explicitly is
-     * still preferred: it also pins the very first reconnect, before the core
-     * has ever seen that address.
+     * `expected_pubkey` (32 raw bytes) pins the TLS handshake: a different
+     * key fails hard with `KeyChanged`. `None` does **not** opt out of
+     * pinning — the core re-applies its own pin whenever it can resolve the
+     * identity behind `addr` (PROTOCOL.md §4.5) — but passing it also pins
+     * the very first reconnect, before that address has been seen.
      *
      * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
      * unreachable address.
@@ -1400,7 +1676,8 @@ open func deviceId()throws  -> String  {
 }
     
     /**
-     * Invalidate the outstanding ticket immediately.
+     * Invalidate the outstanding ticket immediately. A transfer already
+     * running on it continues.
      */
 open func endInternetTicket()throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_end_internet_ticket(self.uniffiClonePointer(),$0
@@ -1416,8 +1693,7 @@ open func fingerprintPhrase()throws  -> String  {
 }
     
     /**
-     * Actual bound listen address ("ip:port") — the shell advertises this
-     * over its native mDNS discovery.
+     * Bound "ip:port" — the shell advertises this over its own mDNS.
      */
 open func listenAddr()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1427,18 +1703,12 @@ open func listenAddr()throws  -> String  {
 }
     
     /**
-     * Sender side of QR pairing: parse payload, connect (pinned to the QR
-     * key), redeem the token. Returns the paired peer_id.
-     *
-     * The QR's address hints are dialled concurrently; the first connection
-     * to come up wins, so a stale hint never delays the ones behind it.
-     *
-     * Every outcome — success, rejection, bad or expired QR, nothing
-     * reachable — also arrives as a `PairingResult` event, so a shell can
-     * drive its pairing UI entirely off events and never wedge.
+     * Sender side of QR pairing, pinned to the QR key; returns the peer_id.
+     * Hints are dialled concurrently, first up wins. Every outcome also
+     * arrives as a `PairingResult` event, so a shell can drive off events.
      *
      * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
-     * timeout (total, not per hint) plus a 20 s reply timeout.
+     * (total, not per hint) plus a 20 s reply timeout.
      */
 open func pairWithQr(payload: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1456,16 +1726,16 @@ open func publicKey()throws  -> Data  {
 }
     
     /**
-     * Sender side of the internet path: dial the ticket's node over iroh,
-     * redeem its token, and return the peer_id to pass to `send`.
+     * Receiver side of the internet path: join the ticket's room, connect to
+     * the publisher pinned to its key, redeem the token. Returns the peer_id;
+     * the publisher then sends.
      *
-     * **This does not pair** (PROTOCOL.md §9.4). Success arrives as
-     * `TicketRedeemed`, never `PairingResult`, and nothing is written to the
-     * trust store — a shell that waits for `PairingResult` here will wait for
-     * ever. Failures do still arrive as `PairingResult { success: false }`.
+     * **This does not pair** (PROTOCOL.md §9.8). Success arrives as
+     * `TicketRedeemed`, never `PairingResult`; failures do still arrive as
+     * `PairingResult { success: false }`.
      *
-     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
-     * punching plus a 20 s pairing-reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Admission, up to ~5 s
+     * of hole punching, a 20 s handshake budget and a 20 s pairing reply.
      */
 open func redeemTicket(ticket: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1476,8 +1746,7 @@ open func redeemTicket(ticket: String)throws  -> String  {
 }
     
     /**
-     * Start SAS pairing with a connected (untrusted) peer. Both sides then
-     * receive `PairingSas { code }` and must call `confirm_sas`.
+     * Both sides then receive `PairingSas { code }` and must `confirm_sas`.
      */
 open func requestSasPairing(peerId: String)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_request_sas_pairing(self.uniffiClonePointer(),
@@ -1487,7 +1756,7 @@ open func requestSasPairing(peerId: String)throws   {try rustCallWithError(FfiCo
 }
     
     /**
-     * Answer an IncomingOffer. Empty list = decline all.
+     * Empty list = decline all.
      */
 open func respondToOffer(transferId: String, acceptedFileIds: [UInt32])throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_respond_to_offer(self.uniffiClonePointer(),
@@ -1498,9 +1767,7 @@ open func respondToOffer(transferId: String, acceptedFileIds: [UInt32])throws   
 }
     
     /**
-     * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
-     *
+     * RESUME_Q/RESUME_A (PROTOCOL.md §5); verified bytes are never re-sent.
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
 open func resumeTransfer(peerId: String, transferId: String)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1512,9 +1779,8 @@ open func resumeTransfer(peerId: String, transferId: String)throws   {try rustCa
 }
     
     /**
-     * Remove a pinned key; next contact with that device is untrusted again.
-     * `pubkey` is the raw 32 bytes from `TrustedPeer.pubkey` or from any
-     * event's `peer_pubkey`. Returns false if the key was not pinned.
+     * Next contact with that device is untrusted again. Returns false if the
+     * key was not pinned.
      */
 open func revokePeer(pubkey: Data)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1528,9 +1794,8 @@ open func revokePeer(pubkey: Data)throws  -> Bool  {
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
-     * background and report through events, but registering the transfer
-     * blocks on the core's runtime.
+     * **BLOCKING — not for a UI thread.** Registering the transfer blocks on
+     * the core's runtime.
      */
 open func send(peerId: String, files: [String])throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1542,27 +1807,25 @@ open func send(peerId: String, files: [String])throws  -> String  {
 }
     
     /**
-     * Choose the relays the internet path uses (DESIGN.md §9.1).
-     *
-     * - `None` — n0's free public relays. Shared infrastructure with no
-     * uptime guarantee; fine because Wooosh only ever uses a relay to
-     * introduce two devices, never to carry file data.
-     * - `Some([])` — no relay and no address lookup. Nothing leaves this
-     * device except to addresses carried in a ticket.
-     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
-     * tickets advertise it, so a redeemer uses it with no configuration of
-     * their own.
-     *
-     * Takes effect on the next ticket operation, and invalidates any
-     * outstanding ticket, which advertises a relay that is no longer in use.
-     * Errors on a malformed URL without disturbing the current setting.
-     *
-     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
-     * endpoint, which is an asynchronous shutdown.
+     * Install the platform's attestation (PROTOCOL.md §9.2). Without one,
+     * this device is admitted as Unverified: direct connections only.
      */
-open func setRelayUrls(urls: [String]?)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
-    uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(self.uniffiClonePointer(),
-        FfiConverterOptionSequenceString.lower(urls),$0
+open func setAttestor(attestor: Attestor)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_set_attestor(self.uniffiClonePointer(),
+        FfiConverterTypeAttestor_lower(attestor),$0
+    )
+}
+}
+    
+    /**
+     * Choose the rendezvous service (DESIGN.md §9.1): `None` = this build's
+     * default, `Some("")` = internet sharing off, `Some(url)` = a
+     * self-deployed Worker. Invalidates any outstanding ticket. A malformed
+     * URL errors without disturbing the current setting.
+     */
+open func setRendezvousUrl(url: String?)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
+    uniffi_wooosh_core_fn_method_woooshcore_set_rendezvous_url(self.uniffiClonePointer(),
+        FfiConverterOptionString.lower(url),$0
     )
 }
 }
@@ -1575,13 +1838,9 @@ open func setVisibility(mode: Visibility)throws   {try rustCallWithError(FfiConv
 }
     
     /**
-     * Boot the engine: load or create the identity through the KeyStore
-     * adapter, bind the QUIC endpoint, start the event pump.
-     *
-     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
-     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
-     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
-     * (first unlock, biometric prompt). Dispatch to a background executor.
+     * **BLOCKING — never call this on a UI thread.** Runs entirely on the
+     * calling thread and invokes `KeyStore` synchronously; Keychain /
+     * Keystore / DPAPI can take arbitrarily long.
      */
 open func start(config: Config, keyStore: KeyStore, listener: CoreEventListener)throws   {try rustCallWithError(FfiConverterTypeWoooshError_lift) {
     uniffi_wooosh_core_fn_method_woooshcore_start(self.uniffiClonePointer(),
@@ -1593,11 +1852,8 @@ open func start(config: Config, keyStore: KeyStore, listener: CoreEventListener)
 }
     
     /**
-     * Shut down: closes the endpoint and stops the event pump.
-     *
      * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
-     * then joins the event thread, so it can also block behind an in-flight
-     * `CoreEventListener.on_event` call.
+     * then joins the event thread behind any in-flight `on_event`.
      */
 open func stop()  {try! rustCall() {
     uniffi_wooosh_core_fn_method_woooshcore_stop(self.uniffiClonePointer(),$0
@@ -1606,10 +1862,9 @@ open func stop()  {try! rustCall() {
 }
     
     /**
-     * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` rather than a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read after every
-     * `PairingResult { success: true }` and after `revoke_peer`.
+     * The pinned peer set (PROTOCOL.md §4.5), read straight from
+     * `trust.json` rather than a local mirror that drifts. Ordered by
+     * `paired_at`, then device id.
      */
 open func trustedPeers()throws  -> [TrustedPeer]  {
     return try  FfiConverterSequenceTypeTrustedPeer.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -1674,61 +1929,147 @@ public func FfiConverterTypeWoooshCore_lower(_ value: WoooshCore) -> UnsafeMutab
 
 
 
+public struct AppAttestEvidence {
+    /**
+     * `DCAppAttestService` key identifier, raw bytes.
+     */
+    public var keyId: Data
+    /**
+     * Set when asked to attest: the attestation object.
+     */
+    public var attestation: Data?
+    /**
+     * Set when asked to assert: the assertion object.
+     */
+    public var assertion: Data?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `DCAppAttestService` key identifier, raw bytes.
+         */keyId: Data, 
+        /**
+         * Set when asked to attest: the attestation object.
+         */attestation: Data?, 
+        /**
+         * Set when asked to assert: the assertion object.
+         */assertion: Data?) {
+        self.keyId = keyId
+        self.attestation = attestation
+        self.assertion = assertion
+    }
+}
+
+#if compiler(>=6)
+extension AppAttestEvidence: Sendable {}
+#endif
+
+
+extension AppAttestEvidence: Equatable, Hashable {
+    public static func ==(lhs: AppAttestEvidence, rhs: AppAttestEvidence) -> Bool {
+        if lhs.keyId != rhs.keyId {
+            return false
+        }
+        if lhs.attestation != rhs.attestation {
+            return false
+        }
+        if lhs.assertion != rhs.assertion {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(keyId)
+        hasher.combine(attestation)
+        hasher.combine(assertion)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppAttestEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppAttestEvidence {
+        return
+            try AppAttestEvidence(
+                keyId: FfiConverterData.read(from: &buf), 
+                attestation: FfiConverterOptionData.read(from: &buf), 
+                assertion: FfiConverterOptionData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppAttestEvidence, into buf: inout [UInt8]) {
+        FfiConverterData.write(value.keyId, into: &buf)
+        FfiConverterOptionData.write(value.attestation, into: &buf)
+        FfiConverterOptionData.write(value.assertion, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppAttestEvidence_lift(_ buf: RustBuffer) throws -> AppAttestEvidence {
+    return try FfiConverterTypeAppAttestEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppAttestEvidence_lower(_ value: AppAttestEvidence) -> RustBuffer {
+    return FfiConverterTypeAppAttestEvidence.lower(value)
+}
+
+
 public struct Config {
     public var deviceName: String
     public var deviceType: DeviceType
     public var visibility: Visibility
-    /**
-     * Private staging directory for in-flight transfers + resume ledgers.
-     */
     public var stagingDir: String
-    /**
-     * Path of the JSON trust store (pinned peer keys).
-     */
     public var trustStorePath: String
     /**
-     * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
+     * Default "0.0.0.0:0" (ephemeral port).
      */
     public var listenAddr: String?
     /**
-     * Relay servers for the internet path (DESIGN.md §9.1).
-     *
-     * `null` (the default) uses n0's free public relays — nothing to deploy,
-     * and nothing is contacted until the user asks for a ticket. An empty
-     * list disables relays and address lookup entirely, so the internet path
-     * only ever makes direct connections. A non-empty list points at chosen
-     * or self-hosted relays.
+     * Wooosh Rendezvous (DESIGN.md §9.1). `null` uses this build's default
+     * service and contacts nothing until internet sharing is used; `""`
+     * switches internet sharing off; a URL points at a self-deployed Worker.
      */
-    public var relayUrls: [String]?
+    public var rendezvousUrl: String?
+    /**
+     * STUN server for discovering this device's public address. `null` uses
+     * Cloudflare's; `""` disables STUN, leaving local candidates only.
+     */
+    public var stunServer: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(deviceName: String, deviceType: DeviceType, visibility: Visibility, 
+    public init(deviceName: String, deviceType: DeviceType, visibility: Visibility, stagingDir: String, trustStorePath: String, 
         /**
-         * Private staging directory for in-flight transfers + resume ledgers.
-         */stagingDir: String, 
-        /**
-         * Path of the JSON trust store (pinned peer keys).
-         */trustStorePath: String, 
-        /**
-         * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
+         * Default "0.0.0.0:0" (ephemeral port).
          */listenAddr: String?, 
         /**
-         * Relay servers for the internet path (DESIGN.md §9.1).
-         *
-         * `null` (the default) uses n0's free public relays — nothing to deploy,
-         * and nothing is contacted until the user asks for a ticket. An empty
-         * list disables relays and address lookup entirely, so the internet path
-         * only ever makes direct connections. A non-empty list points at chosen
-         * or self-hosted relays.
-         */relayUrls: [String]? = nil) {
+         * Wooosh Rendezvous (DESIGN.md §9.1). `null` uses this build's default
+         * service and contacts nothing until internet sharing is used; `""`
+         * switches internet sharing off; a URL points at a self-deployed Worker.
+         */rendezvousUrl: String? = nil, 
+        /**
+         * STUN server for discovering this device's public address. `null` uses
+         * Cloudflare's; `""` disables STUN, leaving local candidates only.
+         */stunServer: String? = nil) {
         self.deviceName = deviceName
         self.deviceType = deviceType
         self.visibility = visibility
         self.stagingDir = stagingDir
         self.trustStorePath = trustStorePath
         self.listenAddr = listenAddr
-        self.relayUrls = relayUrls
+        self.rendezvousUrl = rendezvousUrl
+        self.stunServer = stunServer
     }
 }
 
@@ -1757,7 +2098,10 @@ extension Config: Equatable, Hashable {
         if lhs.listenAddr != rhs.listenAddr {
             return false
         }
-        if lhs.relayUrls != rhs.relayUrls {
+        if lhs.rendezvousUrl != rhs.rendezvousUrl {
+            return false
+        }
+        if lhs.stunServer != rhs.stunServer {
             return false
         }
         return true
@@ -1770,7 +2114,8 @@ extension Config: Equatable, Hashable {
         hasher.combine(stagingDir)
         hasher.combine(trustStorePath)
         hasher.combine(listenAddr)
-        hasher.combine(relayUrls)
+        hasher.combine(rendezvousUrl)
+        hasher.combine(stunServer)
     }
 }
 
@@ -1789,7 +2134,8 @@ public struct FfiConverterTypeConfig: FfiConverterRustBuffer {
                 stagingDir: FfiConverterString.read(from: &buf), 
                 trustStorePath: FfiConverterString.read(from: &buf), 
                 listenAddr: FfiConverterOptionString.read(from: &buf), 
-                relayUrls: FfiConverterOptionSequenceString.read(from: &buf)
+                rendezvousUrl: FfiConverterOptionString.read(from: &buf), 
+                stunServer: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -1800,7 +2146,8 @@ public struct FfiConverterTypeConfig: FfiConverterRustBuffer {
         FfiConverterString.write(value.stagingDir, into: &buf)
         FfiConverterString.write(value.trustStorePath, into: &buf)
         FfiConverterOptionString.write(value.listenAddr, into: &buf)
-        FfiConverterOptionSequenceString.write(value.relayUrls, into: &buf)
+        FfiConverterOptionString.write(value.rendezvousUrl, into: &buf)
+        FfiConverterOptionString.write(value.stunServer, into: &buf)
     }
 }
 
@@ -1915,14 +2262,13 @@ public func FfiConverterTypeOfferedFile_lower(_ value: OfferedFile) -> RustBuffe
 
 
 /**
- * Parsed QR pairing payload (UI-facing subset; the token stays internal to
- * `pair_with_qr`).
+ * Parsed QR pairing payload; the token stays internal to `pair_with_qr`.
  */
 public struct QrInfo {
     public var pubkey: Data
     public var deviceId: String
     /**
-     * Display-name hint from the QR (unauthenticated, label only).
+     * Unauthenticated hint, label only.
      */
     public var deviceName: String?
     public var hints: [String]
@@ -1933,7 +2279,7 @@ public struct QrInfo {
     // declare one manually.
     public init(pubkey: Data, deviceId: String, 
         /**
-         * Display-name hint from the QR (unauthenticated, label only).
+         * Unauthenticated hint, label only.
          */deviceName: String?, hints: [String], expiresUnix: UInt64, expired: Bool) {
         self.pubkey = pubkey
         self.deviceId = deviceId
@@ -2027,24 +2373,23 @@ public func FfiConverterTypeQrInfo_lower(_ value: QrInfo) -> RustBuffer {
 
 
 /**
- * Parsed internet ticket (PROTOCOL.md §9.2), so a shell can label the
- * "Receive from internet" UI before calling `redeem_ticket`.
+ * Parsed internet ticket (PROTOCOL.md §9.3), for labelling the UI before
+ * calling `redeem_ticket`.
  */
 public struct TicketInfo {
     /**
-     * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
-     * store pins, so `trusted_peers()` matching works without connecting.
+     * Raw 32-byte Ed25519 key, identical to what the trust store pins, so
+     * `trusted_peers()` matching works without connecting.
      */
     public var nodeId: Data
     /**
-     * Rendered DeviceID — the same string events carry as `peer_id`.
+     * Same string events carry as `peer_id`.
      */
     public var deviceId: String
     /**
-     * Display-name hint from the ticket (unauthenticated, label only).
+     * Unauthenticated hint, label only.
      */
     public var deviceName: String?
-    public var relay: String?
     public var expiresUnix: UInt64
     public var expired: Bool
 
@@ -2052,19 +2397,18 @@ public struct TicketInfo {
     // declare one manually.
     public init(
         /**
-         * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
-         * store pins, so `trusted_peers()` matching works without connecting.
+         * Raw 32-byte Ed25519 key, identical to what the trust store pins, so
+         * `trusted_peers()` matching works without connecting.
          */nodeId: Data, 
         /**
-         * Rendered DeviceID — the same string events carry as `peer_id`.
+         * Same string events carry as `peer_id`.
          */deviceId: String, 
         /**
-         * Display-name hint from the ticket (unauthenticated, label only).
-         */deviceName: String?, relay: String?, expiresUnix: UInt64, expired: Bool) {
+         * Unauthenticated hint, label only.
+         */deviceName: String?, expiresUnix: UInt64, expired: Bool) {
         self.nodeId = nodeId
         self.deviceId = deviceId
         self.deviceName = deviceName
-        self.relay = relay
         self.expiresUnix = expiresUnix
         self.expired = expired
     }
@@ -2086,9 +2430,6 @@ extension TicketInfo: Equatable, Hashable {
         if lhs.deviceName != rhs.deviceName {
             return false
         }
-        if lhs.relay != rhs.relay {
-            return false
-        }
         if lhs.expiresUnix != rhs.expiresUnix {
             return false
         }
@@ -2102,7 +2443,6 @@ extension TicketInfo: Equatable, Hashable {
         hasher.combine(nodeId)
         hasher.combine(deviceId)
         hasher.combine(deviceName)
-        hasher.combine(relay)
         hasher.combine(expiresUnix)
         hasher.combine(expired)
     }
@@ -2120,7 +2460,6 @@ public struct FfiConverterTypeTicketInfo: FfiConverterRustBuffer {
                 nodeId: FfiConverterData.read(from: &buf), 
                 deviceId: FfiConverterString.read(from: &buf), 
                 deviceName: FfiConverterOptionString.read(from: &buf), 
-                relay: FfiConverterOptionString.read(from: &buf), 
                 expiresUnix: FfiConverterUInt64.read(from: &buf), 
                 expired: FfiConverterBool.read(from: &buf)
         )
@@ -2130,7 +2469,6 @@ public struct FfiConverterTypeTicketInfo: FfiConverterRustBuffer {
         FfiConverterData.write(value.nodeId, into: &buf)
         FfiConverterString.write(value.deviceId, into: &buf)
         FfiConverterOptionString.write(value.deviceName, into: &buf)
-        FfiConverterOptionString.write(value.relay, into: &buf)
         FfiConverterUInt64.write(value.expiresUnix, into: &buf)
         FfiConverterBool.write(value.expired, into: &buf)
     }
@@ -2152,35 +2490,128 @@ public func FfiConverterTypeTicketInfo_lower(_ value: TicketInfo) -> RustBuffer 
 }
 
 
+public struct TpmEvidence {
+    /**
+     * DER endorsement-key certificate.
+     */
+    public var ekCert: Data
+    /**
+     * DER intermediates up to (not including) the manufacturer root.
+     */
+    public var ekChain: [Data]
+    /**
+     * TPMT_PUBLIC (or TPM2B_PUBLIC) of a restricted signing attestation key.
+     */
+    public var akPublic: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * DER endorsement-key certificate.
+         */ekCert: Data, 
+        /**
+         * DER intermediates up to (not including) the manufacturer root.
+         */ekChain: [Data], 
+        /**
+         * TPMT_PUBLIC (or TPM2B_PUBLIC) of a restricted signing attestation key.
+         */akPublic: Data) {
+        self.ekCert = ekCert
+        self.ekChain = ekChain
+        self.akPublic = akPublic
+    }
+}
+
+#if compiler(>=6)
+extension TpmEvidence: Sendable {}
+#endif
+
+
+extension TpmEvidence: Equatable, Hashable {
+    public static func ==(lhs: TpmEvidence, rhs: TpmEvidence) -> Bool {
+        if lhs.ekCert != rhs.ekCert {
+            return false
+        }
+        if lhs.ekChain != rhs.ekChain {
+            return false
+        }
+        if lhs.akPublic != rhs.akPublic {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ekCert)
+        hasher.combine(ekChain)
+        hasher.combine(akPublic)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTpmEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TpmEvidence {
+        return
+            try TpmEvidence(
+                ekCert: FfiConverterData.read(from: &buf), 
+                ekChain: FfiConverterSequenceData.read(from: &buf), 
+                akPublic: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TpmEvidence, into buf: inout [UInt8]) {
+        FfiConverterData.write(value.ekCert, into: &buf)
+        FfiConverterSequenceData.write(value.ekChain, into: &buf)
+        FfiConverterData.write(value.akPublic, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTpmEvidence_lift(_ buf: RustBuffer) throws -> TpmEvidence {
+    return try FfiConverterTypeTpmEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTpmEvidence_lower(_ value: TpmEvidence) -> RustBuffer {
+    return FfiConverterTypeTpmEvidence.lower(value)
+}
+
+
 /**
  * One pinned peer as stored in the trust store (PROTOCOL.md §4.5).
  */
 public struct TrustedPeer {
     /**
-     * Raw 32-byte Ed25519 identity key — the value `connect_peer`'s
-     * `expected_pubkey` and `revoke_peer` expect.
+     * Raw 32 bytes, as `connect_peer` / `revoke_peer` expect.
      */
     public var pubkey: Data
     /**
-     * Rendered DeviceID (`Q7KM-3PXA-…`). Identical to the `peer_id` carried
-     * by every `CoreEvent`.
+     * Same string every `CoreEvent` carries as `peer_id`.
      */
     public var deviceId: String
     /**
-     * Display name captured at pairing time.
+     * Captured at pairing time.
      */
     public var deviceName: String
     /**
-     * Device type from the peer's HELLO at pairing time, when it was known.
+     * From the peer's HELLO at pairing time, when it was known.
      */
     public var deviceType: DeviceType?
     /**
-     * 6-word fingerprint phrase for this key (same derivation as
-     * `fingerprint_phrase_for`).
+     * Same derivation as `fingerprint_phrase_for`.
      */
     public var fingerprint: String
     /**
-     * Unix seconds when the pin was first created.
+     * Unix seconds.
      */
     public var pairedAt: UInt64
     /**
@@ -2192,25 +2623,22 @@ public struct TrustedPeer {
     // declare one manually.
     public init(
         /**
-         * Raw 32-byte Ed25519 identity key — the value `connect_peer`'s
-         * `expected_pubkey` and `revoke_peer` expect.
+         * Raw 32 bytes, as `connect_peer` / `revoke_peer` expect.
          */pubkey: Data, 
         /**
-         * Rendered DeviceID (`Q7KM-3PXA-…`). Identical to the `peer_id` carried
-         * by every `CoreEvent`.
+         * Same string every `CoreEvent` carries as `peer_id`.
          */deviceId: String, 
         /**
-         * Display name captured at pairing time.
+         * Captured at pairing time.
          */deviceName: String, 
         /**
-         * Device type from the peer's HELLO at pairing time, when it was known.
+         * From the peer's HELLO at pairing time, when it was known.
          */deviceType: DeviceType?, 
         /**
-         * 6-word fingerprint phrase for this key (same derivation as
-         * `fingerprint_phrase_for`).
+         * Same derivation as `fingerprint_phrase_for`.
          */fingerprint: String, 
         /**
-         * Unix seconds when the pin was first created.
+         * Unix seconds.
          */pairedAt: UInt64, 
         /**
          * Unix seconds of the last authenticated contact.
@@ -2315,6 +2743,96 @@ public func FfiConverterTypeTrustedPeer_lower(_ value: TrustedPeer) -> RustBuffe
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Which platform proof an `Attestor` produces (PROTOCOL.md §9.2).
+ */
+
+public enum AttestationKind {
+    
+    case appAttest
+    case playIntegrity
+    case tpm
+    /**
+     * Admitted as Unverified: direct connections only, never relayed.
+     */
+    case none
+}
+
+
+#if compiler(>=6)
+extension AttestationKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttestationKind: FfiConverterRustBuffer {
+    typealias SwiftType = AttestationKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttestationKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .appAttest
+        
+        case 2: return .playIntegrity
+        
+        case 3: return .tpm
+        
+        case 4: return .none
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AttestationKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .appAttest:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .playIntegrity:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .tpm:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .none:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttestationKind_lift(_ buf: RustBuffer) throws -> AttestationKind {
+    return try FfiConverterTypeAttestationKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttestationKind_lower(_ value: AttestationKind) -> RustBuffer {
+    return FfiConverterTypeAttestationKind.lower(value)
+}
+
+
+extension AttestationKind: Equatable, Hashable {}
+
+
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * The single source of UI truth (DESIGN.md §4). Discovery events are absent
  * by design: the native shells own mDNS discovery.
  */
@@ -2322,10 +2840,8 @@ public func FfiConverterTypeTrustedPeer_lower(_ value: TrustedPeer) -> RustBuffe
 public enum CoreEvent {
     
     /**
-     * A control channel is up. `peer_pubkey` is the peer's raw 32-byte
-     * Ed25519 key, taken from the certificate it proved possession of in the
-     * TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
-     * `device_type` is the peer's HELLO `dt` (None if unrecognized).
+     * `peer_pubkey` is the raw 32-byte key the peer proved possession of in
+     * the TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
      */
     case peerConnected(peerId: String, peerPubkey: Data, deviceName: String, deviceType: DeviceType?, fingerprint: String, trusted: Bool
     )
@@ -2334,25 +2850,22 @@ public enum CoreEvent {
     case pairingSas(peerId: String, code: String
     )
     /**
-     * Pairing concluded (QR or SAS; success, failure or timeout). `message`
-     * is the peer's device name on success, the reason on failure.
-     * `peer_pubkey` is the key that was (or would have been) pinned.
      * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
-     *
-     * **Not a pairing.** Nothing is written to the trust store and the
-     * authorisation dies with the connection. This is the signal the sending
-     * shell waits on before handing over the files it staged when it showed
-     * the code.
+     * **Not a pairing:** nothing is written to the trust store and the
+     * authorisation dies with the connection.
      */
     case ticketRedeemed(peerId: String, peerPubkey: Data, deviceName: String
     )
+    /**
+     * `message` is the peer's device name on success, the reason on failure;
+     * `peer_pubkey` is the key that was (or would have been) pinned.
+     */
     case pairingResult(peerId: String, peerPubkey: Data, fingerprint: String, success: Bool, message: String?
     )
     case incomingOffer(transferId: String, peerId: String, peerPubkey: Data, fromName: String, deviceType: DeviceType?, trusted: Bool, fingerprint: String, files: [OfferedFile], totalBytes: UInt64
     )
     /**
-     * Bytes can now flow (outgoing: DECISION accepted; incoming: offer
-     * accepted). Carries the resolved manifest for progress UI.
+     * Bytes can now flow; carries the resolved manifest for progress UI.
      */
     case transferStarted(transferId: String, peerId: String, direction: TransferDirection, files: [OfferedFile], totalBytes: UInt64
     )
@@ -2361,10 +2874,8 @@ public enum CoreEvent {
     case fileReady(transferId: String, fileId: UInt32, stagedPath: String, kind: FileKind
     )
     /**
-     * `duration_ms` covers *this attempt only* — `resume_transfer` restarts
-     * the clock — measured from when bytes could start flowing (sender:
-     * DECISION received; receiver: offer accepted) to the last DONE.
-     * `bytes_transferred / duration_ms` is the attempt's average rate.
+     * `duration_ms` covers *this attempt only*: `resume_transfer` restarts
+     * the clock.
      */
     case transferDone(transferId: String, okFiles: UInt32, failedFiles: UInt32, bytesTransferred: UInt64, durationMs: UInt64
     )
@@ -2372,9 +2883,8 @@ public enum CoreEvent {
     )
     /**
      * A pinned peer presented a different key (PROTOCOL.md §4.5). Surface it
-     * prominently; never silently re-pin. `peer_id` is the DeviceID of the
-     * *pinned* identity we expected; `presented_pubkey` is the key actually
-     * offered, when the handshake got far enough to observe it.
+     * prominently; never silently re-pin. `peer_id` is the *pinned* identity
+     * we expected, `presented_pubkey` the key actually offered, if observed.
      */
     case keyChanged(peerId: String, expectedPubkey: Data, presentedPubkey: Data?
     )
@@ -2874,9 +3384,6 @@ extension Visibility: Equatable, Hashable {}
 
 
 
-/**
- * Public error type crossing the FFI boundary.
- */
 public enum WoooshError: Swift.Error {
 
     
@@ -2898,14 +3405,10 @@ public enum WoooshError: Swift.Error {
     case QrKeyMismatch(message: String)
     
     /**
-     * Peer is in PairedOnly visibility and we are not paired (§4.1). Shells
-     * should offer to pair rather than report a generic failure.
+     * §4.1. Shells should offer to pair rather than report a generic failure.
      */
     case PairingRequired(message: String)
     
-    /**
-     * No common protocol version (§4.1/§8).
-     */
     case VersionMismatch(message: String)
     
     case Pairing(message: String)
@@ -2921,13 +3424,31 @@ public enum WoooshError: Swift.Error {
     case InvalidArgument(message: String)
     
     /**
-     * Hole punching never produced a direct path, so the route to the peer
-     * runs through a relay, and at least one file is over the relayed size
-     * limit (DESIGN.md §9.1). Shells should name the limit rather than report
-     * a generic transfer failure: the same files would send fine on a direct
-     * connection, so this is about the route, not the files.
+     * DESIGN.md §9.1.2. About the route, not the files: shells should name
+     * the relayed size limit rather than report a generic transfer failure.
      */
     case RelayFileTooLarge(message: String)
+    
+    /**
+     * No direct path, and this device is not verified for relaying (PROTOCOL.md §9.6).
+     */
+    case RelayUnavailable(message: String)
+    
+    /**
+     * This device's daily rendezvous allowance is used up (PROTOCOL.md §9.2).
+     */
+    case RendezvousQuota(message: String)
+    
+    /**
+     * Down, unreachable, off, or over Cloudflare's daily limit.
+     */
+    case RendezvousUnavailable(message: String)
+    
+    /**
+     * Internal: admission material was refused and has been cleared; never
+     * returned across the FFI.
+     */
+    case RendezvousRetry(message: String)
     
 }
 
@@ -3013,6 +3534,22 @@ public struct FfiConverterTypeWoooshError: FfiConverterRustBuffer {
             message: try FfiConverterString.read(from: &buf)
         )
         
+        case 18: return .RelayUnavailable(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 19: return .RendezvousQuota(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 20: return .RendezvousUnavailable(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 21: return .RendezvousRetry(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -3058,6 +3595,14 @@ public struct FfiConverterTypeWoooshError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(16))
         case .RelayFileTooLarge(_ /* message is ignored*/):
             writeInt(&buf, Int32(17))
+        case .RelayUnavailable(_ /* message is ignored*/):
+            writeInt(&buf, Int32(18))
+        case .RendezvousQuota(_ /* message is ignored*/):
+            writeInt(&buf, Int32(19))
+        case .RendezvousUnavailable(_ /* message is ignored*/):
+            writeInt(&buf, Int32(20))
+        case .RendezvousRetry(_ /* message is ignored*/):
+            writeInt(&buf, Int32(21))
 
         
         }
@@ -3169,6 +3714,54 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAppAttestEvidence: FfiConverterRustBuffer {
+    typealias SwiftType = AppAttestEvidence?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppAttestEvidence.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppAttestEvidence.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTpmEvidence: FfiConverterRustBuffer {
+    typealias SwiftType = TpmEvidence?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTpmEvidence.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTpmEvidence.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeDeviceType: FfiConverterRustBuffer {
     typealias SwiftType = DeviceType?
 
@@ -3185,30 +3778,6 @@ fileprivate struct FfiConverterOptionTypeDeviceType: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeDeviceType.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
-    typealias SwiftType = [String]?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterSequenceString.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterSequenceString.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -3267,6 +3836,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceData: FfiConverterRustBuffer {
+    typealias SwiftType = [Data]
+
+    public static func write(_ value: [Data], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterData.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Data] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Data]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterData.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeOfferedFile: FfiConverterRustBuffer {
     typealias SwiftType = [OfferedFile]
 
@@ -3314,11 +3908,8 @@ fileprivate struct FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer {
     }
 }
 /**
- * Rendered DeviceID (`Q7KM-3PXA-…`) for a peer public key — the same string
- * events carry as `peer_id`, so a shell can key its UI off a `trusted_peers()`
- * pubkey without connecting first.
- *
- * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
+ * Rendered DeviceID (`Q7KM-3PXA-…`) for a peer key — the same string events
+ * carry as `peer_id`. Errors unless `pubkey` is 32 bytes.
  */
 public func deviceIdFor(pubkey: Data)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -3328,11 +3919,8 @@ public func deviceIdFor(pubkey: Data)throws  -> String  {
 })
 }
 /**
- * 6-word verification phrase for a peer public key (PROTOCOL.md §2), shown on
- * consent and trust-list screens. Pass any event's `peer_pubkey` or a
- * `TrustedPeer.pubkey`; shells must never reimplement the wordlist.
- *
- * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
+ * 6-word verification phrase for a peer key (PROTOCOL.md §2); shells must
+ * never reimplement the wordlist. Errors unless `pubkey` is 32 bytes.
  */
 public func fingerprintPhraseFor(pubkey: Data)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -3342,7 +3930,7 @@ public func fingerprintPhraseFor(pubkey: Data)throws  -> String  {
 })
 }
 /**
- * Parse a `wooosh-net:1?...` ticket without redeeming it.
+ * Parse a `wooosh-net:2?...` ticket without redeeming it.
  */
 public func parseInternetTicket(ticket: String)throws  -> TicketInfo  {
     return try  FfiConverterTypeTicketInfo_lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -3352,8 +3940,7 @@ public func parseInternetTicket(ticket: String)throws  -> TicketInfo  {
 })
 }
 /**
- * Parse a scanned `wooosh-pair:1?...` payload so the shell can label the
- * pairing UI before calling `pair_with_qr`.
+ * Parse a `wooosh-pair:1?...` payload without pairing.
  */
 public func parsePairingQr(payload: String)throws  -> QrInfo  {
     return try  FfiConverterTypeQrInfo_lift(try rustCallWithError(FfiConverterTypeWoooshError_lift) {
@@ -3363,12 +3950,8 @@ public func parsePairingQr(payload: String)throws  -> QrInfo  {
 })
 }
 /**
- * Largest single file Wooosh will move over a **relayed** internet connection
- * (DESIGN.md §9.1). No limit applies on a direct path, which includes every
- * LAN transfer and every internet transfer that hole punched.
- *
- * Exported so a shell can name the limit in its own copy instead of
- * hardcoding a number that would drift the moment the core changed it.
+ * Largest single file over a **relayed** internet connection (PROTOCOL.md
+ * §9.6). No limit on a direct path. Exported so shells never hardcode it.
  */
 public func relayMaxFileBytes() -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
@@ -3392,94 +3975,112 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_device_id_for() != 36541) {
+    if (uniffi_wooosh_core_checksum_func_device_id_for() != 9857) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 27344) {
+    if (uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 36636) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 39476) {
+    if (uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 18890) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786) {
+    if (uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 54089) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 43743) {
+    if (uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 39646) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_attestor_kind() != 17076) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_attestor_app_attest() != 21600) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_attestor_play_integrity() != 25772) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_attestor_tpm_evidence() != 32272) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_attestor_tpm_activate() != 14673) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_coreeventlistener_on_event() != 57891) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_keystore_load_identity() != 6998) {
+    if (uniffi_wooosh_core_checksum_method_keystore_load_identity() != 4167) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_keystore_store_identity() != 36430) {
+    if (uniffi_wooosh_core_checksum_method_keystore_store_identity() != 29067) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 1781) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 42024) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 55726) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 28816) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_cancel() != 2332) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_cancel() != 19490) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_confirm_sas() != 38886) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 62813) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 33919) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_device_id() != 33009) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 36115) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 58717) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase() != 42848) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_listen_addr() != 27414) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_listen_addr() != 37001) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 55764) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 40358) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_public_key() != 35774) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 30245) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 56753) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 29085) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 62990) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_respond_to_offer() != 14534) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_respond_to_offer() != 5917) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 7341) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 45651) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer() != 48542) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer() != 127) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_send() != 57342) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_send() != 61710) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls() != 8523) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_set_attestor() != 23144) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wooosh_core_checksum_method_woooshcore_set_rendezvous_url() != 4376) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_method_woooshcore_set_visibility() != 28146) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_start() != 17455) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_start() != 19820) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_stop() != 22717) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_stop() != 33834) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 22956) {
+    if (uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 2922) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wooosh_core_checksum_constructor_filekeystore_new() != 46253) {
@@ -3489,6 +4090,7 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiCallbackInitAttestor()
     uniffiCallbackInitCoreEventListener()
     uniffiCallbackInitKeyStore()
     return InitializationResult.ok

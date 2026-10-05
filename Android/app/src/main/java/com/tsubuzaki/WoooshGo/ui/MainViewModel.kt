@@ -10,7 +10,7 @@ import com.tsubuzaki.WoooshGo.core.TransferId
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 import com.tsubuzaki.WoooshGo.pairing.PairingManager
 import com.tsubuzaki.WoooshGo.peers.Peer
-import com.tsubuzaki.WoooshGo.settings.RelayMode
+import com.tsubuzaki.WoooshGo.settings.InternetMode
 import com.tsubuzaki.WoooshGo.settings.Settings
 import com.tsubuzaki.WoooshGo.settings.Visibility
 import com.tsubuzaki.WoooshGo.share.OutboxRepository
@@ -98,16 +98,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { app.settingsRepository.setVisibility(visibility) }
     }
 
-    fun setRelayMode(mode: RelayMode) {
-        viewModelScope.launch { app.settingsRepository.setRelayMode(mode) }
+    fun setInternetMode(mode: InternetMode) {
+        viewModelScope.launch { app.settingsRepository.setInternetMode(mode) }
     }
 
-    fun setRelayUrl(url: String) {
-        viewModelScope.launch { app.settingsRepository.setRelayUrl(url) }
+    fun setInternetServerUrl(url: String) {
+        viewModelScope.launch { app.settingsRepository.setInternetServerUrl(url) }
     }
 
-    /** Set when the core refused the relay address; it keeps its last working config. */
-    val relayError: StateFlow<String?> = app.relayError
+    /** Set when the core refused the server address; it keeps its last working config. */
+    val internetError: StateFlow<String?> = app.internetError
 
     fun sendToPeer(peer: Peer, uris: List<Uri>) {
         app.transferManager.sendToPeer(peer, uris)
@@ -145,7 +145,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Via the manager, not the core: it owns the in-progress state and the timeout. */
     fun pairWithQr(payload: String) = app.pairingManager.pairWithScannedCode(payload)
 
-    /** Throws rather than swallowing: a slow relay must not look like a broken one. */
+    /** Throws rather than swallowing: a slow server must not look like a broken one. */
     suspend fun beginInternetTicket(): String {
         // A redemption of the *previous* code must not fire this one's send.
         app.transferManager.clearTicketRedeemedPeer()

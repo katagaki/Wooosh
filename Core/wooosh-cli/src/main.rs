@@ -20,13 +20,13 @@ struct Cli {
     /// Device name announced in HELLO.
     #[arg(long, global = true, default_value = "wooosh-cli")]
     name: String,
-    /// Internet-path relay URL; repeat for several. Default: n0's public relays.
+    /// Wooosh Rendezvous URL for the internet path, e.g. a local `cf dev`
+    /// (`http://127.0.0.1:8787`). Default: the URL this build was compiled with.
     #[arg(long, global = true)]
-    relay: Vec<String>,
-    /// Internet path without any relay or address lookup: direct connections
-    /// only, from the addresses carried in the ticket.
+    rendezvous: Option<String>,
+    /// Skip STUN: offer local addresses only.
     #[arg(long, global = true)]
-    no_relay: bool,
+    no_stun: bool,
     #[command(subcommand)]
     cmd: Cmd,
 }
@@ -68,8 +68,8 @@ enum Cmd {
         #[arg(long)]
         qr: Option<String>,
     },
-    /// Internet path (PROTOCOL.md §9), receiver side: publish an iroh ticket
-    /// and wait. Print the ticket, hand it to the sender over any channel.
+    /// Internet path (PROTOCOL.md §9), receiver side: publish a rendezvous
+    /// ticket and wait. Print the ticket, hand it to the sender over any channel.
     InternetTicket {
         /// Staging directory for in-flight transfers.
         #[arg(long)]
@@ -99,6 +99,11 @@ enum Cmd {
     },
 }
 
+struct NetCfg {
+    rendezvous: Option<String>,
+    stun: Option<String>,
+}
+
 struct Listener {
     tx: mpsc::Sender<CoreEvent>,
 }
@@ -115,7 +120,7 @@ fn start_core(
     staging: PathBuf,
     listen: Option<String>,
     visibility: Visibility,
-    relay_urls: Option<Vec<String>>,
+    net: &NetCfg,
 ) -> Result<(Arc<WoooshCore>, mpsc::Receiver<CoreEvent>)> {
     std::fs::create_dir_all(state_dir)?;
     let core = WoooshCore::new();
@@ -131,7 +136,8 @@ fn start_core(
             staging_dir: staging.to_string_lossy().to_string(),
             trust_store_path: state_dir.join("trust.json").to_string_lossy().to_string(),
             listen_addr: listen,
-            relay_urls,
+            rendezvous_url: net.rendezvous.clone(),
+            stun_server: net.stun.clone(),
         },
         key_store,
         Arc::new(Listener { tx }),
@@ -145,19 +151,15 @@ fn main() -> Result<()> {
     let state_dir = cli.state_dir.clone().unwrap_or_else(|| {
         dirs_fallback().join(".wooosh-cli")
     });
-    // None = n0's public relays; Some(vec![]) = no relays at all.
-    let relays: Option<Vec<String>> = if cli.no_relay {
-        Some(Vec::new())
-    } else if cli.relay.is_empty() {
-        None
-    } else {
-        Some(cli.relay.clone())
+    let relays = NetCfg {
+        rendezvous: cli.rendezvous.clone(),
+        stun: cli.no_stun.then(String::new),
     };
 
     match cli.cmd {
         Cmd::Id => {
             let staging = std::env::temp_dir().join("wooosh-cli-id-staging");
-            let (core, _rx) = start_core(&state_dir, &cli.name, staging, None, Visibility::Off, relays.clone())?;
+            let (core, _rx) = start_core(&state_dir, &cli.name, staging, None, Visibility::Off, &relays)?;
             println!("device_id:   {}", core.device_id()?);
             println!("fingerprint: {}", core.fingerprint_phrase()?);
             println!("pubkey_hex:  {}", hex(&core.public_key()?));
@@ -165,7 +167,7 @@ fn main() -> Result<()> {
         }
         Cmd::Trust { revoke } => {
             let staging = std::env::temp_dir().join("wooosh-cli-trust-staging");
-            let (core, _rx) = start_core(&state_dir, &cli.name, staging, None, Visibility::Off, relays.clone())?;
+            let (core, _rx) = start_core(&state_dir, &cli.name, staging, None, Visibility::Off, &relays)?;
             if let Some(h) = revoke {
                 let removed = core.revoke_peer(unhex(&h)?)?;
                 println!("revoked: {removed}");
@@ -187,10 +189,12 @@ fn main() -> Result<()> {
         Cmd::InternetTicket { staging, out, once } => {
             std::fs::create_dir_all(&out)?;
             let (core, rx) =
-                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, relays.clone())?;
+                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, &relays)?;
             println!("device_id:   {}", core.device_id()?);
             println!("pubkey_hex:  {}", hex(&core.public_key()?));
-            println!("publishing on iroh (this contacts a public relay)...");
+            // No attestor: the CLI is admitted as Unverified, so a production
+            // rendezvous gives it direct paths only (PROTOCOL.md §9.2).
+            println!("joining a rendezvous room...");
             let ticket = core.begin_internet_ticket()?;
             println!("ticket:      {ticket}");
             println!("redeem with: wooosh-cli internet-redeem '{ticket}' <files...>");
@@ -209,13 +213,12 @@ fn main() -> Result<()> {
             let staging =
                 staging.unwrap_or_else(|| std::env::temp_dir().join("wooosh-cli-send-staging"));
             let (core, rx) =
-                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, relays.clone())?;
+                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, &relays)?;
             let info = wooosh_core::parse_internet_ticket(ticket.clone())?;
             println!(
-                "ticket for {} ({}), relay={:?}, expired={}",
+                "ticket for {} ({}), expired={}",
                 info.device_id,
                 info.device_name.as_deref().unwrap_or("?"),
-                info.relay,
                 info.expired
             );
             let peer_id = core.redeem_ticket(ticket)?;
@@ -235,7 +238,7 @@ fn main() -> Result<()> {
                 v => bail!("bad visibility {v}"),
             };
             std::fs::create_dir_all(&out)?;
-            let (core, rx) = start_core(&state_dir, &cli.name, staging, Some(listen), vis, relays.clone())?;
+            let (core, rx) = start_core(&state_dir, &cli.name, staging, Some(listen), vis, &relays)?;
             println!("listening on {}", core.listen_addr()?);
             println!("device_id:   {}", core.device_id()?);
             println!("pubkey_hex:  {}", hex(&core.public_key()?));
@@ -257,7 +260,7 @@ fn main() -> Result<()> {
             let staging = staging
                 .unwrap_or_else(|| std::env::temp_dir().join("wooosh-cli-send-staging"));
             let (core, rx) =
-                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, relays.clone())?;
+                start_core(&state_dir, &cli.name, staging, None, Visibility::Everyone, &relays)?;
 
             let peer_id = if let Some(payload) = qr {
                 let pid = core.pair_with_qr(payload)?;

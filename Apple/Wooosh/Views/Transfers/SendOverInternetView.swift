@@ -66,7 +66,7 @@ struct SendOverInternetView: View {
                         status(symbol: "globe", tint: .secondary,
                                title: L.t("internet_send_title"),
                                body: L.t("internet_send_intro_body"))
-                        Text(L.t("internet_relay_note"))
+                        Text(L.t("internet_service_note"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

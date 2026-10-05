@@ -713,8 +713,8 @@
     <value>코드를 준비하고 있습니다. 몇 초 걸립니다.</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>코드를 받을 때 두 기기가 서로를 찾을 수 있도록 공개 릴레이에 연결합니다. 직접 경로가 있으면 파일은 여전히 두 기기 사이를 바로 오갑니다.</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>코드를 받으면 두 기기가 서로를 찾을 수 있도록 Wooosh 서버에 연결합니다. 서버는 기록을 남기지 않으며, 직접 연결할 수 있으면 파일은 기기 간에 직접 전송됩니다.</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

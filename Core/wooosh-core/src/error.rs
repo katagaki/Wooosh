@@ -36,10 +36,23 @@ pub enum WoooshError {
     Protocol(String),
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
-    /// DESIGN.md §9.1. About the route, not the files: shells should name the
-    /// relayed size limit rather than report a generic transfer failure.
+    /// DESIGN.md §9.1.2. About the route, not the files: shells should name
+    /// the relayed size limit rather than report a generic transfer failure.
     #[error("RELAY_FILE_TOO_LARGE: no direct path to the peer and a file exceeds the relayed size limit")]
     RelayFileTooLarge,
+    /// No direct path, and this device is not verified for relaying (PROTOCOL.md §9.6).
+    #[error("RELAY_UNAVAILABLE: the networks cannot connect directly and relaying is not available")]
+    RelayUnavailable,
+    /// This device's daily rendezvous allowance is used up (PROTOCOL.md §9.2).
+    #[error("RENDEZVOUS_QUOTA: daily internet sharing allowance used up")]
+    RendezvousQuota,
+    /// Down, unreachable, off, or over Cloudflare's daily limit.
+    #[error("RENDEZVOUS_UNAVAILABLE: {0}")]
+    RendezvousUnavailable(String),
+    /// Internal: admission material was refused and has been cleared; never
+    /// returned across the FFI.
+    #[error("rendezvous admission refused: {0}")]
+    RendezvousRetry(String),
 }
 
 impl From<std::io::Error> for WoooshError {

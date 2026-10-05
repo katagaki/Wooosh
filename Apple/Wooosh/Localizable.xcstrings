@@ -4995,6 +4995,272 @@
         }
       }
     },
+    "error_internet_quota": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hat das heutige Limit für Übertragungen über das Internet erreicht. Versuche es morgen erneut oder nutze dasselbe Netzwerk wie das andere Gerät."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device has reached today's limit for internet transfers. Try again tomorrow, or use the same network as the other device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo alcanzó el límite de hoy para transferencias por Internet. Inténtalo mañana o usa la misma red que el otro dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil a atteint la limite du jour pour les transferts par Internet. Réessayez demain ou utilisez le même réseau que l'autre appareil."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo dispositivo ha raggiunto il limite di oggi per i trasferimenti via Internet. Riprova domani oppure usa la stessa rete dell'altro dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このデバイスは今日のインターネット転送の上限に達しました。明日もう一度試すか、相手のデバイスと同じネットワークをお使いください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기는 오늘의 인터넷 전송 한도에 도달했습니다. 내일 다시 시도하거나 상대 기기와 같은 네트워크를 사용하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit apparaat heeft de limiet van vandaag voor overdrachten via internet bereikt. Probeer het morgen opnieuw of gebruik hetzelfde netwerk als het andere apparaat."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To urządzenie osiągnęło dzisiejszy limit przesyłania przez internet. Spróbuj jutro lub użyj tej samej sieci co drugie urządzenie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo atingiu o limite de hoje para transferências pela Internet. Tente de novo amanhã ou use a mesma rede que o outro dispositivo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это устройство исчерпало сегодняшний лимит передач через интернет. Попробуйте завтра или подключитесь к той же сети, что и другое устройство."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den här enheten har nått dagens gräns för överföringar via internet. Försök igen i morgon eller använd samma nätverk som den andra enheten."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本设备今天的互联网传输次数已达上限。请明天再试，或与对方设备连接同一网络。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本裝置今天的網際網路傳輸次數已達上限。請明天再試，或與對方裝置連上同一個網路。"
+          }
+        }
+      }
+    },
+    "error_internet_server_invalid": {
+      "comment": "Shown when the core rejected the relay address.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Serveradresse ist ungültig. Wooosh hat die vorherige Einstellung behalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That server address is not valid. Wooosh kept the previous setting."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa dirección de servidor no es válida. Wooosh mantuvo el ajuste anterior."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette adresse de serveur n'est pas valide. Wooosh a conservé le réglage précédent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo indirizzo del server non è valido. Wooosh ha mantenuto l'impostazione precedente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのサーバーのアドレスは無効です。Wooosh は以前の設定を維持しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 주소가 올바르지 않습니다. Wooosh는 이전 설정을 유지했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dat serveradres is ongeldig. Wooosh heeft de vorige instelling behouden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten adres serwera jest nieprawidłowy. Wooosh zachował poprzednie ustawienie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse endereço de servidor não é válido. O Wooosh manteve a configuração anterior."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес сервера недействителен. Wooosh сохранил прежнюю настройку."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den serveradressen är ogiltig. Wooosh behöll den tidigare inställningen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该服务器地址无效，Wooosh 保留了先前的设置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該伺服器位址無效，Wooosh 保留了先前的設定。"
+          }
+        }
+      }
+    },
+    "error_internet_unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh konnte seinen Server nicht erreichen. Prüfe die Verbindung und versuche es später erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh could not reach its server. Check the connection and try again later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh no pudo comunicarse con su servidor. Revisa la conexión e inténtalo más tarde."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh n'a pas pu joindre son serveur. Vérifiez la connexion et réessayez plus tard."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh non è riuscito a raggiungere il proprio server. Controlla la connessione e riprova più tardi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh はサーバーに接続できませんでした。接続を確認して、しばらくしてからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh가 서버에 연결하지 못했습니다. 연결을 확인하고 잠시 후 다시 시도하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kon zijn server niet bereiken. Controleer de verbinding en probeer het later opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nie mógł połączyć się ze swoim serwerem. Sprawdź połączenie i spróbuj ponownie później."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh não conseguiu acessar o servidor. Verifique a conexão e tente de novo mais tarde."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh не смог связаться со своим сервером. Проверьте подключение и попробуйте позже."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh kunde inte nå sin server. Kontrollera anslutningen och försök igen senare."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 无法连接到服务器。请检查网络连接，稍后再试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 無法連線到伺服器。請檢查網路連線，稍後再試。"
+          }
+        }
+      }
+    },
     "error_invalid_qr": {
       "comment": "Core error: the scanned or pasted text is not a Wooosh pairing code.",
       "extractionState": "manual",
@@ -6525,92 +6791,90 @@
         }
       }
     },
-    "error_relay_url_invalid": {
-      "comment": "Shown when the core rejected the relay address.",
-      "extractionState": "manual",
+    "error_relay_unavailable": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Relay-Adresse ist ungültig. Wooosh hat die vorherige Einstellung behalten."
+            "value": "Wooosh konnte die beiden Geräte nicht direkt verbinden, und dieses Gerät kann keine indirekte Verbindung nutzen. Versuche es erneut oder nutze ein Netzwerk, das eine direkte Verbindung erlaubt."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That relay address is not valid. Wooosh kept the previous setting."
+            "value": "Wooosh could not connect the two devices directly, and this device cannot use an indirect connection. Try again, or use a network that allows a direct connection."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esa dirección de relé no es válida. Wooosh mantuvo el ajuste anterior."
+            "value": "Wooosh no pudo conectar los dos dispositivos directamente, y este dispositivo no puede usar una conexión indirecta. Inténtalo de nuevo o usa una red que permita una conexión directa."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette adresse de relais n'est pas valide. Wooosh a conservé le réglage précédent."
+            "value": "Wooosh n'a pas pu connecter les deux appareils directement, et cet appareil ne peut pas utiliser de connexion indirecte. Réessayez ou utilisez un réseau qui autorise une connexion directe."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questo indirizzo del relay non è valido. Wooosh ha mantenuto l'impostazione precedente."
+            "value": "Wooosh non è riuscito a collegare i due dispositivi direttamente, e questo dispositivo non può usare una connessione indiretta. Riprova oppure usa una rete che consenta una connessione diretta."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "そのリレーのアドレスは無効です。Wooosh は以前の設定を維持しました。"
+            "value": "Wooosh は 2 台のデバイスを直接つなげられず、このデバイスでは間接的な接続を使えません。もう一度試すか、直接接続できるネットワークをお使いください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "릴레이 주소가 올바르지 않습니다. Wooosh는 이전 설정을 유지했습니다."
+            "value": "Wooosh가 두 기기를 직접 연결하지 못했고, 이 기기에서는 간접 연결을 사용할 수 없습니다. 다시 시도하거나 직접 연결이 가능한 네트워크를 사용하세요."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dat relay-adres is ongeldig. Wooosh heeft de vorige instelling behouden."
+            "value": "Wooosh kon de twee apparaten niet rechtstreeks verbinden, en dit apparaat kan geen indirecte verbinding gebruiken. Probeer het opnieuw of gebruik een netwerk dat een directe verbinding toelaat."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ten adres przekaźnika jest nieprawidłowy. Wooosh zachował poprzednie ustawienie."
+            "value": "Wooosh nie mógł połączyć obu urządzeń bezpośrednio, a to urządzenie nie może korzystać z połączenia pośredniego. Spróbuj ponownie lub użyj sieci pozwalającej na połączenie bezpośrednie."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esse endereço de relay não é válido. O Wooosh manteve a configuração anterior."
+            "value": "O Wooosh não conseguiu conectar os dois dispositivos diretamente, e este dispositivo não pode usar uma conexão indireta. Tente de novo ou use uma rede que permita conexão direta."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Этот адрес ретранслятора недействителен. Wooosh сохранил прежнюю настройку."
+            "value": "Wooosh не смог соединить устройства напрямую, а это устройство не может использовать непрямое соединение. Попробуйте снова или используйте сеть, допускающую прямое соединение."
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Den reläadressen är ogiltig. Wooosh behöll den tidigare inställningen."
+            "value": "Wooosh kunde inte koppla ihop enheterna direkt, och den här enheten kan inte använda en indirekt anslutning. Försök igen eller använd ett nätverk som tillåter en direkt anslutning."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该中继地址无效，Wooosh 保留了先前的设置。"
+            "value": "Wooosh 无法让两台设备直连，而本设备无法使用间接连接。请重试，或改用允许直连的网络。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "該中繼位址無效，Wooosh 保留了先前的設定。"
+            "value": "Wooosh 無法讓兩台裝置直連，而本裝置無法使用間接連線。請重試，或改用允許直連的網路。"
           }
         }
       }
@@ -8639,96 +8903,6 @@
         }
       }
     },
-    "internet_relay_note": {
-      "comment": "Discloses that requesting a code contacts a relay.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Für einen Code wird ein öffentliches Relay kontaktiert, damit sich beide Geräte finden. Dateien laufen weiterhin direkt zwischen ihnen, sobald eine direkte Route besteht."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Getting a code contacts a public relay so the two devices can find each other. Files still travel straight between them whenever a direct route exists."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obtener un código contacta con un relé público para que ambos dispositivos se encuentren. Los archivos siguen viajando directamente entre ellos siempre que exista una ruta directa."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obtenir un code contacte un relais public pour que les deux appareils se trouvent. Les fichiers circulent toujours directement entre eux dès qu'une route directe existe."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Richiedere un codice contatta un relay pubblico perché i due dispositivi si trovino. I file viaggiano comunque direttamente tra loro quando esiste un percorso diretto."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "コードの取得時は、2 台のデバイスが互いを見つけられるように公開リレーへ接続します。直接の経路が使える場合、ファイルは引き続きデバイス間を直接転送されます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "코드를 받을 때 두 기기가 서로를 찾을 수 있도록 공개 릴레이에 연결합니다. 직접 경로가 있으면 파일은 여전히 두 기기 사이를 바로 오갑니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voor een code wordt een openbare relay benaderd zodat beide apparaten elkaar kunnen vinden. Bestanden gaan nog steeds rechtstreeks tussen de apparaten zodra er een directe route is."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pobranie kodu łączy się z publicznym przekaźnikiem, aby oba urządzenia mogły się odnaleźć. Pliki nadal wędrują bezpośrednio między nimi, gdy istnieje bezpośrednia trasa."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obter um código contata um relay público para que os dois dispositivos se encontrem. Os arquivos continuam indo diretamente entre eles sempre que existe uma rota direta."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "При получении кода выполняется обращение к публичному ретранслятору, чтобы устройства нашли друг друга. Файлы по-прежнему идут напрямую, когда прямой маршрут доступен."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Att hämta en kod kontaktar ett publikt relä så att enheterna kan hitta varandra. Filer går fortfarande direkt mellan dem så snart det finns en direkt väg."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "获取代码时会连接公共中继，让两台设备找到彼此。只要存在直连路径，文件仍会在两台设备之间直接传输。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "取得代碼時會連線公共中繼，讓兩台裝置找到彼此。只要有直連路徑，檔案仍會在兩台裝置之間直接傳輸。"
-          }
-        }
-      }
-    },
     "internet_send_intro_body": {
       "comment": "Explains the send flow before files are chosen.",
       "extractionState": "manual",
@@ -9265,6 +9439,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在等待對方裝置。"
+          }
+        }
+      }
+    },
+    "internet_service_note": {
+      "comment": "Discloses that requesting a code contacts a relay.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Abrufen eines Codes kontaktiert Wooosh seinen Server, damit sich die beiden Geräte finden. Er speichert nichts über sie, und Dateien gehen direkt von Gerät zu Gerät, sobald ein direkter Weg besteht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting a code contacts the Wooosh server so the two devices can find each other. It keeps no record of them, and files travel directly between the devices whenever a direct route exists."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtener un código contacta con el servidor de Wooosh para que los dos dispositivos se encuentren. No guarda ningún registro de ellos, y los archivos viajan directamente entre los dispositivos siempre que haya una ruta directa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenir un code contacte le serveur Wooosh pour que les deux appareils se trouvent. Il ne conserve aucune trace d'eux, et les fichiers passent directement d'un appareil à l'autre dès qu'une route directe existe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ottenere un codice contatta il server di Wooosh perché i due dispositivi si trovino. Non ne conserva alcuna traccia, e i file viaggiano direttamente tra i dispositivi quando esiste un percorso diretto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードを取得すると、2 台のデバイスが互いを見つけられるよう Wooosh のサーバーに接続します。サーバーは記録を残さず、直接の経路があればファイルはデバイス間で直接送られます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드를 받으면 두 기기가 서로를 찾을 수 있도록 Wooosh 서버에 연결합니다. 서버는 기록을 남기지 않으며, 직접 연결할 수 있으면 파일은 기기 간에 직접 전송됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een code ophalen maakt contact met de server van Wooosh, zodat de twee apparaten elkaar vinden. Die bewaart niets over ze, en bestanden gaan rechtstreeks tussen de apparaten zodra er een directe route is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobranie kodu łączy się z serwerem Wooosh, aby oba urządzenia mogły się odnaleźć. Serwer nie przechowuje o nich żadnych danych, a pliki są przesyłane bezpośrednio, gdy tylko istnieje bezpośrednia trasa."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obter um código contata o servidor do Wooosh para que os dois dispositivos se encontrem. Ele não guarda nenhum registro deles, e os arquivos vão direto de um dispositivo para o outro sempre que houver uma rota direta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы устройства нашли друг друга, при получении кода Wooosh обращается к своему серверу. Он ничего о них не хранит, а файлы передаются напрямую, когда есть прямой маршрут."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "När du hämtar en kod kontaktar Wooosh sin server så att enheterna hittar varandra. Den sparar inget om dem, och filer skickas direkt mellan enheterna när det finns en direkt väg."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取代码时会联系 Wooosh 服务器，让两台设备找到彼此。服务器不会保留任何记录，只要存在直接路径，文件就会在设备之间直接传输。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取得代碼時會聯絡 Wooosh 伺服器，讓兩台裝置找到彼此。伺服器不會保留任何紀錄，只要有直接路徑，檔案就會在裝置之間直接傳輸。"
           }
         }
       }
@@ -16195,6 +16459,636 @@
         }
       }
     },
+    "settings_internet_custom": {
+      "comment": "Relay option: a relay the user chose or runs.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigenes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Own"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mien"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分のもの"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 지정"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Własny"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próprio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свой"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Egen"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自有"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自有"
+          }
+        }
+      }
+    },
+    "settings_internet_custom_footer": {
+      "comment": "What the custom relay option does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh nutzt den eingetragenen Server. Das andere Gerät muss denselben Server nutzen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh uses the server you enter. The other device must use the same server."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa el servidor que indiques. El otro dispositivo debe usar el mismo servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh utilise le serveur que vous indiquez. L'autre appareil doit utiliser le même serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh usa il server che inserisci. L'altro dispositivo deve usare lo stesso server."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は入力したサーバーを使います。相手のデバイスも同じサーバーを使う必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh는 입력한 서버를 사용합니다. 상대 기기도 같은 서버를 사용해야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh gebruikt de server die je invult. Het andere apparaat moet dezelfde server gebruiken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh korzysta z podanego serwera. Drugie urządzenie musi używać tego samego serwera."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh usa o servidor que você informar. O outro dispositivo precisa usar o mesmo servidor."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh использует указанный сервер. Другое устройство должно использовать тот же сервер."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh använder servern du anger. Den andra enheten måste använda samma server."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用你填写的服务器。对方设备也必须使用同一台服务器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 使用你填寫的伺服器。對方裝置也必須使用同一台伺服器。"
+          }
+        }
+      }
+    },
+    "settings_internet_off": {
+      "comment": "Relay option: internet transfers switched off.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désactivé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disattivato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "끔"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyłączone"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключено"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Av"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉"
+          }
+        }
+      }
+    },
+    "settings_internet_off_footer": {
+      "comment": "What switching the internet path off does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh schaltet Internetübertragungen aus und kontaktiert nichts. Senden funktioniert nur zwischen Geräten im selben Netzwerk."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh turns internet transfers off and contacts nothing. Sending works only between devices on the same network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh desactiva las transferencias por internet y no contacta con nada. Enviar solo funciona entre dispositivos de la misma red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh désactive les transferts par Internet et ne contacte rien. L'envoi ne fonctionne qu'entre appareils du même réseau."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh disattiva i trasferimenti via internet e non contatta nulla. L'invio funziona solo tra dispositivi sulla stessa rete."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh はインターネット転送をオフにし、どこにも接続しません。送信は同じネットワーク上のデバイス間でのみ行えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh가 인터넷 전송을 끄고 아무 곳에도 연결하지 않습니다. 전송은 같은 네트워크의 기기 사이에서만 가능합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh schakelt internetoverdrachten uit en benadert niets. Versturen werkt alleen tussen apparaten op hetzelfde netwerk."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh wyłącza przesyłanie przez internet i z niczym się nie łączy. Wysyłanie działa tylko między urządzeniami w tej samej sieci."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh desativa as transferências pela internet e não contata nada. O envio funciona só entre dispositivos na mesma rede."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh отключает передачу через интернет и ни к чему не обращается. Отправка работает только между устройствами в одной сети."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh stänger av internetöverföringar och kontaktar ingenting. Att skicka fungerar bara mellan enheter i samma nätverk."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 关闭互联网传输，不连接任何服务。仅可在同一网络的设备之间发送。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 關閉網際網路傳輸，不連線任何服務。僅可在同一網路的裝置之間傳送。"
+          }
+        }
+      }
+    },
+    "settings_internet_server_url": {
+      "comment": "Label of the custom relay address field.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serveradresse"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server Address"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirección del servidor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse du serveur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo del server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーのアドレス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 주소"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serveradres"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adres serwera"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endereço do servidor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Адрес сервера"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serveradress"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器地址"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器位址"
+          }
+        }
+      }
+    },
+    "settings_internet_wooosh": {
+      "comment": "Relay option: shared public relays.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh"
+          }
+        }
+      }
+    },
+    "settings_internet_wooosh_footer": {
+      "comment": "What the public relay option does.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh bringt die beiden Geräte über einen eigenen Server zusammen, der nichts über sie speichert. Dateien gehen direkt von Gerät zu Gerät, sobald ein direkter Weg besteht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh introduces the two devices through its own server, which keeps no record of them. Files travel directly between the devices whenever a direct route exists."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh pone en contacto los dos dispositivos con su propio servidor, que no guarda ningún registro de ellos. Los archivos viajan directamente entre los dispositivos siempre que haya una ruta directa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh met les deux appareils en relation grâce à son propre serveur, qui ne conserve aucune trace d'eux. Les fichiers passent directement d'un appareil à l'autre dès qu'une route directe existe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh mette in contatto i due dispositivi tramite il proprio server, che non ne conserva alcuna traccia. I file viaggiano direttamente tra i dispositivi quando esiste un percorso diretto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh は独自のサーバーで 2 台のデバイスを引き合わせます。サーバーはデバイスの記録を残しません。直接の経路があれば、ファイルはデバイス間で直接送られます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh는 자체 서버로 두 기기를 연결해 줍니다. 서버는 기기에 대한 기록을 남기지 않습니다. 직접 연결할 수 있으면 파일은 기기 간에 직접 전송됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh brengt de twee apparaten samen via een eigen server, die niets over ze bewaart. Bestanden gaan rechtstreeks tussen de apparaten zodra er een directe route is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh łączy oba urządzenia przez własny serwer, który nie przechowuje o nich żadnych danych. Pliki są przesyłane bezpośrednio między urządzeniami, gdy tylko istnieje bezpośrednia trasa."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Wooosh apresenta os dois dispositivos por meio do próprio servidor, que não guarda nenhum registro deles. Os arquivos vão direto de um dispositivo para o outro sempre que houver uma rota direta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh связывает два устройства через собственный сервер, который ничего о них не хранит. Файлы передаются напрямую между устройствами, когда есть прямой маршрут."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh för samman de två enheterna via en egen server som inte sparar något om dem. Filer skickas direkt mellan enheterna när det finns en direkt väg."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 通过自己的服务器为两台设备牵线，服务器不会保留任何记录。只要存在直接路径，文件就会在设备之间直接传输。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wooosh 透過自己的伺服器為兩台裝置牽線，伺服器不會保留任何紀錄。只要有直接路徑，檔案就會在裝置之間直接傳輸。"
+          }
+        }
+      }
+    },
     "settings_paired_devices_empty": {
       "comment": "Shown when nothing is paired yet.",
       "extractionState": "manual",
@@ -16555,636 +17449,6 @@
         }
       }
     },
-    "settings_relay_custom": {
-      "comment": "Relay option: a relay the user chose or runs.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eigenes"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My Own"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Propio"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le mien"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自分のもの"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "직접 지정"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eigen"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Własny"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Próprio"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Свой"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Egen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自有"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自有"
-          }
-        }
-      }
-    },
-    "settings_relay_custom_footer": {
-      "comment": "What the custom relay option does.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh nutzt das eingetragene Iroh-Relay. Codes von diesem Gerät weisen das andere Gerät an, es ebenfalls zu nutzen, sodass nur dieses Gerät die Adresse braucht."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh uses the Iroh relay you enter. Codes from this device tell the other device to use it too, so only this device needs the address."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh usa el relé de Iroh que indiques. Los códigos de este dispositivo le dicen al otro que lo use también, así que solo este dispositivo necesita la dirección."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh utilise le relais Iroh que vous indiquez. Les codes de cet appareil indiquent à l'autre de l'utiliser aussi, donc seul cet appareil a besoin de l'adresse."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh usa il relay Iroh che inserisci. I codici di questo dispositivo dicono all'altro di usarlo a sua volta, quindi solo questo dispositivo ha bisogno dell'indirizzo."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh は入力した Iroh リレーを使います。このデバイスのコードは相手のデバイスにも同じリレーを使うよう伝えるため、アドレスが必要なのはこのデバイスだけです。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh는 입력한 Iroh 릴레이를 사용합니다. 이 기기의 코드가 상대 기기에도 같은 릴레이를 쓰도록 알려주므로, 주소는 이 기기에만 필요합니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh gebruikt de Iroh-relay die je invult. Codes van dit apparaat vertellen het andere apparaat die ook te gebruiken, dus alleen dit apparaat heeft het adres nodig."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh korzysta z podanego przekaźnika Iroh. Kody z tego urządzenia mówią drugiemu, aby też go użyło, więc adres jest potrzebny tylko na tym urządzeniu."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Wooosh usa o relay Iroh que você informar. Os códigos deste dispositivo dizem ao outro para usá-lo também, então só este dispositivo precisa do endereço."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh использует указанный ретранслятор Iroh. Коды с этого устройства сообщают другому использовать его же, поэтому адрес нужен только здесь."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh använder det Iroh-relä du anger. Koder från den här enheten säger åt den andra enheten att också använda det, så bara den här enheten behöver adressen."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 使用你填写的 Iroh 中继。本设备生成的代码会让对方设备也使用它，因此只有本设备需要填写地址。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 使用你填寫的 Iroh 中繼。本裝置產生的代碼會讓對方裝置也使用它，因此只有本裝置需要填寫位址。"
-          }
-        }
-      }
-    },
-    "settings_relay_off": {
-      "comment": "Relay option: internet transfers switched off.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Off"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desactivado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Désactivé"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disattivato"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "オフ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "끔"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Uit"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wyłączone"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desativado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Выключено"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Av"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关闭"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關閉"
-          }
-        }
-      }
-    },
-    "settings_relay_off_footer": {
-      "comment": "What switching the internet path off does.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh schaltet Internetübertragungen aus und kontaktiert nichts. Senden funktioniert nur zwischen Geräten im selben Netzwerk."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh turns internet transfers off and contacts nothing. Sending works only between devices on the same network."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh desactiva las transferencias por internet y no contacta con nada. Enviar solo funciona entre dispositivos de la misma red."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh désactive les transferts par Internet et ne contacte rien. L'envoi ne fonctionne qu'entre appareils du même réseau."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh disattiva i trasferimenti via internet e non contatta nulla. L'invio funziona solo tra dispositivi sulla stessa rete."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh はインターネット転送をオフにし、どこにも接続しません。送信は同じネットワーク上のデバイス間でのみ行えます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh가 인터넷 전송을 끄고 아무 곳에도 연결하지 않습니다. 전송은 같은 네트워크의 기기 사이에서만 가능합니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh schakelt internetoverdrachten uit en benadert niets. Versturen werkt alleen tussen apparaten op hetzelfde netwerk."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh wyłącza przesyłanie przez internet i z niczym się nie łączy. Wysyłanie działa tylko między urządzeniami w tej samej sieci."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Wooosh desativa as transferências pela internet e não contata nada. O envio funciona só entre dispositivos na mesma rede."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh отключает передачу через интернет и ни к чему не обращается. Отправка работает только между устройствами в одной сети."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh stänger av internetöverföringar och kontaktar ingenting. Att skicka fungerar bara mellan enheter i samma nätverk."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 关闭互联网传输，不连接任何服务。仅可在同一网络的设备之间发送。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 關閉網際網路傳輸，不連線任何服務。僅可在同一網路的裝置之間傳送。"
-          }
-        }
-      }
-    },
-    "settings_relay_public": {
-      "comment": "Relay option: shared public relays.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öffentlich"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Public"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Públicos"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Publics"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pubblici"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "公開"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "공개"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Openbaar"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Publiczne"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Públicos"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Публичные"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Publika"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "公共"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "公共"
-          }
-        }
-      }
-    },
-    "settings_relay_public_footer": {
-      "comment": "What the public relay option does.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh nutzt die kostenlosen Relays von Iroh, die mit anderen Apps geteilt werden. Ihre Verfügbarkeit ist nicht garantiert."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh uses the free relays provided by Iroh, shared with other apps. They are not guaranteed to be available."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh usa los relés gratuitos que ofrece Iroh, compartidos con otras apps. No se garantiza su disponibilidad."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh utilise les relais gratuits fournis par Iroh, partagés avec d'autres apps. Leur disponibilité n'est pas garantie."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh usa i relay gratuiti forniti da Iroh, condivisi con altre app. La loro disponibilità non è garantita."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh は Iroh が提供する無料のリレーを使います。他のアプリと共有されており、可用性は保証されていません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh는 Iroh가 제공하는 무료 릴레이를 사용합니다. 다른 앱과 공유되며 가용성은 보장되지 않습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh gebruikt de gratis relays van Iroh, die met andere apps worden gedeeld. Beschikbaarheid is niet gegarandeerd."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh korzysta z darmowych przekaźników udostępnianych przez Iroh, współdzielonych z innymi aplikacjami. Ich dostępność nie jest gwarantowana."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Wooosh usa os relays gratuitos fornecidos pela Iroh, compartilhados com outros apps. A disponibilidade não é garantida."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh использует бесплатные ретрансляторы Iroh, общие с другими приложениями. Их доступность не гарантирована."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh använder de gratis reläer som Iroh tillhandahåller, delade med andra appar. Tillgängligheten är inte garanterad."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 使用 Iroh 提供的免费中继，与其他应用共享，其可用性没有保证。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wooosh 使用 Iroh 提供的免費中繼，與其他 App 共享，其可用性沒有保證。"
-          }
-        }
-      }
-    },
-    "settings_relay_url": {
-      "comment": "Label of the custom relay address field.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Relay-Adresse"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Relay Address"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dirección del relé"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adresse du relais"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Indirizzo del relay"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "リレーのアドレス"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "릴레이 주소"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Relay-adres"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adres przekaźnika"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Endereço do relay"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Адрес ретранслятора"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reläadress"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "中继地址"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "中繼位址"
-          }
-        }
-      }
-    },
     "settings_section_device": {
       "comment": "Settings section header for this device's own name.",
       "extractionState": "manual",
@@ -17271,6 +17535,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "裝置"
+          }
+        }
+      }
+    },
+    "settings_section_internet": {
+      "comment": "Header of the relay-selection section.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetverbindungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet Connections"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexiones por Internet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexions Internet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessioni Internet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターネット接続"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인터넷 연결"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetverbindingen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączenia internetowe"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexões pela Internet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Интернет-подключения"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internetanslutningar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "互联网连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網際網路連線"
           }
         }
       }
@@ -17541,96 +17895,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "問題"
-          }
-        }
-      }
-    },
-    "settings_section_relay": {
-      "comment": "Header of the relay-selection section.",
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Internetverbindungen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Internet Connections"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conexiones por Internet"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connexions Internet"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connessioni Internet"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "インターネット接続"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "인터넷 연결"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Internetverbindingen"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Połączenia internetowe"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conexões pela Internet"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Интернет-подключения"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Internetanslutningar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "互联网连接"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "網際網路連線"
           }
         }
       }

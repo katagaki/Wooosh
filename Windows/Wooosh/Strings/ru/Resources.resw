@@ -773,8 +773,8 @@
     <value>Готовим код. Это займёт несколько секунд.</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>При получении кода выполняется обращение к публичному ретранслятору, чтобы устройства нашли друг друга. Файлы по-прежнему идут напрямую, когда прямой маршрут доступен.</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>Чтобы устройства нашли друг друга, при получении кода Wooosh обращается к своему серверу. Он ничего о них не хранит, а файлы передаются напрямую, когда есть прямой маршрут.</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

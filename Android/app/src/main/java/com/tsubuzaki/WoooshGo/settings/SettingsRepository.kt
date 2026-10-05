@@ -15,38 +15,35 @@ enum class Visibility(val txtValue: String) {
     OFF(""),
 }
 
-/**
- * A relay only introduces two devices (DESIGN.md §9.1); file data always travels directly
- * and a transfer with no direct path is refused rather than relayed.
- */
-enum class RelayMode {
-    /** n0's free public relays. */
-    PUBLIC,
+/** Which rendezvous service introduces two devices over the internet (DESIGN.md §9.1). */
+enum class InternetMode {
+    /** The Wooosh Worker this build was compiled against. */
+    WOOOSH,
 
-    /** Advertised in this device's tickets. */
+    /** A self-deployed copy of the Worker. Both devices must use it. */
     CUSTOM,
 
-    /** Wooosh contacts nothing and neither publishes nor redeems tickets. */
+    /** Wooosh contacts nothing and neither publishes nor redeems codes. */
     OFF,
 }
 
 data class Settings(
     val displayName: String,
     val visibility: Visibility,
-    val relayMode: RelayMode,
+    val internetMode: InternetMode,
     /** Kept across mode changes so switching away and back does not lose what was typed. */
-    val relayUrl: String,
+    val internetServerUrl: String,
 ) {
     val internetEnabled: Boolean
-        get() = relayMode != RelayMode.OFF
+        get() = internetMode != InternetMode.OFF
 
-    /** A blank CUSTOM address falls back to the public set, never to no path at all. */
-    val relayUrls: List<String>?
-        get() = when (relayMode) {
-            RelayMode.PUBLIC -> null
-            // Explicitly empty, not unset, so nothing that got past the UI reaches a relay.
-            RelayMode.OFF -> emptyList()
-            RelayMode.CUSTOM -> relayUrl.trim().takeIf { it.isNotEmpty() }?.let { listOf(it) }
+    /** A blank CUSTOM address falls back to the build's service, never to no path at all. */
+    val rendezvousUrl: String?
+        get() = when (internetMode) {
+            InternetMode.WOOOSH -> null
+            // Explicitly empty, not unset, so nothing that got past the UI reaches a server.
+            InternetMode.OFF -> ""
+            InternetMode.CUSTOM -> internetServerUrl.trim().takeIf { it.isNotEmpty() }
         }
 }
 
@@ -64,10 +61,11 @@ class SettingsRepository(context: Context) {
                 visibility = prefs[KEY_VISIBILITY]
                     ?.let { stored -> Visibility.entries.firstOrNull { it.name == stored } }
                     ?: Visibility.PAIRED_ONLY,
-                relayMode = prefs[KEY_RELAY_MODE]
-                    ?.let { stored -> RelayMode.entries.firstOrNull { it.name == stored } }
-                    ?: RelayMode.PUBLIC,
-                relayUrl = prefs[KEY_RELAY_URL].orEmpty(),
+                internetMode = prefs[KEY_INTERNET_MODE]
+                    ?.let { stored -> InternetMode.entries.firstOrNull { it.name == stored } }
+                    // Only "off" carries over from the iroh-era setting: a relay is no server.
+                    ?: if (prefs[KEY_LEGACY_RELAY_MODE] == "OFF") InternetMode.OFF else InternetMode.WOOOSH,
+                internetServerUrl = prefs[KEY_INTERNET_SERVER_URL].orEmpty(),
             )
         }
         .distinctUntilChanged()
@@ -80,18 +78,19 @@ class SettingsRepository(context: Context) {
         appContext.dataStore.edit { it[KEY_VISIBILITY] = visibility.name }
     }
 
-    suspend fun setRelayMode(mode: RelayMode) {
-        appContext.dataStore.edit { it[KEY_RELAY_MODE] = mode.name }
+    suspend fun setInternetMode(mode: InternetMode) {
+        appContext.dataStore.edit { it[KEY_INTERNET_MODE] = mode.name }
     }
 
-    suspend fun setRelayUrl(url: String) {
-        appContext.dataStore.edit { it[KEY_RELAY_URL] = url }
+    suspend fun setInternetServerUrl(url: String) {
+        appContext.dataStore.edit { it[KEY_INTERNET_SERVER_URL] = url }
     }
 
     private companion object {
         val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
         val KEY_VISIBILITY = stringPreferencesKey("visibility")
-        val KEY_RELAY_MODE = stringPreferencesKey("relay_mode")
-        val KEY_RELAY_URL = stringPreferencesKey("relay_url")
+        val KEY_INTERNET_MODE = stringPreferencesKey("internet_mode")
+        val KEY_INTERNET_SERVER_URL = stringPreferencesKey("internet_server_url")
+        val KEY_LEGACY_RELAY_MODE = stringPreferencesKey("relay_mode")
     }
 }

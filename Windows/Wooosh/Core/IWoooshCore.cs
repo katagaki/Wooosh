@@ -67,7 +67,7 @@ public interface IWoooshCore : IDisposable
     // with it: nothing is paired and no fingerprint is shown, because there is no prior
     // relationship to check one against (DESIGN.md §9).
 
-    /// <summary>Blocking: contacts the relay.</summary>
+    /// <summary>Blocking: joins a rendezvous room, attesting first if needed.</summary>
     Task<string> BeginInternetTicketAsync();
 
     /// <summary>Synchronous, and safe to call when there is no ticket.</summary>

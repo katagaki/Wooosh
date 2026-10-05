@@ -9,6 +9,7 @@ use crate::control::{FileMeta, Msg, ResumeHave, StreamHeader, MAX_FRAME, PROTOCO
 use crate::error::{close_codes, WoooshError};
 use crate::identity::{self, Identity};
 use crate::inet::{self, NetTicket, TicketPending};
+use crate::rendezvous::{self, Admission, QuicRole, Role, RoomConn};
 use crate::ledger::{rehash_prefix, Ledger, LedgerFile};
 use crate::pairing::{self, QrPayload, QrPending};
 use crate::sanitize;
@@ -29,16 +30,15 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const PAIR_CONNECT_TIMEOUT: Duration = Duration::from_secs(6);
 const DECISION_TIMEOUT: Duration = Duration::from_secs(120);
 const PAIR_REPLY_TIMEOUT: Duration = Duration::from_secs(20);
-/// Internet dial budget (§9.3): relay, candidates and punching precede data.
-const NET_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
-/// Home-relay wait before publishing; direct candidates may still suffice.
-const RELAY_READY_TIMEOUT: Duration = Duration::from_secs(15);
-/// Hole-punch upgrade wait before falling back to the relay (DESIGN.md §9.1).
+/// The publisher is already in the room when the code is shown, so the
+/// redeemer only waits for the room to introduce them.
+const REDEEM_PEER_WAIT: Duration = Duration::from_secs(30);
+/// Hole-punch upgrade wait before the relay cap applies (PROTOCOL.md §9.6).
 const DIRECT_PATH_TIMEOUT: Duration = Duration::from_secs(15);
 
-/// Per-file cap on a **relayed** connection (DESIGN.md §9.1); direct is
-/// uncapped. A relay is somebody else's bandwidth.
-pub const RELAY_MAX_FILE_BYTES: u64 = 100 * 1024 * 1024;
+/// Per-file cap on a **relayed** connection (PROTOCOL.md §9.6); direct is
+/// uncapped. The relay spends a daily quota every user shares.
+pub const RELAY_MAX_FILE_BYTES: u64 = 1024 * 1024 * 1024;
 const SMALL_FILE_LIMIT: u64 = 1024 * 1024; // <1 MiB => pipelined
 const MAX_SLOTS: usize = 4;
 const CHUNK: usize = 1024 * 1024;
@@ -47,8 +47,10 @@ const PROGRESS_INTERVAL: u64 = 8 * 1024 * 1024;
 
 pub struct EngineConfig {
     pub bind_addr: SocketAddr,
-    /// Internet-path relay selection; see `inet::bind_endpoint`.
-    pub relay_urls: Option<Vec<String>>,
+    /// `None` = the build's default service, `Some("")` = internet sharing off.
+    pub rendezvous_url: Option<String>,
+    /// `None` = `rendezvous::DEFAULT_STUN`, `Some("")` = no STUN.
+    pub stun_server: Option<String>,
     pub staging_dir: PathBuf,
     pub trust_store_path: PathBuf,
     pub device_name: String,
@@ -160,13 +162,14 @@ pub struct Engine {
 struct Inner {
     identity: Identity,
     endpoint: quinn::Endpoint,
-    /// Lets the synchronous `shutdown` drive iroh's asynchronous close.
-    rt: tokio::runtime::Handle,
-    /// Changing this rebinds the endpoint; see `set_relay_urls`.
-    relay_urls: Mutex<Option<Vec<String>>>,
-    /// Bound lazily so a LAN-only install never talks to a relay.
-    iroh: tokio::sync::Mutex<Option<iroh::Endpoint>>,
+    rendezvous_url: Mutex<Option<String>>,
+    stun_server: Option<String>,
+    /// Tests only: never take a direct path.
+    force_relay: AtomicBool,
+    admission: Admission,
     ticket_pending: Mutex<Option<TicketPending>>,
+    /// The published ticket's session while it is still being set up.
+    ticket_task: Mutex<Option<tokio::task::AbortHandle>>,
     local_addr: SocketAddr,
     cfg: Mutex<RuntimeCfg>,
     trust: TrustStore,
@@ -331,10 +334,16 @@ impl Engine {
             staging: cfg.staging_dir,
             events,
             peers: Mutex::new(HashMap::new()),
-            rt: tokio::runtime::Handle::current(),
-            relay_urls: Mutex::new(cfg.relay_urls),
-            iroh: tokio::sync::Mutex::new(None),
+            rendezvous_url: Mutex::new(cfg.rendezvous_url),
+            stun_server: match cfg.stun_server {
+                None => Some(rendezvous::DEFAULT_STUN.to_string()),
+                Some(s) if s.is_empty() => None,
+                Some(s) => Some(s),
+            },
+            force_relay: AtomicBool::new(false),
+            admission: Admission::new(Some(cfg.trust_store_path.with_file_name("rendezvous.json"))),
             ticket_pending: Mutex::new(None),
+            ticket_task: Mutex::new(None),
             qr_pending: Mutex::new(None),
             qr_waiters: Mutex::new(HashMap::new()),
             sas: Mutex::new(HashMap::new()),
@@ -360,17 +369,10 @@ impl Engine {
 
     pub fn shutdown(&self) {
         self.inner.endpoint.close(close_codes::BYE.into(), b"bye");
-        // Dropping the iroh endpoint unclosed aborts its socket.
-        *self.inner.ticket_pending.lock().unwrap() = None;
-        let ep = self.inner.iroh.try_lock().ok().and_then(|mut g| g.take());
-        if let Some(ep) = ep {
-            if tokio::runtime::Handle::try_current().is_err() {
-                self.inner.rt.block_on(async {
-                    let _ = tokio::time::timeout(Duration::from_secs(2), ep.close()).await;
-                });
-            } else {
-                // block_on inside a runtime thread panics; settle for a spawn.
-                self.inner.rt.spawn(async move { ep.close().await });
+        self.end_internet_ticket();
+        for peer in self.inner.peers.lock().unwrap().values() {
+            if peer.conn.is_internet() {
+                peer.conn.close(close_codes::BYE, b"bye");
             }
         }
     }
@@ -514,79 +516,81 @@ impl Engine {
         }
     }
 
-    /// **The publisher is the sender** (§9.2), inverting the LAN OFFER rule.
+    /// **The publisher is the sender** (PROTOCOL.md §9.3), inverting the LAN
+    /// OFFER rule. Returns once this device is admitted to the room, so a
+    /// refused admission is reported before a code is shown.
     pub async fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
-        let ep = self.inner.iroh_endpoint().await?;
-        // A ticket with no relay and no direct candidate cannot be dialled.
-        let relays_off = self
-            .inner
-            .relay_urls
-            .lock()
-            .unwrap()
-            .as_deref()
-            .is_some_and(|r| r.is_empty());
-        let deadline = Instant::now() + RELAY_READY_TIMEOUT;
-        let addr = loop {
-            let a = ep.addr();
-            let usable = if relays_off {
-                a.ip_addrs().any(|s| !s.ip().is_unspecified())
-            } else {
-                a.relay_urls().next().is_some()
-            };
-            if usable || Instant::now() >= deadline {
-                break a;
-            }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        };
-        // Relays on but none reachable: the code would only work on their LAN.
-        if !relays_off && addr.relay_urls().next().is_none() {
-            return Err(WoooshError::Connect(
-                "no relay could be reached to publish a ticket".into(),
-            ));
-        }
+        let base = self.inner.rendezvous_base()?;
+        self.end_internet_ticket();
+        let room_id: [u8; 16] = rand::random();
+        let room = RoomConn::open(&base, &room_id, Role::Pub, &self.inner.admission).await?;
         let (pending, token) = TicketPending::new();
         *self.inner.ticket_pending.lock().unwrap() = Some(pending);
+        let inner = self.inner.clone();
+        let opts = inner.session_options(inet::TICKET_TTL);
+        let task = tokio::spawn(async move {
+            let session = match rendezvous::establish(room, &inner.identity, inet::room_key(&token), QuicRole::Server, opts).await {
+                Ok(s) => s,
+                Err(e) => {
+                    log::info!("ticket session ended before connecting: {e}");
+                    return;
+                }
+            };
+            if matches!(inner.cfg.lock().unwrap().visibility, Visibility::Off) {
+                session.conn.close(close_codes::BYE.into(), b"bye");
+                return;
+            }
+            // Detached: withdrawing the ticket later must not cut a transfer
+            // that is already running on it.
+            tokio::spawn(async move {
+                if let Err(e) = inner.clone().run_connection(Conn::net(session), false).await {
+                    log::debug!("incoming internet connection ended: {e}");
+                }
+            });
+        });
+        *self.inner.ticket_task.lock().unwrap() = Some(task.abort_handle());
         let ticket = NetTicket {
-            version: 1,
+            version: inet::TICKET_VERSION,
             node_id: self.inner.identity.public_key_bytes(),
             token,
+            room: room_id,
             dn: Some(self.inner.cfg.lock().unwrap().device_name.clone()),
-            relay: addr.relay_urls().next().map(|u| u.to_string()),
-            // A wildcard address is not somewhere a peer can dial.
-            direct: addr
-                .ip_addrs()
-                .filter(|s| !s.ip().is_unspecified())
-                .map(|a| a.to_string())
-                .collect(),
             expires_unix: inet::new_expiry_unix(),
         };
         Ok(ticket.encode())
     }
 
-    /// DESIGN.md §9.1. `None` is n0's public set, `Some(&[])` disables relays
-    /// and address lookup entirely. Rebinding invalidates outstanding tickets,
-    /// which advertise a relay this device no longer uses.
-    pub async fn set_relay_urls(&self, urls: Option<Vec<String>>) -> Result<(), WoooshError> {
-        // Validated before teardown, so a typo leaves the working config up.
-        if let Some(list) = &urls {
-            for u in list {
-                u.parse::<iroh::RelayUrl>()
-                    .map_err(|e| WoooshError::InvalidArgument(format!("relay url {u}: {e}")))?;
+    /// DESIGN.md §9.1. `None` = this build's default service, `Some("")` =
+    /// internet sharing off, otherwise a self-deployed Worker. Invalidates any
+    /// outstanding ticket, whose room lives on the old service.
+    pub fn set_rendezvous_url(&self, url: Option<String>) -> Result<(), WoooshError> {
+        if let Some(u) = url.as_deref().filter(|u| !u.is_empty()) {
+            let ok = ["https://", "http://", "wss://", "ws://"].iter().any(|p| u.starts_with(p));
+            if !ok {
+                return Err(WoooshError::InvalidArgument(format!("rendezvous url {u}: unsupported scheme")));
             }
         }
-        let mut guard = self.inner.iroh.lock().await;
-        *self.inner.relay_urls.lock().unwrap() = urls;
-        *self.inner.ticket_pending.lock().unwrap() = None;
-        if let Some(ep) = guard.take() {
-            // Dropping without closing aborts iroh's socket; see `shutdown`.
-            ep.close().await;
-        }
+        *self.inner.rendezvous_url.lock().unwrap() = url;
+        self.end_internet_ticket();
         Ok(())
+    }
+
+    /// Platform proof for rendezvous admission (PROTOCOL.md §9.2).
+    pub fn set_attestor(&self, attestor: Option<Arc<dyn crate::api::Attestor>>) {
+        self.inner.admission.set_attestor(attestor);
+    }
+
+    /// Tests only: refuse every direct path so the relay carries the session.
+    pub fn set_force_relay(&self, on: bool) {
+        self.inner.force_relay.store(on, Ordering::SeqCst);
     }
 
     /// A ticket the user stopped expecting must stop working immediately.
     pub fn end_internet_ticket(&self) {
         *self.inner.ticket_pending.lock().unwrap() = None;
+        if let Some(t) = self.inner.ticket_task.lock().unwrap().take() {
+            t.abort();
+        }
     }
 
     pub async fn redeem_ticket(&self, ticket: &str) -> Result<String, WoooshError> {
@@ -611,13 +615,32 @@ impl Engine {
             ));
         }
         let fail = |e: WoooshError| PairFailure::new(e, Some(key));
-        let ep = self.inner.iroh_endpoint().await.map_err(fail)?;
-        let addr = t.endpoint_addr().map_err(fail)?;
-        let conn = tokio::time::timeout(NET_CONNECT_TIMEOUT, ep.connect(addr, transport::ALPN))
+        let base = self.inner.rendezvous_base().map_err(fail)?;
+        let room = RoomConn::open(&base, &t.room, Role::Redeem, &self.inner.admission)
             .await
-            .map_err(|_| fail(WoooshError::Connect("ticket connect timed out".into())))?
-            .map_err(|e| fail(WoooshError::Connect(format!("iroh connect: {e}"))))?;
-        let conn = Conn::Net(conn);
+            .map_err(fail)?;
+        let opts = self.inner.session_options(REDEEM_PEER_WAIT);
+        let session = match rendezvous::establish(
+            room,
+            &self.inner.identity,
+            inet::room_key(&t.token),
+            QuicRole::Client { expected_key: Some(key) },
+            opts,
+        )
+        .await
+        {
+            Ok(s) => s,
+            Err(WoooshError::KeyChanged) => {
+                self.inner.emit(CoreEvent::KeyChanged {
+                    peer_id: identity::device_id_string_for(&key),
+                    expected_pubkey: key.to_vec(),
+                    presented_pubkey: None,
+                });
+                return Err(fail(WoooshError::KeyChanged));
+            }
+            Err(e) => return Err(fail(e)),
+        };
+        let conn = Conn::net(session);
         // Pinning must never be implicit in someone else's library (§4.5).
         let presented = conn.peer_pubkey().map_err(fail)?;
         if presented != key {
@@ -834,40 +857,21 @@ impl Inner {
             .ok_or_else(|| WoooshError::UnknownPeer(peer_id.to_string()))
     }
 
-    /// The async mutex prevents two endpoints bound on one key.
-    async fn iroh_endpoint(self: &Arc<Self>) -> Result<iroh::Endpoint, WoooshError> {
-        let mut guard = self.iroh.lock().await;
-        if let Some(ep) = guard.as_ref() {
-            return Ok(ep.clone());
+    fn rendezvous_base(&self) -> Result<String, WoooshError> {
+        match self.rendezvous_url.lock().unwrap().clone() {
+            Some(u) if u.is_empty() => Err(WoooshError::RendezvousUnavailable("internet sharing is off".into())),
+            Some(u) => Ok(u),
+            None => rendezvous::default_url()
+                .map(String::from)
+                .ok_or_else(|| WoooshError::RendezvousUnavailable("this build has no rendezvous service configured".into())),
         }
-        let relays = self.relay_urls.lock().unwrap().clone();
-        let ep = inet::bind_endpoint(&self.identity, relays.as_deref()).await?;
-        let inner = self.clone();
-        let accept_ep = ep.clone();
-        tokio::spawn(async move { inner.iroh_accept_loop(accept_ep).await });
-        *guard = Some(ep.clone());
-        Ok(ep)
     }
 
-    /// Nothing below this line knows which transport it is on.
-    async fn iroh_accept_loop(self: Arc<Self>, ep: iroh::Endpoint) {
-        while let Some(incoming) = ep.accept().await {
-            let inner = self.clone();
-            tokio::spawn(async move {
-                let vis = inner.cfg.lock().unwrap().visibility.clone();
-                if matches!(vis, Visibility::Off) {
-                    incoming.ignore();
-                    return;
-                }
-                match incoming.await {
-                    Ok(conn) => {
-                        if let Err(e) = inner.clone().run_connection(Conn::Net(conn), false).await {
-                            log::debug!("incoming internet connection ended: {e}");
-                        }
-                    }
-                    Err(e) => log::debug!("iroh handshake failed: {e}"),
-                }
-            });
+    fn session_options(&self, wait_for_peer: Duration) -> rendezvous::Options {
+        rendezvous::Options {
+            stun: self.stun_server.clone(),
+            wait_for_peer,
+            force_relay: self.force_relay.load(Ordering::SeqCst),
         }
     }
 
@@ -882,7 +886,7 @@ impl Inner {
                 }
                 match incoming.await {
                     Ok(conn) => {
-                        if let Err(e) = inner.clone().run_connection(Conn::Lan(conn), false).await {
+                        if let Err(e) = inner.clone().run_connection(Conn::lan(conn), false).await {
                             log::debug!("incoming connection ended: {e}");
                         }
                     }
@@ -1020,7 +1024,7 @@ impl Inner {
                 return Err(app_close_error(&ConnErr::from(e)).unwrap_or(WoooshError::Connect(msg)));
             }
         };
-        Ok(Conn::Lan(conn))
+        Ok(Conn::lan(conn))
     }
 
     async fn run_connection(
@@ -1522,7 +1526,7 @@ impl Inner {
         total: u64,
         _note: Option<String>,
     ) -> Result<(), WoooshError> {
-        // The cap is enforced on both ends (DESIGN.md §9.1): the relay spent
+        // The cap is enforced on both ends (PROTOCOL.md §9.6): the relay spent
         // is usually the *receiver's*. Declined outright, never partially.
         if !peer.conn.is_direct() && files.iter().any(|f| f.size > RELAY_MAX_FILE_BYTES) {
             log::warn!(
@@ -2163,9 +2167,11 @@ impl Inner {
                 "refusing to send to an internet peer that has not redeemed a ticket".into(),
             ));
         }
-        // Which limits apply cannot be decided until punching resolves.
-        if !peer.conn.wait_for_direct(DIRECT_PATH_TIMEOUT).await {
-            // Still relayed, so the cap applies (DESIGN.md §9.1). Metadata
+        // Which limits apply cannot be decided until punching resolves. A
+        // forced relay (tests) never resolves, so it skips the wait.
+        let wait = if self.force_relay.load(Ordering::SeqCst) { Duration::ZERO } else { DIRECT_PATH_TIMEOUT };
+        if !peer.conn.wait_for_direct(wait).await {
+            // Still relayed, so the cap applies (PROTOCOL.md §9.6). Metadata
             // only, and before the OFFER, so nothing is hashed or accepted.
             let to_check = paths.clone();
             let oversized = tokio::task::spawn_blocking(move || {

@@ -713,8 +713,8 @@
     <value>コードを準備しています。数秒かかります。</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>コードの取得時は、2 台のデバイスが互いを見つけられるように公開リレーへ接続します。直接の経路が使える場合、ファイルは引き続きデバイス間を直接転送されます。</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>コードを取得すると、2 台のデバイスが互いを見つけられるよう Wooosh のサーバーに接続します。サーバーは記録を残さず、直接の経路があればファイルはデバイス間で直接送られます。</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

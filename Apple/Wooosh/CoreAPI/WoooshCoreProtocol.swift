@@ -64,14 +64,12 @@ struct PeerRef: Hashable, Identifiable, Sendable {
     var symbolName: String { DeviceIcon.symbol(forCoreType: deviceType) }
 }
 
-/// Parsed without dialling (PROTOCOL.md §9.2). `publicKey` pins the handshake:
+/// Parsed without dialling (PROTOCOL.md §9.3). `publicKey` pins the handshake:
 /// arriving out of band is what makes the internet path MITM-proof.
 struct TicketInfo: Sendable {
     let publicKey: Data
     let deviceID: String
     let deviceName: String?
-    /// nil when the ticket carries direct addresses only.
-    let relay: String?
     let expired: Bool
 }
 
@@ -159,8 +157,8 @@ protocol WoooshCore: AnyObject {
 
     // MARK: - Internet path (DESIGN.md §9.1, PROTOCOL.md §9)
 
-    /// The first call binds the iroh endpoint, waits up to ~15 s for a home relay,
-    /// and is the first relay contact at all, so nothing calls it unasked.
+    /// Joins a rendezvous room, after attesting if no admission is cached. It is
+    /// the first contact with any server at all, so nothing calls it unasked.
     func beginInternetTicket() async throws -> String
 
     /// A ticket is a capability: it dies on leaving the screen, not at expiry.
@@ -175,10 +173,10 @@ protocol WoooshCore: AnyObject {
     /// nil when the payload is not a ticket.
     func ticketInfo(for ticket: String) -> TicketInfo?
 
-    /// `nil` is n0's public relays; `[]` means no relay and no address lookup, so
-    /// nothing leaves the device except to addresses carried in a ticket; a list
-    /// is advertised in this device's tickets. Throws on a malformed URL.
-    func setRelayURLs(_ urls: [String]?) async throws
+    /// `nil` is this build's rendezvous service, `""` switches internet
+    /// transfers off, and a URL points at a self-deployed Worker. Throws on a
+    /// malformed URL, keeping the previous setting.
+    func setRendezvousURL(_ url: String?) async throws
 
     /// nil `expectedPublicKey` is *not* "unpinned": the core falls back to
     /// resolving a pin by address, which only matches the same `ip:port`, so pass

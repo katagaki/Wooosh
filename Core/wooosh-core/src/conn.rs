@@ -1,17 +1,15 @@
-//! One QUIC connection, two stacks: our own `quinn` endpoint on the LAN and an
-//! `iroh` endpoint keyed by the same Ed25519 identity over the internet.
-//!
-//! iroh 1.x ships n0's `quinn` fork, so its connection and stream types are
-//! distinct from ours. This module is the entire adaptation layer; everything
-//! above it is transport-blind. Do not fork the protocol code to add a
-//! transport, extend these enums.
+//! One QUIC connection, two paths: our LAN endpoint, or an internet session
+//! whose socket hides hole punching and relaying (rendezvous/pathsock.rs).
+//! Both are plain `quinn` connections, so everything above this module is
+//! path-blind. Do not fork the protocol code per path; extend `Conn`.
 
 use crate::error::WoooshError;
+use crate::rendezvous::NetSession;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// Hole punching completes in a handful of round trips, so a coarse poll costs
-/// nothing.
+/// Punching completes in a handful of round trips, so a coarse poll costs nothing.
 const DIRECT_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// `app_code` is the QUIC *application* close code, the only reliable
@@ -32,18 +30,6 @@ impl From<quinn::ConnectionError> for ConnErr {
     fn from(e: quinn::ConnectionError) -> Self {
         let app_code = match &e {
             quinn::ConnectionError::ApplicationClosed(a) => u32::try_from(a.error_code.into_inner()).ok(),
-            _ => None,
-        };
-        ConnErr { app_code, msg: e.to_string() }
-    }
-}
-
-impl From<iroh::endpoint::ConnectionError> for ConnErr {
-    fn from(e: iroh::endpoint::ConnectionError) -> Self {
-        let app_code = match &e {
-            iroh::endpoint::ConnectionError::ApplicationClosed(a) => {
-                u32::try_from(a.error_code.into_inner()).ok()
-            }
             _ => None,
         };
         ConnErr { app_code, msg: e.to_string() }
@@ -82,100 +68,62 @@ impl From<quinn::ReadExactError> for ReadErr {
     }
 }
 
-impl From<iroh::endpoint::ReadExactError> for ReadErr {
-    fn from(e: iroh::endpoint::ReadExactError) -> Self {
-        match e {
-            iroh::endpoint::ReadExactError::FinishedEarly(n) => ReadErr::FinishedEarly(n),
-            other => ReadErr::Other(other.to_string()),
-        }
-    }
-}
-
-pub enum SendStream {
-    Lan(quinn::SendStream),
-    Net(iroh::endpoint::SendStream),
-}
+pub struct SendStream(quinn::SendStream);
 
 impl SendStream {
     pub async fn write_all(&mut self, buf: &[u8]) -> Result<(), String> {
-        match self {
-            SendStream::Lan(s) => s.write_all(buf).await.map_err(|e| e.to_string()),
-            SendStream::Net(s) => s.write_all(buf).await.map_err(|e| e.to_string()),
-        }
+        self.0.write_all(buf).await.map_err(|e| e.to_string())
     }
 
     pub fn finish(&mut self) {
-        match self {
-            SendStream::Lan(s) => {
-                let _ = s.finish();
-            }
-            SendStream::Net(s) => {
-                let _ = s.finish();
-            }
-        }
+        let _ = self.0.finish();
     }
 }
 
-pub enum RecvStream {
-    Lan(quinn::RecvStream),
-    Net(iroh::endpoint::RecvStream),
-}
+pub struct RecvStream(quinn::RecvStream);
 
 impl RecvStream {
     pub async fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), ReadErr> {
-        match self {
-            RecvStream::Lan(s) => s.read_exact(buf).await.map_err(ReadErr::from),
-            RecvStream::Net(s) => s.read_exact(buf).await.map_err(ReadErr::from),
-        }
+        self.0.read_exact(buf).await.map_err(ReadErr::from)
     }
 
     pub fn stop(&mut self, code: u32) {
-        match self {
-            RecvStream::Lan(s) => {
-                let _ = s.stop(quinn::VarInt::from_u32(code));
-            }
-            RecvStream::Net(s) => {
-                let _ = s.stop(iroh::endpoint::VarInt::from_u32(code));
-            }
-        }
+        let _ = self.0.stop(quinn::VarInt::from_u32(code));
     }
 }
 
 #[derive(Clone)]
-pub enum Conn {
-    Lan(quinn::Connection),
-    Net(iroh::endpoint::Connection),
+pub struct Conn {
+    quic: quinn::Connection,
+    /// Present on the internet path; keeps its socket, endpoint and room alive.
+    net: Option<Arc<NetSession>>,
 }
 
 impl Conn {
+    pub fn lan(quic: quinn::Connection) -> Self {
+        Conn { quic, net: None }
+    }
+
+    pub fn net(session: NetSession) -> Self {
+        Conn { quic: session.conn.clone(), net: Some(Arc::new(session)) }
+    }
+
     pub fn is_internet(&self) -> bool {
-        matches!(self, Conn::Net(_))
+        self.net.is_some()
     }
 
-    /// The peer's authenticated Ed25519 identity key: the cert SPKI on the
-    /// LAN, iroh's `EndpointId` over the internet. Both are the same 32 bytes
-    /// for the same device, so a LAN pairing is already pinned over the
-    /// internet (PROTOCOL.md §2, §9.3).
+    /// The peer's authenticated Ed25519 identity key from its certificate,
+    /// on either path (PROTOCOL.md §2, §9.7).
     pub fn peer_pubkey(&self) -> Result<[u8; 32], WoooshError> {
-        match self {
-            Conn::Lan(c) => crate::transport::quic_peer_pubkey(c),
-            Conn::Net(c) => Ok(*c.remote_id().as_bytes()),
-        }
+        crate::transport::quic_peer_pubkey(&self.quic)
     }
 
-    /// Whether bulk data may flow right now. An internet connection comes up
-    /// relayed and only becomes direct once hole punching succeeds; this is
-    /// what keeps large transfers off shared relays (DESIGN.md §9.1). Only the
-    /// *selected* path counts, since that is where the bytes would go.
+    /// Whether bulk data may flow uncapped right now. An internet session may
+    /// be relayed until punching succeeds (PROTOCOL.md §9.6).
     pub fn is_direct(&self) -> bool {
-        match self {
-            Conn::Lan(_) => true,
-            Conn::Net(c) => c.paths().iter().any(|p| p.is_selected() && p.is_ip()),
-        }
+        self.net.as_ref().map_or(true, |n| n.is_direct())
     }
 
-    /// Polled rather than driven off `paths_stream`: the wait happens once per
-    /// transfer and a borrowed stream would have to outlive it for no gain.
     pub async fn wait_for_direct(&self, timeout: Duration) -> bool {
         if self.is_direct() {
             return true;
@@ -190,95 +138,49 @@ impl Conn {
         false
     }
 
-    /// `None` on the internet path on purpose: an iroh connection may be
-    /// relayed or migrate, so it has no stable §4.5 `last_addr` pin hint and
-    /// writing one would poison `pinned_key_for_addr` for the LAN path.
+    /// `None` on the internet path on purpose: the address quinn sees there is
+    /// synthetic, and a NAT mapping is no §4.5 `last_addr` pin hint either.
     pub fn remote_address(&self) -> Option<SocketAddr> {
-        match self {
-            Conn::Lan(c) => Some(c.remote_address()),
-            Conn::Net(_) => None,
+        match self.net {
+            None => Some(self.quic.remote_address()),
+            Some(_) => None,
         }
     }
 
     pub async fn open_bi(&self) -> Result<(SendStream, RecvStream), ConnErr> {
-        match self {
-            Conn::Lan(c) => {
-                let (s, r) = c.open_bi().await.map_err(ConnErr::from)?;
-                Ok((SendStream::Lan(s), RecvStream::Lan(r)))
-            }
-            Conn::Net(c) => {
-                let (s, r) = c.open_bi().await.map_err(ConnErr::from)?;
-                Ok((SendStream::Net(s), RecvStream::Net(r)))
-            }
-        }
+        let (s, r) = self.quic.open_bi().await.map_err(ConnErr::from)?;
+        Ok((SendStream(s), RecvStream(r)))
     }
 
     pub async fn accept_bi(&self) -> Result<(SendStream, RecvStream), ConnErr> {
-        match self {
-            Conn::Lan(c) => {
-                let (s, r) = c.accept_bi().await.map_err(ConnErr::from)?;
-                Ok((SendStream::Lan(s), RecvStream::Lan(r)))
-            }
-            Conn::Net(c) => {
-                let (s, r) = c.accept_bi().await.map_err(ConnErr::from)?;
-                Ok((SendStream::Net(s), RecvStream::Net(r)))
-            }
-        }
+        let (s, r) = self.quic.accept_bi().await.map_err(ConnErr::from)?;
+        Ok((SendStream(s), RecvStream(r)))
     }
 
     pub async fn open_uni(&self) -> Result<SendStream, ConnErr> {
-        match self {
-            Conn::Lan(c) => Ok(SendStream::Lan(c.open_uni().await.map_err(ConnErr::from)?)),
-            Conn::Net(c) => Ok(SendStream::Net(c.open_uni().await.map_err(ConnErr::from)?)),
-        }
+        Ok(SendStream(self.quic.open_uni().await.map_err(ConnErr::from)?))
     }
 
     pub async fn accept_uni(&self) -> Result<RecvStream, ConnErr> {
-        match self {
-            Conn::Lan(c) => Ok(RecvStream::Lan(c.accept_uni().await.map_err(ConnErr::from)?)),
-            Conn::Net(c) => Ok(RecvStream::Net(c.accept_uni().await.map_err(ConnErr::from)?)),
-        }
+        Ok(RecvStream(self.quic.accept_uni().await.map_err(ConnErr::from)?))
     }
 
     pub fn close(&self, code: u32, reason: &[u8]) {
-        match self {
-            Conn::Lan(c) => c.close(quinn::VarInt::from_u32(code), reason),
-            Conn::Net(c) => c.close(iroh::endpoint::VarInt::from_u32(code), reason),
-        }
+        self.quic.close(quinn::VarInt::from_u32(code), reason)
     }
 
     pub async fn closed(&self) -> ConnErr {
-        match self {
-            Conn::Lan(c) => c.closed().await.into(),
-            Conn::Net(c) => c.closed().await.into(),
-        }
+        self.quic.closed().await.into()
     }
 
     pub fn close_reason(&self) -> Option<ConnErr> {
-        match self {
-            Conn::Lan(c) => c.close_reason().map(ConnErr::from),
-            Conn::Net(c) => c.close_reason().map(ConnErr::from),
-        }
+        self.quic.close_reason().map(ConnErr::from)
     }
 
     /// TLS 1.3 exporter, the input to the SAS derivation (PROTOCOL.md §4.3).
-    /// Available on both stacks, so SAS is transcript-bound on either path.
-    pub fn export_keying_material(
-        &self,
-        out: &mut [u8],
-        label: &[u8],
-        context: &[u8],
-    ) -> Result<(), WoooshError> {
-        let unavailable = || WoooshError::Crypto("exporter unavailable".into());
-        match self {
-            Conn::Lan(c) => c
-                .export_keying_material(out, label, context)
-                .map(|_| ())
-                .map_err(|_| unavailable()),
-            Conn::Net(c) => c
-                .export_keying_material(out, label, context)
-                .map(|_| ())
-                .map_err(|_| unavailable()),
-        }
+    pub fn export_keying_material(&self, out: &mut [u8], label: &[u8], context: &[u8]) -> Result<(), WoooshError> {
+        self.quic
+            .export_keying_material(out, label, context)
+            .map_err(|_| WoooshError::Crypto("exporter unavailable".into()))
     }
 }

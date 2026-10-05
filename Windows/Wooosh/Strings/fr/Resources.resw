@@ -753,8 +753,8 @@
     <value>Préparation d'un code. Cela prend quelques secondes.</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>Obtenir un code contacte un relais public pour que les deux appareils se trouvent. Les fichiers circulent toujours directement entre eux dès qu'une route directe existe.</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>Obtenir un code contacte le serveur Wooosh pour que les deux appareils se trouvent. Il ne conserve aucune trace d'eux, et les fichiers passent directement d'un appareil à l'autre dès qu'une route directe existe.</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

@@ -129,23 +129,25 @@ final class AppModel {
         }
     }
 
-    /// Pushed to the core: it picks the endpoint bound at the next mint (§9.1).
-    var relayPreference: RelayPreference {
+    /// Pushed to the core, which uses it for the next code (DESIGN.md §9.1).
+    var internetPreference: InternetPreference {
         didSet {
-            guard relayPreference != oldValue else { return }
-            UserDefaults.standard.set(relayPreference.mode.rawValue, forKey: Self.relayModeKey)
-            UserDefaults.standard.set(relayPreference.customURL, forKey: Self.relayURLKey)
-            applyRelayPreference()
+            guard internetPreference != oldValue else { return }
+            UserDefaults.standard.set(internetPreference.mode.rawValue, forKey: Self.internetModeKey)
+            UserDefaults.standard.set(internetPreference.customURL, forKey: Self.internetURLKey)
+            applyInternetPreference()
         }
     }
 
     /// The core keeps its last working config, so this is a correction to make.
-    private(set) var relayError: String?
+    private(set) var internetError: String?
 
     private static let displayNameKey = "displayName"
     private static let visibilityKey = "visibility"
-    private static let relayModeKey = "relayMode"
-    private static let relayURLKey = "relayURL"
+    private static let internetModeKey = "internetMode"
+    private static let internetURLKey = "internetServerURL"
+    /// Iroh-era setting: only "off" carries over, since a relay URL is no server address.
+    private static let legacyRelayModeKey = "relayMode"
 
     init() {
         let defaults = UserDefaults.standard
@@ -153,22 +155,23 @@ final class AppModel {
         // Paired only by default: a fresh install must not accept from strangers.
         visibility = defaults.string(forKey: Self.visibilityKey)
             .flatMap(Visibility.init(rawValue:)) ?? .pairedOnly
-        relayPreference = RelayPreference(
-            mode: defaults.string(forKey: Self.relayModeKey)
-                .flatMap(RelayMode.init(rawValue:)) ?? RelayPreference.default.mode,
-            customURL: defaults.string(forKey: Self.relayURLKey) ?? ""
+        let legacyOff = defaults.string(forKey: Self.legacyRelayModeKey) == "off"
+        internetPreference = InternetPreference(
+            mode: defaults.string(forKey: Self.internetModeKey).flatMap(InternetMode.init(rawValue:))
+                ?? (legacyOff ? .off : InternetPreference.default.mode),
+            customURL: defaults.string(forKey: Self.internetURLKey) ?? ""
         )
     }
 
-    private func applyRelayPreference() {
-        let value = relayPreference.coreValue
+    private func applyInternetPreference() {
+        let value = internetPreference.coreValue
         Task {
             do {
-                try await core.setRelayURLs(value)
-                relayError = nil
+                try await core.setRendezvousURL(value)
+                internetError = nil
             } catch {
-                relayError = L.t("error_relay_url_invalid")
-                logger.error("setRelayURLs failed: \(coreErrorMessage(error))")
+                internetError = L.t("error_internet_server_invalid")
+                logger.error("setRendezvousURL failed: \(coreErrorMessage(error))")
             }
         }
     }
@@ -220,8 +223,8 @@ final class AppModel {
         listenAddress = core.listenAddress ?? ""
         transfers.attach(core: core)
         trustStore.attach(core: core)
-        // Free before anything mints a ticket: the iroh endpoint is unbound.
-        applyRelayPreference()
+        // Before anything mints a code; it contacts nothing by itself.
+        applyInternetPreference()
         startEventPump()
     }
 
@@ -335,7 +338,7 @@ final class AppModel {
             return
         }
         // The code would work with the internet path on; say so, don't just fail.
-        guard relayPreference.internetEnabled else {
+        guard internetPreference.internetEnabled else {
             failPairing(L.t("error_internet_off"))
             return
         }
@@ -355,7 +358,7 @@ final class AppModel {
         return redeemedPeerID
     }
 
-    /// Throws: silence would not distinguish a slow relay from a broken one.
+    /// Throws: silence would not distinguish a slow server from a broken one.
     func beginInternetTicket() async throws -> String {
         try await core.beginInternetTicket()
     }

@@ -200,7 +200,7 @@ class PairingManager(
             }
 
             else -> {
-                Log.i(TAG, "redeemTicket: dialling ${info.deviceId} relay=${info.relay}")
+                Log.i(TAG, "redeemTicket: dialling ${info.deviceId}")
                 beginAttempt(name, TICKET_TIMEOUT_MS, isTicket = true)
                 core.redeemTicket(payload)
             }

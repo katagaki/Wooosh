@@ -654,6 +654,21 @@ internal open class UniffiForeignFutureStructVoid(
 internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
     fun callback(`callbackData`: Long,`result`: UniffiForeignFutureStructVoid.UniffiByValue,)
 }
+internal interface UniffiCallbackInterfaceAttestorMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceAttestorMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`clientDataHash`: RustBuffer.ByValue,`attest`: Byte,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceAttestorMethod2 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`requestHash`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceAttestorMethod3 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceAttestorMethod4 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`credentialBlob`: RustBuffer.ByValue,`encryptedSecret`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceCoreEventListenerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`event`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -662,6 +677,34 @@ internal interface UniffiCallbackInterfaceKeyStoreMethod0 : com.sun.jna.Callback
 }
 internal interface UniffiCallbackInterfaceKeyStoreMethod1 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`secret`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+@Structure.FieldOrder("kind", "appAttest", "playIntegrity", "tpmEvidence", "tpmActivate", "uniffiFree")
+internal open class UniffiVTableCallbackInterfaceAttestor(
+    @JvmField internal var `kind`: UniffiCallbackInterfaceAttestorMethod0? = null,
+    @JvmField internal var `appAttest`: UniffiCallbackInterfaceAttestorMethod1? = null,
+    @JvmField internal var `playIntegrity`: UniffiCallbackInterfaceAttestorMethod2? = null,
+    @JvmField internal var `tpmEvidence`: UniffiCallbackInterfaceAttestorMethod3? = null,
+    @JvmField internal var `tpmActivate`: UniffiCallbackInterfaceAttestorMethod4? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `kind`: UniffiCallbackInterfaceAttestorMethod0? = null,
+        `appAttest`: UniffiCallbackInterfaceAttestorMethod1? = null,
+        `playIntegrity`: UniffiCallbackInterfaceAttestorMethod2? = null,
+        `tpmEvidence`: UniffiCallbackInterfaceAttestorMethod3? = null,
+        `tpmActivate`: UniffiCallbackInterfaceAttestorMethod4? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfaceAttestor(`kind`,`appAttest`,`playIntegrity`,`tpmEvidence`,`tpmActivate`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceAttestor) {
+        `kind` = other.`kind`
+        `appAttest` = other.`appAttest`
+        `playIntegrity` = other.`playIntegrity`
+        `tpmEvidence` = other.`tpmEvidence`
+        `tpmActivate` = other.`tpmActivate`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
 }
 @Structure.FieldOrder("onEvent", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceCoreEventListener(
@@ -830,6 +873,21 @@ internal open class UniffiVTableCallbackInterfaceKeyStore(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -854,6 +912,16 @@ fun uniffi_wooosh_core_checksum_func_parse_internet_ticket(
 fun uniffi_wooosh_core_checksum_func_parse_pairing_qr(
 ): Short
 fun uniffi_wooosh_core_checksum_func_relay_max_file_bytes(
+): Short
+fun uniffi_wooosh_core_checksum_method_attestor_kind(
+): Short
+fun uniffi_wooosh_core_checksum_method_attestor_app_attest(
+): Short
+fun uniffi_wooosh_core_checksum_method_attestor_play_integrity(
+): Short
+fun uniffi_wooosh_core_checksum_method_attestor_tpm_evidence(
+): Short
+fun uniffi_wooosh_core_checksum_method_attestor_tpm_activate(
 ): Short
 fun uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(
 ): Short
@@ -895,7 +963,9 @@ fun uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_send(
 ): Short
-fun uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls(
+fun uniffi_wooosh_core_checksum_method_woooshcore_set_attestor(
+): Short
+fun uniffi_wooosh_core_checksum_method_woooshcore_set_rendezvous_url(
 ): Short
 fun uniffi_wooosh_core_checksum_method_woooshcore_set_visibility(
 ): Short
@@ -947,6 +1017,7 @@ internal interface UniffiLib : Library {
             val lib = loadIndirect<UniffiLib>(componentName)
             // No need to check the contract version and checksums, since 
             // we already did that with `IntegrityCheckingUniffiLib` above.
+            uniffiCallbackInterfaceAttestor.register(lib)
             uniffiCallbackInterfaceCoreEventListener.register(lib)
             uniffiCallbackInterfaceKeyStore.register(lib)
             // Loading of library with integrity check done.
@@ -960,7 +1031,23 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_wooosh_core_fn_clone_coreeventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_wooosh_core_fn_clone_attestor(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_wooosh_core_fn_free_attestor(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_wooosh_core_fn_init_callback_vtable_attestor(`vtable`: UniffiVTableCallbackInterfaceAttestor,
+): Unit
+fun uniffi_wooosh_core_fn_method_attestor_kind(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_attestor_app_attest(`ptr`: Pointer,`clientDataHash`: RustBuffer.ByValue,`attest`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_attestor_play_integrity(`ptr`: Pointer,`requestHash`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_attestor_tpm_evidence(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_method_attestor_tpm_activate(`ptr`: Pointer,`credentialBlob`: RustBuffer.ByValue,`encryptedSecret`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_wooosh_core_fn_clone_coreeventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
 fun uniffi_wooosh_core_fn_free_coreeventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1024,7 +1111,9 @@ fun uniffi_wooosh_core_fn_method_woooshcore_revoke_peer(`ptr`: Pointer,`pubkey`:
 ): Byte
 fun uniffi_wooosh_core_fn_method_woooshcore_send(`ptr`: Pointer,`peerId`: RustBuffer.ByValue,`files`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(`ptr`: Pointer,`urls`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_wooosh_core_fn_method_woooshcore_set_attestor(`ptr`: Pointer,`attestor`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_wooosh_core_fn_method_woooshcore_set_rendezvous_url(`ptr`: Pointer,`url`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_wooosh_core_fn_method_woooshcore_set_visibility(`ptr`: Pointer,`mode`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1170,94 +1259,112 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_wooosh_core_checksum_func_device_id_for() != 36541.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_func_device_id_for() != 9857.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 27344.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_func_fingerprint_phrase_for() != 36636.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 39476.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_func_parse_internet_ticket() != 18890.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 14786.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_func_parse_pairing_qr() != 54089.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 43743.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_func_relay_max_file_bytes() != 39646.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_attestor_kind() != 17076.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_attestor_app_attest() != 21600.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_attestor_play_integrity() != 25772.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_attestor_tpm_evidence() != 32272.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_attestor_tpm_activate() != 14673.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_coreeventlistener_on_event() != 57891.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_keystore_load_identity() != 6998.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_keystore_load_identity() != 4167.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_keystore_store_identity() != 36430.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_keystore_store_identity() != 29067.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 1781.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_internet_ticket() != 42024.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 55726.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_begin_pairing_qr() != 28816.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_cancel() != 2332.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_cancel() != 19490.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_confirm_sas() != 38886.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 62813.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_connect_peer() != 33919.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_device_id() != 33009.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 36115.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_end_internet_ticket() != 58717.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_fingerprint_phrase() != 42848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_listen_addr() != 27414.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_listen_addr() != 37001.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 55764.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_pair_with_qr() != 40358.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_public_key() != 35774.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 30245.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_redeem_ticket() != 56753.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 29085.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_request_sas_pairing() != 62990.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_respond_to_offer() != 14534.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_respond_to_offer() != 5917.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 7341.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_resume_transfer() != 45651.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer() != 48542.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_revoke_peer() != 127.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_send() != 57342.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_send() != 61710.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls() != 8523.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_attestor() != 23144.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_rendezvous_url() != 4376.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_method_woooshcore_set_visibility() != 28146.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_start() != 17455.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_start() != 19820.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_stop() != 22717.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_stop() != 33834.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 22956.toShort()) {
+    if (lib.uniffi_wooosh_core_checksum_method_woooshcore_trusted_peers() != 2922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_wooosh_core_checksum_constructor_filekeystore_new() != 46253.toShort()) {
@@ -1685,9 +1792,421 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 
 
 /**
- * Event sink implemented by the host. Called on the core's dedicated event
- * thread; implementations may block briefly, but calling back into the core
- * re-entrantly from the callback forfeits strict event ordering.
+ * Platform attestation for rendezvous admission, implemented by the shell
+ * because App Attest, Play Integrity and the Windows TPM are platform APIs.
+ * Every method may block (network calls to Apple or Google, TPM I/O) and is
+ * always called off the UI thread. Returning `None` admits this device as
+ * Unverified rather than failing the transfer.
+ */
+public interface Attestor {
+    
+    fun `kind`(): AttestationKind
+    
+    /**
+     * App Attest. `attest = true`: generate a new key and attest it over
+     * `client_data_hash`. `false`: sign an assertion with the existing key.
+     */
+    fun `appAttest`(`clientDataHash`: kotlin.ByteArray, `attest`: kotlin.Boolean): AppAttestEvidence?
+    
+    /**
+     * Play Integrity standard request with this `requestHash`; returns the token.
+     */
+    fun `playIntegrity`(`requestHash`: kotlin.String): kotlin.String?
+    
+    fun `tpmEvidence`(): TpmEvidence?
+    
+    /**
+     * TPM2_ActivateCredential with the attestation key; returns the recovered secret.
+     */
+    fun `tpmActivate`(`credentialBlob`: kotlin.ByteArray, `encryptedSecret`: kotlin.ByteArray): kotlin.ByteArray?
+    
+    companion object
+}
+
+/**
+ * Platform attestation for rendezvous admission, implemented by the shell
+ * because App Attest, Play Integrity and the Windows TPM are platform APIs.
+ * Every method may block (network calls to Apple or Google, TPM I/O) and is
+ * always called off the UI thread. Returning `None` admits this device as
+ * Unverified rather than failing the transfer.
+ */
+open class AttestorImpl: Disposable, AutoCloseable, Attestor
+{
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_free_attestor(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_wooosh_core_fn_clone_attestor(pointer!!, status)
+        }
+    }
+
+    override fun `kind`(): AttestationKind {
+            return FfiConverterTypeAttestationKind.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_attestor_kind(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * App Attest. `attest = true`: generate a new key and attest it over
+     * `client_data_hash`. `false`: sign an assertion with the existing key.
+     */override fun `appAttest`(`clientDataHash`: kotlin.ByteArray, `attest`: kotlin.Boolean): AppAttestEvidence? {
+            return FfiConverterOptionalTypeAppAttestEvidence.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_attestor_app_attest(
+        it, FfiConverterByteArray.lower(`clientDataHash`),FfiConverterBoolean.lower(`attest`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Play Integrity standard request with this `requestHash`; returns the token.
+     */override fun `playIntegrity`(`requestHash`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_attestor_play_integrity(
+        it, FfiConverterString.lower(`requestHash`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `tpmEvidence`(): TpmEvidence? {
+            return FfiConverterOptionalTypeTpmEvidence.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_attestor_tpm_evidence(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * TPM2_ActivateCredential with the attestation key; returns the recovered secret.
+     */override fun `tpmActivate`(`credentialBlob`: kotlin.ByteArray, `encryptedSecret`: kotlin.ByteArray): kotlin.ByteArray? {
+            return FfiConverterOptionalByteArray.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_attestor_tpm_activate(
+        it, FfiConverterByteArray.lower(`credentialBlob`),FfiConverterByteArray.lower(`encryptedSecret`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceAttestor {
+    internal object `kind`: UniffiCallbackInterfaceAttestorMethod0 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAttestor.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`kind`(
+                )
+            }
+            val writeReturn = { value: AttestationKind -> uniffiOutReturn.setValue(FfiConverterTypeAttestationKind.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `appAttest`: UniffiCallbackInterfaceAttestorMethod1 {
+        override fun callback(`uniffiHandle`: Long,`clientDataHash`: RustBuffer.ByValue,`attest`: Byte,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAttestor.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`appAttest`(
+                    FfiConverterByteArray.lift(`clientDataHash`),
+                    FfiConverterBoolean.lift(`attest`),
+                )
+            }
+            val writeReturn = { value: AppAttestEvidence? -> uniffiOutReturn.setValue(FfiConverterOptionalTypeAppAttestEvidence.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `playIntegrity`: UniffiCallbackInterfaceAttestorMethod2 {
+        override fun callback(`uniffiHandle`: Long,`requestHash`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAttestor.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`playIntegrity`(
+                    FfiConverterString.lift(`requestHash`),
+                )
+            }
+            val writeReturn = { value: kotlin.String? -> uniffiOutReturn.setValue(FfiConverterOptionalString.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `tpmEvidence`: UniffiCallbackInterfaceAttestorMethod3 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAttestor.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`tpmEvidence`(
+                )
+            }
+            val writeReturn = { value: TpmEvidence? -> uniffiOutReturn.setValue(FfiConverterOptionalTypeTpmEvidence.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `tpmActivate`: UniffiCallbackInterfaceAttestorMethod4 {
+        override fun callback(`uniffiHandle`: Long,`credentialBlob`: RustBuffer.ByValue,`encryptedSecret`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAttestor.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`tpmActivate`(
+                    FfiConverterByteArray.lift(`credentialBlob`),
+                    FfiConverterByteArray.lift(`encryptedSecret`),
+                )
+            }
+            val writeReturn = { value: kotlin.ByteArray? -> uniffiOutReturn.setValue(FfiConverterOptionalByteArray.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeAttestor.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceAttestor.UniffiByValue(
+        `kind`,
+        `appAttest`,
+        `playIntegrity`,
+        `tpmEvidence`,
+        `tpmActivate`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_wooosh_core_fn_init_callback_vtable_attestor(vtable)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAttestor: FfiConverter<Attestor, Pointer> {
+    internal val handleMap = UniffiHandleMap<Attestor>()
+
+    override fun lower(value: Attestor): Pointer {
+        return Pointer(handleMap.insert(value))
+    }
+
+    override fun lift(value: Pointer): Attestor {
+        return AttestorImpl(value)
+    }
+
+    override fun read(buf: ByteBuffer): Attestor {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: Attestor) = 8UL
+
+    override fun write(value: Attestor, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Called on the core's dedicated event thread; calling back into the core
+ * re-entrantly from here forfeits strict event ordering.
  */
 public interface CoreEventListener {
     
@@ -1697,9 +2216,8 @@ public interface CoreEventListener {
 }
 
 /**
- * Event sink implemented by the host. Called on the core's dedicated event
- * thread; implementations may block briefly, but calling back into the core
- * re-entrantly from the callback forfeits strict event ordering.
+ * Called on the core's dedicated event thread; calling back into the core
+ * re-entrantly from here forfeits strict event ordering.
  */
 open class CoreEventListenerImpl: Disposable, AutoCloseable, CoreEventListener
 {
@@ -1965,7 +2483,7 @@ public object FfiConverterTypeCoreEventListener: FfiConverter<CoreEventListener,
 
 
 /**
- * File-based KeyStore used by the CLI (and available to any host).
+ * File-based KeyStore used by the CLI.
  */
 public interface FileKeyStoreInterface {
     
@@ -1973,7 +2491,7 @@ public interface FileKeyStoreInterface {
 }
 
 /**
- * File-based KeyStore used by the CLI (and available to any host).
+ * File-based KeyStore used by the CLI.
  */
 open class FileKeyStore: Disposable, AutoCloseable, FileKeyStoreInterface
 {
@@ -2201,21 +2719,16 @@ public object FfiConverterTypeFileKeyStore: FfiConverter<FileKeyStore, Pointer> 
 
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- *
- * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it, and may block — which is
- * why `start` must never be called on a UI thread.
+ * Both methods run synchronously inside `WoooshCore.start` and may block,
+ * which is why `start` must never be called on a UI thread.
  */
 public interface KeyStore {
     
     /**
-     * Return the stored 32-byte Ed25519 secret key, or None on first launch.
+     * 32-byte Ed25519 secret key, or None on first launch.
      */
     fun `loadIdentity`(): kotlin.ByteArray?
     
-    /**
-     * Persist the (newly generated) 32-byte secret key.
-     */
     fun `storeIdentity`(`secret`: kotlin.ByteArray)
     
     companion object
@@ -2223,10 +2736,8 @@ public interface KeyStore {
 
 /**
  * Identity-key storage implemented by the host (Keychain / Keystore / DPAPI).
- *
- * **Threading.** Both methods are invoked synchronously from inside
- * `WoooshCore.start`, on whichever thread called it, and may block — which is
- * why `start` must never be called on a UI thread.
+ * Both methods run synchronously inside `WoooshCore.start` and may block,
+ * which is why `start` must never be called on a UI thread.
  */
 open class KeyStoreImpl: Disposable, AutoCloseable, KeyStore
 {
@@ -2312,7 +2823,7 @@ open class KeyStoreImpl: Disposable, AutoCloseable, KeyStore
 
     
     /**
-     * Return the stored 32-byte Ed25519 secret key, or None on first launch.
+     * 32-byte Ed25519 secret key, or None on first launch.
      */override fun `loadIdentity`(): kotlin.ByteArray? {
             return FfiConverterOptionalByteArray.lift(
     callWithPointer {
@@ -2325,10 +2836,7 @@ open class KeyStoreImpl: Disposable, AutoCloseable, KeyStore
     }
     
 
-    
-    /**
-     * Persist the (newly generated) 32-byte secret key.
-     */override fun `storeIdentity`(`secret`: kotlin.ByteArray)
+    override fun `storeIdentity`(`secret`: kotlin.ByteArray)
         = 
     callWithPointer {
     uniffiRustCall() { _status ->
@@ -2521,55 +3029,40 @@ public object FfiConverterTypeKeyStore: FfiConverter<KeyStore, Pointer> {
 //
 
 
-/**
- * The engine handle the platform apps bind against.
- */
 public interface WoooshCoreInterface {
     
     /**
-     * Receiver side of the internet path: publish this device on iroh and
-     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
-     * sender redeems it with `redeem_ticket` and then offers files, so the
-     * roles match the LAN path exactly (connector = sender).
+     * Sender side of the internet path (PROTOCOL.md §9.3): join a rendezvous
+     * room and return a `wooosh-net:2?...` ticket for the receiver to redeem.
+     * The ticket is a capability: single-use token, 120 s expiry. Call
+     * `end_internet_ticket` as soon as the user leaves the screen.
      *
-     * The ticket carries this device's identity key, a single-use pairing
-     * token and a 120 s expiry. It is a capability: anyone holding an
-     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
-     * as the user leaves the screen.
-     *
-     * **BLOCKING — never call this on a UI thread.** The first call binds the
-     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
-     * first moment Wooosh contacts any relay at all.
+     * **BLOCKING — never call this on a UI thread.** Admission may call the
+     * `Attestor`, which talks to Apple or Google, and is the first moment
+     * Wooosh contacts the rendezvous at all.
      */
     fun `beginInternetTicket`(): kotlin.String
     
     /**
-     * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
-     * to render as a QR code. Single-use token, 120 s expiry.
+     * Receiver side of QR pairing. Single-use token, 120 s expiry.
      */
     fun `beginPairingQr`(): kotlin.String
     
     /**
-     * Cancel a whole transfer (file_id = None) or one file.
+     * `file_id = None` cancels the whole transfer.
      */
     fun `cancel`(`transferId`: kotlin.String, `fileId`: kotlin.UInt?)
     
     fun `confirmSas`(`peerId`: kotlin.String, `accepted`: kotlin.Boolean)
     
     /**
-     * Connect to a peer address discovered by the native shell. Returns the
-     * peer_id.
+     * Connect to an address the shell discovered; returns the peer_id.
      *
-     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
-     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
-     * hard with `KeyChanged` and no connection is established.
-     *
-     * Passing `None` does **not** opt out of pinning — the core re-applies
-     * the pin from its own trust store whenever it can resolve the identity
-     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
-     * protected even if the shell forgets the key. Passing it explicitly is
-     * still preferred: it also pins the very first reconnect, before the core
-     * has ever seen that address.
+     * `expected_pubkey` (32 raw bytes) pins the TLS handshake: a different
+     * key fails hard with `KeyChanged`. `None` does **not** opt out of
+     * pinning — the core re-applies its own pin whenever it can resolve the
+     * identity behind `addr` (PROTOCOL.md §4.5) — but passing it also pins
+     * the very first reconnect, before that address has been seen.
      *
      * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
      * unreachable address.
@@ -2579,73 +3072,63 @@ public interface WoooshCoreInterface {
     fun `deviceId`(): kotlin.String
     
     /**
-     * Invalidate the outstanding ticket immediately.
+     * Invalidate the outstanding ticket immediately. A transfer already
+     * running on it continues.
      */
     fun `endInternetTicket`()
     
     fun `fingerprintPhrase`(): kotlin.String
     
     /**
-     * Actual bound listen address ("ip:port") — the shell advertises this
-     * over its native mDNS discovery.
+     * Bound "ip:port" — the shell advertises this over its own mDNS.
      */
     fun `listenAddr`(): kotlin.String
     
     /**
-     * Sender side of QR pairing: parse payload, connect (pinned to the QR
-     * key), redeem the token. Returns the paired peer_id.
-     *
-     * The QR's address hints are dialled concurrently; the first connection
-     * to come up wins, so a stale hint never delays the ones behind it.
-     *
-     * Every outcome — success, rejection, bad or expired QR, nothing
-     * reachable — also arrives as a `PairingResult` event, so a shell can
-     * drive its pairing UI entirely off events and never wedge.
+     * Sender side of QR pairing, pinned to the QR key; returns the peer_id.
+     * Hints are dialled concurrently, first up wins. Every outcome also
+     * arrives as a `PairingResult` event, so a shell can drive off events.
      *
      * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
-     * timeout (total, not per hint) plus a 20 s reply timeout.
+     * (total, not per hint) plus a 20 s reply timeout.
      */
     fun `pairWithQr`(`payload`: kotlin.String): kotlin.String
     
     fun `publicKey`(): kotlin.ByteArray
     
     /**
-     * Sender side of the internet path: dial the ticket's node over iroh,
-     * redeem its token, and return the peer_id to pass to `send`.
+     * Receiver side of the internet path: join the ticket's room, connect to
+     * the publisher pinned to its key, redeem the token. Returns the peer_id;
+     * the publisher then sends.
      *
-     * **This does not pair** (PROTOCOL.md §9.4). Success arrives as
-     * `TicketRedeemed`, never `PairingResult`, and nothing is written to the
-     * trust store — a shell that waits for `PairingResult` here will wait for
-     * ever. Failures do still arrive as `PairingResult { success: false }`.
+     * **This does not pair** (PROTOCOL.md §9.8). Success arrives as
+     * `TicketRedeemed`, never `PairingResult`; failures do still arrive as
+     * `PairingResult { success: false }`.
      *
-     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
-     * punching plus a 20 s pairing-reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Admission, up to ~5 s
+     * of hole punching, a 20 s handshake budget and a 20 s pairing reply.
      */
     fun `redeemTicket`(`ticket`: kotlin.String): kotlin.String
     
     /**
-     * Start SAS pairing with a connected (untrusted) peer. Both sides then
-     * receive `PairingSas { code }` and must call `confirm_sas`.
+     * Both sides then receive `PairingSas { code }` and must `confirm_sas`.
      */
     fun `requestSasPairing`(`peerId`: kotlin.String)
     
     /**
-     * Answer an IncomingOffer. Empty list = decline all.
+     * Empty list = decline all.
      */
     fun `respondToOffer`(`transferId`: kotlin.String, `acceptedFileIds`: List<kotlin.UInt>)
     
     /**
-     * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
-     *
+     * RESUME_Q/RESUME_A (PROTOCOL.md §5); verified bytes are never re-sent.
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
     fun `resumeTransfer`(`peerId`: kotlin.String, `transferId`: kotlin.String)
     
     /**
-     * Remove a pinned key; next contact with that device is untrusted again.
-     * `pubkey` is the raw 32 bytes from `TrustedPeer.pubkey` or from any
-     * event's `peer_pubkey`. Returns false if the key was not pinned.
+     * Next contact with that device is untrusted again. Returns false if the
+     * key was not pinned.
      */
     fun `revokePeer`(`pubkey`: kotlin.ByteArray): kotlin.Boolean
     
@@ -2653,69 +3136,50 @@ public interface WoooshCoreInterface {
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
-     * background and report through events, but registering the transfer
-     * blocks on the core's runtime.
+     * **BLOCKING — not for a UI thread.** Registering the transfer blocks on
+     * the core's runtime.
      */
     fun `send`(`peerId`: kotlin.String, `files`: List<kotlin.String>): kotlin.String
     
     /**
-     * Choose the relays the internet path uses (DESIGN.md §9.1).
-     *
-     * - `None` — n0's free public relays. Shared infrastructure with no
-     * uptime guarantee; fine because Wooosh only ever uses a relay to
-     * introduce two devices, never to carry file data.
-     * - `Some([])` — no relay and no address lookup. Nothing leaves this
-     * device except to addresses carried in a ticket.
-     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
-     * tickets advertise it, so a redeemer uses it with no configuration of
-     * their own.
-     *
-     * Takes effect on the next ticket operation, and invalidates any
-     * outstanding ticket, which advertises a relay that is no longer in use.
-     * Errors on a malformed URL without disturbing the current setting.
-     *
-     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
-     * endpoint, which is an asynchronous shutdown.
+     * Install the platform's attestation (PROTOCOL.md §9.2). Without one,
+     * this device is admitted as Unverified: direct connections only.
      */
-    fun `setRelayUrls`(`urls`: List<kotlin.String>?)
+    fun `setAttestor`(`attestor`: Attestor)
+    
+    /**
+     * Choose the rendezvous service (DESIGN.md §9.1): `None` = this build's
+     * default, `Some("")` = internet sharing off, `Some(url)` = a
+     * self-deployed Worker. Invalidates any outstanding ticket. A malformed
+     * URL errors without disturbing the current setting.
+     */
+    fun `setRendezvousUrl`(`url`: kotlin.String?)
     
     fun `setVisibility`(`mode`: Visibility)
     
     /**
-     * Boot the engine: load or create the identity through the KeyStore
-     * adapter, bind the QUIC endpoint, start the event pump.
-     *
-     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
-     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
-     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
-     * (first unlock, biometric prompt). Dispatch to a background executor.
+     * **BLOCKING — never call this on a UI thread.** Runs entirely on the
+     * calling thread and invokes `KeyStore` synchronously; Keychain /
+     * Keystore / DPAPI can take arbitrarily long.
      */
     fun `start`(`config`: Config, `keyStore`: KeyStore, `listener`: CoreEventListener)
     
     /**
-     * Shut down: closes the endpoint and stops the event pump.
-     *
      * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
-     * then joins the event thread, so it can also block behind an in-flight
-     * `CoreEventListener.on_event` call.
+     * then joins the event thread behind any in-flight `on_event`.
      */
     fun `stop`()
     
     /**
-     * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` rather than a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read after every
-     * `PairingResult { success: true }` and after `revoke_peer`.
+     * The pinned peer set (PROTOCOL.md §4.5), read straight from
+     * `trust.json` rather than a local mirror that drifts. Ordered by
+     * `paired_at`, then device id.
      */
     fun `trustedPeers`(): List<TrustedPeer>
     
     companion object
 }
 
-/**
- * The engine handle the platform apps bind against.
- */
 open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 {
 
@@ -2807,19 +3271,14 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Receiver side of the internet path: publish this device on iroh and
-     * return a `wooosh-net:1?...` ticket to show as text or a QR code. The
-     * sender redeems it with `redeem_ticket` and then offers files, so the
-     * roles match the LAN path exactly (connector = sender).
+     * Sender side of the internet path (PROTOCOL.md §9.3): join a rendezvous
+     * room and return a `wooosh-net:2?...` ticket for the receiver to redeem.
+     * The ticket is a capability: single-use token, 120 s expiry. Call
+     * `end_internet_ticket` as soon as the user leaves the screen.
      *
-     * The ticket carries this device's identity key, a single-use pairing
-     * token and a 120 s expiry. It is a capability: anyone holding an
-     * unexpired one can connect and pair. Call `end_internet_ticket` as soon
-     * as the user leaves the screen.
-     *
-     * **BLOCKING — never call this on a UI thread.** The first call binds the
-     * iroh endpoint and waits up to ~15 s for a home relay; it is also the
-     * first moment Wooosh contacts any relay at all.
+     * **BLOCKING — never call this on a UI thread.** Admission may call the
+     * `Attestor`, which talks to Apple or Google, and is the first moment
+     * Wooosh contacts the rendezvous at all.
      */
     @Throws(WoooshException::class)override fun `beginInternetTicket`(): kotlin.String {
             return FfiConverterString.lift(
@@ -2835,8 +3294,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Receiver side of QR pairing: returns the `wooosh-pair:1?...` payload
-     * to render as a QR code. Single-use token, 120 s expiry.
+     * Receiver side of QR pairing. Single-use token, 120 s expiry.
      */
     @Throws(WoooshException::class)override fun `beginPairingQr`(): kotlin.String {
             return FfiConverterString.lift(
@@ -2852,7 +3310,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Cancel a whole transfer (file_id = None) or one file.
+     * `file_id = None` cancels the whole transfer.
      */
     @Throws(WoooshException::class)override fun `cancel`(`transferId`: kotlin.String, `fileId`: kotlin.UInt?)
         = 
@@ -2879,19 +3337,13 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Connect to a peer address discovered by the native shell. Returns the
-     * peer_id.
+     * Connect to an address the shell discovered; returns the peer_id.
      *
-     * `expected_pubkey` (32 raw bytes, e.g. from `TrustedPeer.pubkey` or any
-     * event's `peer_pubkey`) pins the TLS handshake: a different key fails
-     * hard with `KeyChanged` and no connection is established.
-     *
-     * Passing `None` does **not** opt out of pinning — the core re-applies
-     * the pin from its own trust store whenever it can resolve the identity
-     * behind `addr` (PROTOCOL.md §4.5, DESIGN.md §4), so a SAS-paired peer is
-     * protected even if the shell forgets the key. Passing it explicitly is
-     * still preferred: it also pins the very first reconnect, before the core
-     * has ever seen that address.
+     * `expected_pubkey` (32 raw bytes) pins the TLS handshake: a different
+     * key fails hard with `KeyChanged`. `None` does **not** opt out of
+     * pinning — the core re-applies its own pin whenever it can resolve the
+     * identity behind `addr` (PROTOCOL.md §4.5) — but passing it also pins
+     * the very first reconnect, before that address has been seen.
      *
      * **BLOCKING — never call this on a UI thread.** Up to ~10 s on an
      * unreachable address.
@@ -2923,7 +3375,8 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Invalidate the outstanding ticket immediately.
+     * Invalidate the outstanding ticket immediately. A transfer already
+     * running on it continues.
      */
     @Throws(WoooshException::class)override fun `endInternetTicket`()
         = 
@@ -2951,8 +3404,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Actual bound listen address ("ip:port") — the shell advertises this
-     * over its native mDNS discovery.
+     * Bound "ip:port" — the shell advertises this over its own mDNS.
      */
     @Throws(WoooshException::class)override fun `listenAddr`(): kotlin.String {
             return FfiConverterString.lift(
@@ -2968,18 +3420,12 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Sender side of QR pairing: parse payload, connect (pinned to the QR
-     * key), redeem the token. Returns the paired peer_id.
-     *
-     * The QR's address hints are dialled concurrently; the first connection
-     * to come up wins, so a stale hint never delays the ones behind it.
-     *
-     * Every outcome — success, rejection, bad or expired QR, nothing
-     * reachable — also arrives as a `PairingResult` event, so a shell can
-     * drive its pairing UI entirely off events and never wedge.
+     * Sender side of QR pairing, pinned to the QR key; returns the peer_id.
+     * Hints are dialled concurrently, first up wins. Every outcome also
+     * arrives as a `PairingResult` event, so a shell can drive off events.
      *
      * **BLOCKING — never call this on a UI thread.** Worst case ≈ 6 s connect
-     * timeout (total, not per hint) plus a 20 s reply timeout.
+     * (total, not per hint) plus a 20 s reply timeout.
      */
     @Throws(WoooshException::class)override fun `pairWithQr`(`payload`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
@@ -3008,16 +3454,16 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Sender side of the internet path: dial the ticket's node over iroh,
-     * redeem its token, and return the peer_id to pass to `send`.
+     * Receiver side of the internet path: join the ticket's room, connect to
+     * the publisher pinned to its key, redeem the token. Returns the peer_id;
+     * the publisher then sends.
      *
-     * **This does not pair** (PROTOCOL.md §9.4). Success arrives as
-     * `TicketRedeemed`, never `PairingResult`, and nothing is written to the
-     * trust store — a shell that waits for `PairingResult` here will wait for
-     * ever. Failures do still arrive as `PairingResult { success: false }`.
+     * **This does not pair** (PROTOCOL.md §9.8). Success arrives as
+     * `TicketRedeemed`, never `PairingResult`; failures do still arrive as
+     * `PairingResult { success: false }`.
      *
-     * **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
-     * punching plus a 20 s pairing-reply timeout.
+     * **BLOCKING — never call this on a UI thread.** Admission, up to ~5 s
+     * of hole punching, a 20 s handshake budget and a 20 s pairing reply.
      */
     @Throws(WoooshException::class)override fun `redeemTicket`(`ticket`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
@@ -3033,8 +3479,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Start SAS pairing with a connected (untrusted) peer. Both sides then
-     * receive `PairingSas { code }` and must call `confirm_sas`.
+     * Both sides then receive `PairingSas { code }` and must `confirm_sas`.
      */
     @Throws(WoooshException::class)override fun `requestSasPairing`(`peerId`: kotlin.String)
         = 
@@ -3049,7 +3494,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Answer an IncomingOffer. Empty list = decline all.
+     * Empty list = decline all.
      */
     @Throws(WoooshException::class)override fun `respondToOffer`(`transferId`: kotlin.String, `acceptedFileIds`: List<kotlin.UInt>)
         = 
@@ -3064,9 +3509,7 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Resume a previously offered transfer after reconnecting to the peer
-     * (RESUME_Q/RESUME_A, PROTOCOL.md §5). Verified bytes are never re-sent.
-     *
+     * RESUME_Q/RESUME_A (PROTOCOL.md §5); verified bytes are never re-sent.
      * **BLOCKING — not for a UI thread** (same contract as `send`).
      */
     @Throws(WoooshException::class)override fun `resumeTransfer`(`peerId`: kotlin.String, `transferId`: kotlin.String)
@@ -3082,9 +3525,8 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Remove a pinned key; next contact with that device is untrusted again.
-     * `pubkey` is the raw 32 bytes from `TrustedPeer.pubkey` or from any
-     * event's `peer_pubkey`. Returns false if the key was not pinned.
+     * Next contact with that device is untrusted again. Returns false if the
+     * key was not pinned.
      */
     @Throws(WoooshException::class)override fun `revokePeer`(`pubkey`: kotlin.ByteArray): kotlin.Boolean {
             return FfiConverterBoolean.lift(
@@ -3103,9 +3545,8 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
      * Offer files to a peer; returns the transfer_id (hex). Streaming starts
      * after the receiver's DECISION; completion arrives as TransferDone.
      *
-     * **BLOCKING — not for a UI thread.** Hashing and streaming happen in the
-     * background and report through events, but registering the transfer
-     * blocks on the core's runtime.
+     * **BLOCKING — not for a UI thread.** Registering the transfer blocks on
+     * the core's runtime.
      */
     @Throws(WoooshException::class)override fun `send`(`peerId`: kotlin.String, `files`: List<kotlin.String>): kotlin.String {
             return FfiConverterString.lift(
@@ -3121,30 +3562,33 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Choose the relays the internet path uses (DESIGN.md §9.1).
-     *
-     * - `None` — n0's free public relays. Shared infrastructure with no
-     * uptime guarantee; fine because Wooosh only ever uses a relay to
-     * introduce two devices, never to carry file data.
-     * - `Some([])` — no relay and no address lookup. Nothing leaves this
-     * device except to addresses carried in a ticket.
-     * - `Some(urls)` — a chosen or self-hosted relay set. This device's
-     * tickets advertise it, so a redeemer uses it with no configuration of
-     * their own.
-     *
-     * Takes effect on the next ticket operation, and invalidates any
-     * outstanding ticket, which advertises a relay that is no longer in use.
-     * Errors on a malformed URL without disturbing the current setting.
-     *
-     * **BLOCKING — never call this on a UI thread.** It closes the bound iroh
-     * endpoint, which is an asynchronous shutdown.
+     * Install the platform's attestation (PROTOCOL.md §9.2). Without one,
+     * this device is admitted as Unverified: direct connections only.
      */
-    @Throws(WoooshException::class)override fun `setRelayUrls`(`urls`: List<kotlin.String>?)
+    @Throws(WoooshException::class)override fun `setAttestor`(`attestor`: Attestor)
         = 
     callWithPointer {
     uniffiRustCallWithError(WoooshException) { _status ->
-    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(
-        it, FfiConverterOptionalSequenceString.lower(`urls`),_status)
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_set_attestor(
+        it, FfiConverterTypeAttestor.lower(`attestor`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Choose the rendezvous service (DESIGN.md §9.1): `None` = this build's
+     * default, `Some("")` = internet sharing off, `Some(url)` = a
+     * self-deployed Worker. Invalidates any outstanding ticket. A malformed
+     * URL errors without disturbing the current setting.
+     */
+    @Throws(WoooshException::class)override fun `setRendezvousUrl`(`url`: kotlin.String?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(WoooshException) { _status ->
+    UniffiLib.INSTANCE.uniffi_wooosh_core_fn_method_woooshcore_set_rendezvous_url(
+        it, FfiConverterOptionalString.lower(`url`),_status)
 }
     }
     
@@ -3164,13 +3608,9 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Boot the engine: load or create the identity through the KeyStore
-     * adapter, bind the QUIC endpoint, start the event pump.
-     *
-     * **BLOCKING — never call this on a UI thread.** It runs entirely on the
-     * calling thread and invokes `KeyStore.load_identity` / `store_identity`
-     * synchronously; Keychain / Keystore / DPAPI can take arbitrarily long
-     * (first unlock, biometric prompt). Dispatch to a background executor.
+     * **BLOCKING — never call this on a UI thread.** Runs entirely on the
+     * calling thread and invokes `KeyStore` synchronously; Keychain /
+     * Keystore / DPAPI can take arbitrarily long.
      */
     @Throws(WoooshException::class)override fun `start`(`config`: Config, `keyStore`: KeyStore, `listener`: CoreEventListener)
         = 
@@ -3185,11 +3625,8 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * Shut down: closes the endpoint and stops the event pump.
-     *
      * **BLOCKING — not for a UI thread.** Waits up to ~2 s for the runtime,
-     * then joins the event thread, so it can also block behind an in-flight
-     * `CoreEventListener.on_event` call.
+     * then joins the event thread behind any in-flight `on_event`.
      */override fun `stop`()
         = 
     callWithPointer {
@@ -3203,10 +3640,9 @@ open class WoooshCore: Disposable, AutoCloseable, WoooshCoreInterface
 
     
     /**
-     * The pinned peer set (PROTOCOL.md §4.5) — the shell's trust list, read
-     * straight from `trust.json` rather than a local mirror that drifts.
-     * Ordered by `paired_at`, then device id. Re-read after every
-     * `PairingResult { success: true }` and after `revoke_peer`.
+     * The pinned peer set (PROTOCOL.md §4.5), read straight from
+     * `trust.json` rather than a local mirror that drifts. Ordered by
+     * `paired_at`, then device id.
      */
     @Throws(WoooshException::class)override fun `trustedPeers`(): List<TrustedPeer> {
             return FfiConverterSequenceTypeTrustedPeer.lift(
@@ -3258,32 +3694,72 @@ public object FfiConverterTypeWoooshCore: FfiConverter<WoooshCore, Pointer> {
 
 
 
+data class AppAttestEvidence (
+    /**
+     * `DCAppAttestService` key identifier, raw bytes.
+     */
+    var `keyId`: kotlin.ByteArray, 
+    /**
+     * Set when asked to attest: the attestation object.
+     */
+    var `attestation`: kotlin.ByteArray?, 
+    /**
+     * Set when asked to assert: the assertion object.
+     */
+    var `assertion`: kotlin.ByteArray?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAppAttestEvidence: FfiConverterRustBuffer<AppAttestEvidence> {
+    override fun read(buf: ByteBuffer): AppAttestEvidence {
+        return AppAttestEvidence(
+            FfiConverterByteArray.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AppAttestEvidence) = (
+            FfiConverterByteArray.allocationSize(value.`keyId`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`attestation`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`assertion`)
+    )
+
+    override fun write(value: AppAttestEvidence, buf: ByteBuffer) {
+            FfiConverterByteArray.write(value.`keyId`, buf)
+            FfiConverterOptionalByteArray.write(value.`attestation`, buf)
+            FfiConverterOptionalByteArray.write(value.`assertion`, buf)
+    }
+}
+
+
+
 data class Config (
     var `deviceName`: kotlin.String, 
     var `deviceType`: DeviceType, 
     var `visibility`: Visibility, 
-    /**
-     * Private staging directory for in-flight transfers + resume ledgers.
-     */
     var `stagingDir`: kotlin.String, 
-    /**
-     * Path of the JSON trust store (pinned peer keys).
-     */
     var `trustStorePath`: kotlin.String, 
     /**
-     * UDP listen address, e.g. "0.0.0.0:0" (default: ephemeral port).
+     * Default "0.0.0.0:0" (ephemeral port).
      */
     var `listenAddr`: kotlin.String?, 
     /**
-     * Relay servers for the internet path (DESIGN.md §9.1).
-     *
-     * `null` (the default) uses n0's free public relays — nothing to deploy,
-     * and nothing is contacted until the user asks for a ticket. An empty
-     * list disables relays and address lookup entirely, so the internet path
-     * only ever makes direct connections. A non-empty list points at chosen
-     * or self-hosted relays.
+     * Wooosh Rendezvous (DESIGN.md §9.1). `null` uses this build's default
+     * service and contacts nothing until internet sharing is used; `""`
+     * switches internet sharing off; a URL points at a self-deployed Worker.
      */
-    var `relayUrls`: List<kotlin.String>? = null
+    var `rendezvousUrl`: kotlin.String? = null, 
+    /**
+     * STUN server for discovering this device's public address. `null` uses
+     * Cloudflare's; `""` disables STUN, leaving local candidates only.
+     */
+    var `stunServer`: kotlin.String? = null
 ) {
     
     companion object
@@ -3301,7 +3777,8 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalSequenceString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -3312,7 +3789,8 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterString.allocationSize(value.`stagingDir`) +
             FfiConverterString.allocationSize(value.`trustStorePath`) +
             FfiConverterOptionalString.allocationSize(value.`listenAddr`) +
-            FfiConverterOptionalSequenceString.allocationSize(value.`relayUrls`)
+            FfiConverterOptionalString.allocationSize(value.`rendezvousUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`stunServer`)
     )
 
     override fun write(value: Config, buf: ByteBuffer) {
@@ -3322,7 +3800,8 @@ public object FfiConverterTypeConfig: FfiConverterRustBuffer<Config> {
             FfiConverterString.write(value.`stagingDir`, buf)
             FfiConverterString.write(value.`trustStorePath`, buf)
             FfiConverterOptionalString.write(value.`listenAddr`, buf)
-            FfiConverterOptionalSequenceString.write(value.`relayUrls`, buf)
+            FfiConverterOptionalString.write(value.`rendezvousUrl`, buf)
+            FfiConverterOptionalString.write(value.`stunServer`, buf)
     }
 }
 
@@ -3373,14 +3852,13 @@ public object FfiConverterTypeOfferedFile: FfiConverterRustBuffer<OfferedFile> {
 
 
 /**
- * Parsed QR pairing payload (UI-facing subset; the token stays internal to
- * `pair_with_qr`).
+ * Parsed QR pairing payload; the token stays internal to `pair_with_qr`.
  */
 data class QrInfo (
     var `pubkey`: kotlin.ByteArray, 
     var `deviceId`: kotlin.String, 
     /**
-     * Display-name hint from the QR (unauthenticated, label only).
+     * Unauthenticated hint, label only.
      */
     var `deviceName`: kotlin.String?, 
     var `hints`: List<kotlin.String>, 
@@ -3428,24 +3906,23 @@ public object FfiConverterTypeQrInfo: FfiConverterRustBuffer<QrInfo> {
 
 
 /**
- * Parsed internet ticket (PROTOCOL.md §9.2), so a shell can label the
- * "Receive from internet" UI before calling `redeem_ticket`.
+ * Parsed internet ticket (PROTOCOL.md §9.3), for labelling the UI before
+ * calling `redeem_ticket`.
  */
 data class TicketInfo (
     /**
-     * Publisher's raw 32-byte Ed25519 key. Identical to the value the trust
-     * store pins, so `trusted_peers()` matching works without connecting.
+     * Raw 32-byte Ed25519 key, identical to what the trust store pins, so
+     * `trusted_peers()` matching works without connecting.
      */
     var `nodeId`: kotlin.ByteArray, 
     /**
-     * Rendered DeviceID — the same string events carry as `peer_id`.
+     * Same string events carry as `peer_id`.
      */
     var `deviceId`: kotlin.String, 
     /**
-     * Display-name hint from the ticket (unauthenticated, label only).
+     * Unauthenticated hint, label only.
      */
     var `deviceName`: kotlin.String?, 
-    var `relay`: kotlin.String?, 
     var `expiresUnix`: kotlin.ULong, 
     var `expired`: kotlin.Boolean
 ) {
@@ -3462,7 +3939,6 @@ public object FfiConverterTypeTicketInfo: FfiConverterRustBuffer<TicketInfo> {
             FfiConverterByteArray.read(buf),
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
             FfiConverterULong.read(buf),
             FfiConverterBoolean.read(buf),
         )
@@ -3472,7 +3948,6 @@ public object FfiConverterTypeTicketInfo: FfiConverterRustBuffer<TicketInfo> {
             FfiConverterByteArray.allocationSize(value.`nodeId`) +
             FfiConverterString.allocationSize(value.`deviceId`) +
             FfiConverterOptionalString.allocationSize(value.`deviceName`) +
-            FfiConverterOptionalString.allocationSize(value.`relay`) +
             FfiConverterULong.allocationSize(value.`expiresUnix`) +
             FfiConverterBoolean.allocationSize(value.`expired`)
     )
@@ -3481,9 +3956,53 @@ public object FfiConverterTypeTicketInfo: FfiConverterRustBuffer<TicketInfo> {
             FfiConverterByteArray.write(value.`nodeId`, buf)
             FfiConverterString.write(value.`deviceId`, buf)
             FfiConverterOptionalString.write(value.`deviceName`, buf)
-            FfiConverterOptionalString.write(value.`relay`, buf)
             FfiConverterULong.write(value.`expiresUnix`, buf)
             FfiConverterBoolean.write(value.`expired`, buf)
+    }
+}
+
+
+
+data class TpmEvidence (
+    /**
+     * DER endorsement-key certificate.
+     */
+    var `ekCert`: kotlin.ByteArray, 
+    /**
+     * DER intermediates up to (not including) the manufacturer root.
+     */
+    var `ekChain`: List<kotlin.ByteArray>, 
+    /**
+     * TPMT_PUBLIC (or TPM2B_PUBLIC) of a restricted signing attestation key.
+     */
+    var `akPublic`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTpmEvidence: FfiConverterRustBuffer<TpmEvidence> {
+    override fun read(buf: ByteBuffer): TpmEvidence {
+        return TpmEvidence(
+            FfiConverterByteArray.read(buf),
+            FfiConverterSequenceByteArray.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TpmEvidence) = (
+            FfiConverterByteArray.allocationSize(value.`ekCert`) +
+            FfiConverterSequenceByteArray.allocationSize(value.`ekChain`) +
+            FfiConverterByteArray.allocationSize(value.`akPublic`)
+    )
+
+    override fun write(value: TpmEvidence, buf: ByteBuffer) {
+            FfiConverterByteArray.write(value.`ekCert`, buf)
+            FfiConverterSequenceByteArray.write(value.`ekChain`, buf)
+            FfiConverterByteArray.write(value.`akPublic`, buf)
     }
 }
 
@@ -3494,30 +4013,27 @@ public object FfiConverterTypeTicketInfo: FfiConverterRustBuffer<TicketInfo> {
  */
 data class TrustedPeer (
     /**
-     * Raw 32-byte Ed25519 identity key — the value `connect_peer`'s
-     * `expected_pubkey` and `revoke_peer` expect.
+     * Raw 32 bytes, as `connect_peer` / `revoke_peer` expect.
      */
     var `pubkey`: kotlin.ByteArray, 
     /**
-     * Rendered DeviceID (`Q7KM-3PXA-…`). Identical to the `peer_id` carried
-     * by every `CoreEvent`.
+     * Same string every `CoreEvent` carries as `peer_id`.
      */
     var `deviceId`: kotlin.String, 
     /**
-     * Display name captured at pairing time.
+     * Captured at pairing time.
      */
     var `deviceName`: kotlin.String, 
     /**
-     * Device type from the peer's HELLO at pairing time, when it was known.
+     * From the peer's HELLO at pairing time, when it was known.
      */
     var `deviceType`: DeviceType?, 
     /**
-     * 6-word fingerprint phrase for this key (same derivation as
-     * `fingerprint_phrase_for`).
+     * Same derivation as `fingerprint_phrase_for`.
      */
     var `fingerprint`: kotlin.String, 
     /**
-     * Unix seconds when the pin was first created.
+     * Unix seconds.
      */
     var `pairedAt`: kotlin.ULong, 
     /**
@@ -3569,16 +4085,52 @@ public object FfiConverterTypeTrustedPeer: FfiConverterRustBuffer<TrustedPeer> {
 
 
 /**
+ * Which platform proof an `Attestor` produces (PROTOCOL.md §9.2).
+ */
+
+enum class AttestationKind {
+    
+    APP_ATTEST,
+    PLAY_INTEGRITY,
+    TPM,
+    /**
+     * Admitted as Unverified: direct connections only, never relayed.
+     */
+    NONE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAttestationKind: FfiConverterRustBuffer<AttestationKind> {
+    override fun read(buf: ByteBuffer) = try {
+        AttestationKind.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AttestationKind) = 4UL
+
+    override fun write(value: AttestationKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * The single source of UI truth (DESIGN.md §4). Discovery events are absent
  * by design: the native shells own mDNS discovery.
  */
 sealed class CoreEvent {
     
     /**
-     * A control channel is up. `peer_pubkey` is the peer's raw 32-byte
-     * Ed25519 key, taken from the certificate it proved possession of in the
-     * TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
-     * `device_type` is the peer's HELLO `dt` (None if unrecognized).
+     * `peer_pubkey` is the raw 32-byte key the peer proved possession of in
+     * the TLS handshake; pass it back to `connect_peer` / `revoke_peer`.
      */
     data class PeerConnected(
         val `peerId`: kotlin.String, 
@@ -3602,15 +4154,9 @@ sealed class CoreEvent {
     }
     
     /**
-     * Pairing concluded (QR or SAS; success, failure or timeout). `message`
-     * is the peer's device name on success, the reason on failure.
-     * `peer_pubkey` is the key that was (or would have been) pinned.
      * A peer redeemed this device's internet ticket (PROTOCOL.md §9.4).
-     *
-     * **Not a pairing.** Nothing is written to the trust store and the
-     * authorisation dies with the connection. This is the signal the sending
-     * shell waits on before handing over the files it staged when it showed
-     * the code.
+     * **Not a pairing:** nothing is written to the trust store and the
+     * authorisation dies with the connection.
      */
     data class TicketRedeemed(
         val `peerId`: kotlin.String, 
@@ -3619,6 +4165,10 @@ sealed class CoreEvent {
         companion object
     }
     
+    /**
+     * `message` is the peer's device name on success, the reason on failure;
+     * `peer_pubkey` is the key that was (or would have been) pinned.
+     */
     data class PairingResult(
         val `peerId`: kotlin.String, 
         val `peerPubkey`: kotlin.ByteArray, 
@@ -3642,8 +4192,7 @@ sealed class CoreEvent {
     }
     
     /**
-     * Bytes can now flow (outgoing: DECISION accepted; incoming: offer
-     * accepted). Carries the resolved manifest for progress UI.
+     * Bytes can now flow; carries the resolved manifest for progress UI.
      */
     data class TransferStarted(
         val `transferId`: kotlin.String, 
@@ -3673,10 +4222,8 @@ sealed class CoreEvent {
     }
     
     /**
-     * `duration_ms` covers *this attempt only* — `resume_transfer` restarts
-     * the clock — measured from when bytes could start flowing (sender:
-     * DECISION received; receiver: offer accepted) to the last DONE.
-     * `bytes_transferred / duration_ms` is the attempt's average rate.
+     * `duration_ms` covers *this attempt only*: `resume_transfer` restarts
+     * the clock.
      */
     data class TransferDone(
         val `transferId`: kotlin.String, 
@@ -3696,9 +4243,8 @@ sealed class CoreEvent {
     
     /**
      * A pinned peer presented a different key (PROTOCOL.md §4.5). Surface it
-     * prominently; never silently re-pin. `peer_id` is the DeviceID of the
-     * *pinned* identity we expected; `presented_pubkey` is the key actually
-     * offered, when the handshake got far enough to observe it.
+     * prominently; never silently re-pin. `peer_id` is the *pinned* identity
+     * we expected, `presented_pubkey` the key actually offered, if observed.
      */
     data class KeyChanged(
         val `peerId`: kotlin.String, 
@@ -4161,9 +4707,6 @@ public object FfiConverterTypeVisibility: FfiConverterRustBuffer<Visibility> {
 
 
 
-/**
- * Public error type crossing the FFI boundary.
- */
 sealed class WoooshException(message: String): kotlin.Exception(message) {
         
         class NotStarted(message: String) : WoooshException(message)
@@ -4183,14 +4726,10 @@ sealed class WoooshException(message: String): kotlin.Exception(message) {
         class QrKeyMismatch(message: String) : WoooshException(message)
         
     /**
-     * Peer is in PairedOnly visibility and we are not paired (§4.1). Shells
-     * should offer to pair rather than report a generic failure.
+     * §4.1. Shells should offer to pair rather than report a generic failure.
      */
         class PairingRequired(message: String) : WoooshException(message)
         
-    /**
-     * No common protocol version (§4.1/§8).
-     */
         class VersionMismatch(message: String) : WoooshException(message)
         
         class Pairing(message: String) : WoooshException(message)
@@ -4206,13 +4745,31 @@ sealed class WoooshException(message: String): kotlin.Exception(message) {
         class InvalidArgument(message: String) : WoooshException(message)
         
     /**
-     * Hole punching never produced a direct path, so the route to the peer
-     * runs through a relay, and at least one file is over the relayed size
-     * limit (DESIGN.md §9.1). Shells should name the limit rather than report
-     * a generic transfer failure: the same files would send fine on a direct
-     * connection, so this is about the route, not the files.
+     * DESIGN.md §9.1.2. About the route, not the files: shells should name
+     * the relayed size limit rather than report a generic transfer failure.
      */
         class RelayFileTooLarge(message: String) : WoooshException(message)
+        
+    /**
+     * No direct path, and this device is not verified for relaying (PROTOCOL.md §9.6).
+     */
+        class RelayUnavailable(message: String) : WoooshException(message)
+        
+    /**
+     * This device's daily rendezvous allowance is used up (PROTOCOL.md §9.2).
+     */
+        class RendezvousQuota(message: String) : WoooshException(message)
+        
+    /**
+     * Down, unreachable, off, or over Cloudflare's daily limit.
+     */
+        class RendezvousUnavailable(message: String) : WoooshException(message)
+        
+    /**
+     * Internal: admission material was refused and has been cleared; never
+     * returned across the FFI.
+     */
+        class RendezvousRetry(message: String) : WoooshException(message)
         
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<WoooshException> {
@@ -4244,6 +4801,10 @@ public object FfiConverterTypeWoooshError : FfiConverterRustBuffer<WoooshExcepti
             15 -> WoooshException.Protocol(FfiConverterString.read(buf))
             16 -> WoooshException.InvalidArgument(FfiConverterString.read(buf))
             17 -> WoooshException.RelayFileTooLarge(FfiConverterString.read(buf))
+            18 -> WoooshException.RelayUnavailable(FfiConverterString.read(buf))
+            19 -> WoooshException.RendezvousQuota(FfiConverterString.read(buf))
+            20 -> WoooshException.RendezvousUnavailable(FfiConverterString.read(buf))
+            21 -> WoooshException.RendezvousRetry(FfiConverterString.read(buf))
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
         
@@ -4321,6 +4882,22 @@ public object FfiConverterTypeWoooshError : FfiConverterRustBuffer<WoooshExcepti
             }
             is WoooshException.RelayFileTooLarge -> {
                 buf.putInt(17)
+                Unit
+            }
+            is WoooshException.RelayUnavailable -> {
+                buf.putInt(18)
+                Unit
+            }
+            is WoooshException.RendezvousQuota -> {
+                buf.putInt(19)
+                Unit
+            }
+            is WoooshException.RendezvousUnavailable -> {
+                buf.putInt(20)
+                Unit
+            }
+            is WoooshException.RendezvousRetry -> {
+                buf.putInt(21)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -4430,6 +5007,70 @@ public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteA
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAppAttestEvidence: FfiConverterRustBuffer<AppAttestEvidence?> {
+    override fun read(buf: ByteBuffer): AppAttestEvidence? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAppAttestEvidence.read(buf)
+    }
+
+    override fun allocationSize(value: AppAttestEvidence?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAppAttestEvidence.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AppAttestEvidence?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAppAttestEvidence.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTpmEvidence: FfiConverterRustBuffer<TpmEvidence?> {
+    override fun read(buf: ByteBuffer): TpmEvidence? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTpmEvidence.read(buf)
+    }
+
+    override fun allocationSize(value: TpmEvidence?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTpmEvidence.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TpmEvidence?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTpmEvidence.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeDeviceType: FfiConverterRustBuffer<DeviceType?> {
     override fun read(buf: ByteBuffer): DeviceType? {
         if (buf.get().toInt() == 0) {
@@ -4452,38 +5093,6 @@ public object FfiConverterOptionalTypeDeviceType: FfiConverterRustBuffer<DeviceT
         } else {
             buf.put(1)
             FfiConverterTypeDeviceType.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalSequenceString: FfiConverterRustBuffer<List<kotlin.String>?> {
-    override fun read(buf: ByteBuffer): List<kotlin.String>? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterSequenceString.read(buf)
-    }
-
-    override fun allocationSize(value: List<kotlin.String>?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterSequenceString.allocationSize(value)
-        }
-    }
-
-    override fun write(value: List<kotlin.String>?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterSequenceString.write(value, buf)
         }
     }
 }
@@ -4550,6 +5159,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.ByteArray>> {
+    override fun read(buf: ByteBuffer): List<kotlin.ByteArray> {
+        val len = buf.getInt()
+        return List<kotlin.ByteArray>(len) {
+            FfiConverterByteArray.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.ByteArray>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterByteArray.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.ByteArray>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterByteArray.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeOfferedFile: FfiConverterRustBuffer<List<OfferedFile>> {
     override fun read(buf: ByteBuffer): List<OfferedFile> {
         val len = buf.getInt()
@@ -4600,11 +5237,8 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     }
 }
         /**
-         * Rendered DeviceID (`Q7KM-3PXA-…`) for a peer public key — the same string
-         * events carry as `peer_id`, so a shell can key its UI off a `trusted_peers()`
-         * pubkey without connecting first.
-         *
-         * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
+         * Rendered DeviceID (`Q7KM-3PXA-…`) for a peer key — the same string events
+         * carry as `peer_id`. Errors unless `pubkey` is 32 bytes.
          */
     @Throws(WoooshException::class) fun `deviceIdFor`(`pubkey`: kotlin.ByteArray): kotlin.String {
             return FfiConverterString.lift(
@@ -4617,11 +5251,8 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     
 
         /**
-         * 6-word verification phrase for a peer public key (PROTOCOL.md §2), shown on
-         * consent and trust-list screens. Pass any event's `peer_pubkey` or a
-         * `TrustedPeer.pubkey`; shells must never reimplement the wordlist.
-         *
-         * Errors with `InvalidArgument` unless `pubkey` is exactly 32 bytes.
+         * 6-word verification phrase for a peer key (PROTOCOL.md §2); shells must
+         * never reimplement the wordlist. Errors unless `pubkey` is 32 bytes.
          */
     @Throws(WoooshException::class) fun `fingerprintPhraseFor`(`pubkey`: kotlin.ByteArray): kotlin.String {
             return FfiConverterString.lift(
@@ -4634,7 +5265,7 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     
 
         /**
-         * Parse a `wooosh-net:1?...` ticket without redeeming it.
+         * Parse a `wooosh-net:2?...` ticket without redeeming it.
          */
     @Throws(WoooshException::class) fun `parseInternetTicket`(`ticket`: kotlin.String): TicketInfo {
             return FfiConverterTypeTicketInfo.lift(
@@ -4647,8 +5278,7 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     
 
         /**
-         * Parse a scanned `wooosh-pair:1?...` payload so the shell can label the
-         * pairing UI before calling `pair_with_qr`.
+         * Parse a `wooosh-pair:1?...` payload without pairing.
          */
     @Throws(WoooshException::class) fun `parsePairingQr`(`payload`: kotlin.String): QrInfo {
             return FfiConverterTypeQrInfo.lift(
@@ -4661,12 +5291,8 @@ public object FfiConverterSequenceTypeTrustedPeer: FfiConverterRustBuffer<List<T
     
 
         /**
-         * Largest single file Wooosh will move over a **relayed** internet connection
-         * (DESIGN.md §9.1). No limit applies on a direct path, which includes every
-         * LAN transfer and every internet transfer that hole punched.
-         *
-         * Exported so a shell can name the limit in its own copy instead of
-         * hardcoding a number that would drift the moment the core changed it.
+         * Largest single file over a **relayed** internet connection (PROTOCOL.md
+         * §9.6). No limit on a direct path. Exported so shells never hardcode it.
          */ fun `relayMaxFileBytes`(): kotlin.ULong {
             return FfiConverterULong.lift(
     uniffiRustCall() { _status ->

@@ -54,6 +54,8 @@ final class RealCore: WoooshCore {
         let keyStore = self.keyStore
         try await Task.detached(priority: .userInitiated) {
             try ffi.start(config: ffiConfig, keyStore: keyStore, listener: bridge)
+            // Without it the device is admitted as Unverified: direct paths only.
+            try ffi.setAttestor(attestor: AppAttestor())
         }.value
         started = true
 
@@ -144,7 +146,7 @@ final class RealCore: WoooshCore {
 
     func beginInternetTicket() async throws -> String {
         let ffi = self.ffi
-        // Off the main actor: blocks on a home relay for as long as ~15 s.
+        // Off the main actor: admission may attest, a network call to Apple.
         return try await Task.detached(priority: .userInitiated) {
             try ffi.beginInternetTicket()
         }.value
@@ -154,11 +156,10 @@ final class RealCore: WoooshCore {
         perform("endInternetTicket") { try self.ffi.endInternetTicket() }
     }
 
-    func setRelayURLs(_ urls: [String]?) async throws {
+    func setRendezvousURL(_ url: String?) async throws {
         let ffi = self.ffi
-        // Off the main actor: the core drives the endpoint shutdown with `block_on`.
         try await Task.detached(priority: .userInitiated) {
-            try ffi.setRelayUrls(urls: urls)
+            try ffi.setRendezvousUrl(url: url)
         }.value
     }
 
@@ -168,7 +169,6 @@ final class RealCore: WoooshCore {
             publicKey: info.nodeId,
             deviceID: info.deviceId,
             deviceName: info.deviceName,
-            relay: info.relay,
             expired: info.expired
         )
     }
@@ -309,7 +309,7 @@ final class RealCore: WoooshCore {
             }
             peerInfo[peerId] = ref
             emit(.pairingResult(peer: ref, success: success,
-                                message: success ? nil : message))
+                                message: success ? nil : pairingFailureMessage(message)))
 
         case .incomingOffer(let transferId, let peerId, let peerPubkey, let fromName,
                             let deviceType, let trusted, let fingerprint, let files, _):
@@ -503,6 +503,9 @@ func coreErrorMessage(_ error: Error) -> String {
         return message.contains("expired") ? L.t("error_pairing_expired") : L.t("error_pairing_failed")
     case .RelayFileTooLarge:
         return L.f("error_relay_file_too_large", RelayLimit.text)
+    case .RelayUnavailable: return L.t("error_relay_unavailable")
+    case .RendezvousQuota: return L.t("error_internet_quota")
+    case .RendezvousUnavailable, .RendezvousRetry: return L.t("error_internet_unavailable")
     case .Connect: return L.t("error_connect")
     case .UnknownPeer: return L.t("error_unknown_peer")
     case .NotStarted: return L.t("error_not_started")
@@ -515,9 +518,26 @@ func coreErrorMessage(_ error: Error) -> String {
     }
 }
 
+/// Rendezvous outcomes reach events as the core's error text (PROTOCOL.md §9).
+private func internetErrorMessage(_ text: String) -> String? {
+    if text.contains("relay_file_too_large") { return L.f("error_relay_file_too_large", RelayLimit.text) }
+    if text.contains("relay_unavailable") { return L.t("error_relay_unavailable") }
+    if text.contains("rendezvous_quota") { return L.t("error_internet_quota") }
+    if text.contains("rendezvous_unavailable") { return L.t("error_internet_unavailable") }
+    return nil
+}
+
+/// Pairing failures in events carry the core's internal English, never copy.
+func pairingFailureMessage(_ raw: String?) -> String {
+    let text = (raw ?? "").lowercased()
+    if let internet = internetErrorMessage(text) { return internet }
+    return text.contains("expired") ? L.t("error_pairing_expired") : L.t("error_pairing_failed")
+}
+
 /// The core's outcome tokens are internal English; answer them with real copy.
 func transferErrorMessage(_ raw: String) -> String {
     let text = raw.lowercased()
+    if let internet = internetErrorMessage(text) { return internet }
     if text.contains("declined") || text.contains("rejected") {
         return L.t("error_declined_by_peer")
     }

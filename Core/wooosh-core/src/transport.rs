@@ -195,6 +195,12 @@ pub fn transport_config() -> Arc<quinn::TransportConfig> {
 
 /// Mutual TLS required; also used for outgoing connections.
 pub fn make_endpoint(identity: &Identity, bind: SocketAddr) -> Result<quinn::Endpoint, WoooshError> {
+    quinn::Endpoint::server(server_config(identity)?, bind)
+        .map_err(|e| WoooshError::Io(format!("bind {bind}: {e}")))
+}
+
+/// Server side of §4.1, shared by the LAN endpoint and internet sessions.
+pub fn server_config(identity: &Identity) -> Result<quinn::ServerConfig, WoooshError> {
     let (cert, key) = make_cert(identity)?;
     let provider = provider();
 
@@ -213,10 +219,7 @@ pub fn make_endpoint(identity: &Identity, bind: SocketAddr) -> Result<quinn::End
         .map_err(|e| WoooshError::Crypto(format!("quic server cfg: {e}")))?;
     let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(quic_server));
     server_config.transport_config(transport_config());
-
-    let endpoint = quinn::Endpoint::server(server_config, bind)
-        .map_err(|e| WoooshError::Io(format!("bind {bind}: {e}")))?;
-    Ok(endpoint)
+    Ok(server_config)
 }
 
 /// The key the peer's cert carried, populated even when the pin rejected it.

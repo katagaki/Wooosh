@@ -64,11 +64,15 @@ pub struct Config {
     pub trust_store_path: String,
     /// Default "0.0.0.0:0" (ephemeral port).
     pub listen_addr: Option<String>,
-    /// Internet-path relays (DESIGN.md §9.1). `null` uses n0's public relays
-    /// and contacts nothing until a ticket is asked for; an empty list
-    /// disables relays and address lookup entirely.
+    /// Wooosh Rendezvous (DESIGN.md §9.1). `null` uses this build's default
+    /// service and contacts nothing until internet sharing is used; `""`
+    /// switches internet sharing off; a URL points at a self-deployed Worker.
     #[uniffi(default = None)]
-    pub relay_urls: Option<Vec<String>>,
+    pub rendezvous_url: Option<String>,
+    /// STUN server for discovering this device's public address. `null` uses
+    /// Cloudflare's; `""` disables STUN, leaving local candidates only.
+    #[uniffi(default = None)]
+    pub stun_server: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -98,7 +102,7 @@ pub struct QrInfo {
     pub expired: bool,
 }
 
-/// Parsed internet ticket (PROTOCOL.md §9.2), for labelling the UI before
+/// Parsed internet ticket (PROTOCOL.md §9.3), for labelling the UI before
 /// calling `redeem_ticket`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct TicketInfo {
@@ -109,19 +113,18 @@ pub struct TicketInfo {
     pub device_id: String,
     /// Unauthenticated hint, label only.
     pub device_name: Option<String>,
-    pub relay: Option<String>,
     pub expires_unix: u64,
     pub expired: bool,
 }
 
-/// Largest single file over a **relayed** internet connection (DESIGN.md
-/// §9.1). No limit on a direct path. Exported so shells never hardcode it.
+/// Largest single file over a **relayed** internet connection (PROTOCOL.md
+/// §9.6). No limit on a direct path. Exported so shells never hardcode it.
 #[uniffi::export]
 pub fn relay_max_file_bytes() -> u64 {
     crate::engine::RELAY_MAX_FILE_BYTES
 }
 
-/// Parse a `wooosh-net:1?...` ticket without redeeming it.
+/// Parse a `wooosh-net:2?...` ticket without redeeming it.
 #[uniffi::export]
 pub fn parse_internet_ticket(ticket: String) -> Result<TicketInfo, WoooshError> {
     let t = crate::inet::NetTicket::parse(&ticket)?;
@@ -129,7 +132,6 @@ pub fn parse_internet_ticket(ticket: String) -> Result<TicketInfo, WoooshError> 
         node_id: t.node_id.to_vec(),
         device_id: crate::identity::device_id_string_for(&t.node_id),
         device_name: t.dn.clone(),
-        relay: t.relay.clone(),
         expires_unix: t.expires_unix,
         expired: t.is_expired(),
     })
@@ -273,6 +275,54 @@ pub trait KeyStore: Send + Sync {
     fn store_identity(&self, secret: Vec<u8>);
 }
 
+/// Which platform proof an `Attestor` produces (PROTOCOL.md §9.2).
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum AttestationKind {
+    AppAttest,
+    PlayIntegrity,
+    Tpm,
+    /// Admitted as Unverified: direct connections only, never relayed.
+    None,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct AppAttestEvidence {
+    /// `DCAppAttestService` key identifier, raw bytes.
+    pub key_id: Vec<u8>,
+    /// Set when asked to attest: the attestation object.
+    pub attestation: Option<Vec<u8>>,
+    /// Set when asked to assert: the assertion object.
+    pub assertion: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TpmEvidence {
+    /// DER endorsement-key certificate.
+    pub ek_cert: Vec<u8>,
+    /// DER intermediates up to (not including) the manufacturer root.
+    pub ek_chain: Vec<Vec<u8>>,
+    /// TPMT_PUBLIC (or TPM2B_PUBLIC) of a restricted signing attestation key.
+    pub ak_public: Vec<u8>,
+}
+
+/// Platform attestation for rendezvous admission, implemented by the shell
+/// because App Attest, Play Integrity and the Windows TPM are platform APIs.
+/// Every method may block (network calls to Apple or Google, TPM I/O) and is
+/// always called off the UI thread. Returning `None` admits this device as
+/// Unverified rather than failing the transfer.
+#[uniffi::export(with_foreign)]
+pub trait Attestor: Send + Sync {
+    fn kind(&self) -> AttestationKind;
+    /// App Attest. `attest = true`: generate a new key and attest it over
+    /// `client_data_hash`. `false`: sign an assertion with the existing key.
+    fn app_attest(&self, client_data_hash: Vec<u8>, attest: bool) -> Option<AppAttestEvidence>;
+    /// Play Integrity standard request with this `requestHash`; returns the token.
+    fn play_integrity(&self, request_hash: String) -> Option<String>;
+    fn tpm_evidence(&self) -> Option<TpmEvidence>;
+    /// TPM2_ActivateCredential with the attestation key; returns the recovered secret.
+    fn tpm_activate(&self, credential_blob: Vec<u8>, encrypted_secret: Vec<u8>) -> Option<Vec<u8>>;
+}
+
 /// Called on the core's dedicated event thread; calling back into the core
 /// re-entrantly from here forfeits strict event ordering.
 #[uniffi::export(with_foreign)]
@@ -412,7 +462,8 @@ impl WoooshCore {
             device_name: config.device_name.clone(),
             device_type: config.device_type.as_wire().to_string(),
             visibility: config.visibility.clone(),
-            relay_urls: config.relay_urls.clone(),
+            rendezvous_url: config.rendezvous_url.clone(),
+            stun_server: config.stun_server.clone(),
         };
         let engine = {
             let _entered = runtime.enter();
@@ -491,46 +542,48 @@ impl WoooshCore {
         self.with_engine(|_, e| e.confirm_sas(&peer_id, accepted))?
     }
 
-    /// Receiver side of the internet path (PROTOCOL.md §9): publish on iroh
-    /// and return a `wooosh-net:1?...` ticket. Connector = sender, as on LAN.
-    /// The ticket is a capability: single-use token, 120 s expiry; anyone
-    /// holding an unexpired one can connect and pair, so call
+    /// Sender side of the internet path (PROTOCOL.md §9.3): join a rendezvous
+    /// room and return a `wooosh-net:2?...` ticket for the receiver to redeem.
+    /// The ticket is a capability: single-use token, 120 s expiry. Call
     /// `end_internet_ticket` as soon as the user leaves the screen.
     ///
-    /// **BLOCKING — never call this on a UI thread.** The first call binds the
-    /// iroh endpoint, waits up to ~15 s for a home relay, and is the first
-    /// moment Wooosh contacts any relay at all.
+    /// **BLOCKING — never call this on a UI thread.** Admission may call the
+    /// `Attestor`, which talks to Apple or Google, and is the first moment
+    /// Wooosh contacts the rendezvous at all.
     pub fn begin_internet_ticket(&self) -> Result<String, WoooshError> {
         self.with_engine(|rt, e| rt.block_on(e.begin_internet_ticket()))?
     }
 
-    /// Invalidate the outstanding ticket immediately.
+    /// Invalidate the outstanding ticket immediately. A transfer already
+    /// running on it continues.
     pub fn end_internet_ticket(&self) -> Result<(), WoooshError> {
         self.with_engine(|_, e| e.end_internet_ticket())
     }
 
-    /// Choose the relays the internet path uses (DESIGN.md §9.1): `None` =
-    /// n0's public relays, `Some([])` = no relay and no address lookup,
-    /// `Some(urls)` = a chosen set this device's tickets advertise. Relays
-    /// only introduce devices, they never carry file data. Takes effect on the
-    /// next ticket operation and invalidates any outstanding ticket. A
-    /// malformed URL errors without disturbing the current setting.
-    ///
-    /// **BLOCKING — never call this on a UI thread.** Closes the bound iroh
-    /// endpoint, an asynchronous shutdown.
-    pub fn set_relay_urls(&self, urls: Option<Vec<String>>) -> Result<(), WoooshError> {
-        self.with_engine(|rt, e| rt.block_on(e.set_relay_urls(urls)))?
+    /// Choose the rendezvous service (DESIGN.md §9.1): `None` = this build's
+    /// default, `Some("")` = internet sharing off, `Some(url)` = a
+    /// self-deployed Worker. Invalidates any outstanding ticket. A malformed
+    /// URL errors without disturbing the current setting.
+    pub fn set_rendezvous_url(&self, url: Option<String>) -> Result<(), WoooshError> {
+        self.with_engine(|_, e| e.set_rendezvous_url(url))?
     }
 
-    /// Sender side of the internet path: dial the ticket's node, redeem its
-    /// token, return the peer_id for `send`.
+    /// Install the platform's attestation (PROTOCOL.md §9.2). Without one,
+    /// this device is admitted as Unverified: direct connections only.
+    pub fn set_attestor(&self, attestor: std::sync::Arc<dyn Attestor>) -> Result<(), WoooshError> {
+        self.with_engine(|_, e| e.set_attestor(Some(attestor)))
+    }
+
+    /// Receiver side of the internet path: join the ticket's room, connect to
+    /// the publisher pinned to its key, redeem the token. Returns the peer_id;
+    /// the publisher then sends.
     ///
-    /// **This does not pair** (PROTOCOL.md §9.4). Success arrives as
+    /// **This does not pair** (PROTOCOL.md §9.8). Success arrives as
     /// `TicketRedeemed`, never `PairingResult`; failures do still arrive as
     /// `PairingResult { success: false }`.
     ///
-    /// **BLOCKING — never call this on a UI thread.** Up to ~30 s of hole
-    /// punching plus a 20 s pairing-reply timeout.
+    /// **BLOCKING — never call this on a UI thread.** Admission, up to ~5 s
+    /// of hole punching, a 20 s handshake budget and a 20 s pairing reply.
     pub fn redeem_ticket(&self, ticket: String) -> Result<String, WoooshError> {
         self.with_engine(|rt, e| rt.block_on(e.redeem_ticket(&ticket)))?
     }
@@ -633,5 +686,13 @@ impl WoooshCore {
     #[doc(hidden)]
     pub fn sas_code(&self, peer_id: &str) -> Option<u32> {
         self.with_engine(|_, e| e.sas_code(peer_id)).ok().flatten()
+    }
+}
+
+/// Rust-only hooks for the integration suite; not exported over the FFI.
+impl WoooshCore {
+    #[doc(hidden)]
+    pub fn debug_force_relay(&self, on: bool) -> Result<(), WoooshError> {
+        self.with_engine(|_, e| e.set_force_relay(on))
     }
 }

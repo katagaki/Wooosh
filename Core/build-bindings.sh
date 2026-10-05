@@ -3,6 +3,10 @@
 #   bindings/swift  + dist/WoooshCore.xcframework
 #       macos-arm64 · ios-arm64 · ios-arm64_x86_64-simulator (fat)
 #   bindings/kotlin + dist/jniLibs (arm64-v8a, x86_64)
+#
+# WOOOSH_RENDEZVOUS_URL, if set, is compiled in as the default rendezvous
+# service (rendezvous::default_url). Unset, internet sharing reports that no
+# service is configured until the shell sets one.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -34,11 +38,11 @@ cargo run --release -p uniffi-bindgen -- generate \
 echo "==> apple static libs"
 # Matching the app's floor keeps the linker from warning that these objects were
 # built for a newer macOS than the one being linked against.
-MACOSX_DEPLOYMENT_TARGET=26.0 cargo build --release -p wooosh-core --target aarch64-apple-darwin
+MACOSX_DEPLOYMENT_TARGET=27.0 cargo build --release -p wooosh-core --target aarch64-apple-darwin
 # Intel macOS: an Archive builds the standard macOS architectures, so a Mac app
 # links arm64 *and* x86_64. Without this slice CI fails with undefined symbols
 # for x86_64 while a local arm64-only Debug build succeeds.
-MACOSX_DEPLOYMENT_TARGET=26.0 cargo build --release -p wooosh-core --target x86_64-apple-darwin
+MACOSX_DEPLOYMENT_TARGET=27.0 cargo build --release -p wooosh-core --target x86_64-apple-darwin
 IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --release -p wooosh-core --target aarch64-apple-ios
 IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --release -p wooosh-core --target aarch64-apple-ios-sim
 # Intel simulator slice: without it `-destination generic/platform=iOS Simulator`

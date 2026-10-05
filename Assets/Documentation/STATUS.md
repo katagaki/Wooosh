@@ -1,15 +1,16 @@
 # Wooosh — Implementation Status
 
-Last updated: 2026-07-26. Specs: [DESIGN.md](DESIGN.md), [PROTOCOL.md](PROTOCOL.md), [COPY_STYLE.md](COPY_STYLE.md).
+Last updated: 2026-10-05. Specs: [DESIGN.md](DESIGN.md), [PROTOCOL.md](PROTOCOL.md), [COPY_STYLE.md](COPY_STYLE.md).
 
 ## Summary
 
 | Component | Builds | Runtime verified | Notes |
 |---|---|---|---|
-| `Core/` (Rust) | ✅ | ✅ 30/30 unit, 19/19 integration (+1 `#[ignore]`d) | QUIC + pairing + transfers + resume; internet path over iroh tickets, direct-only file data (PROTOCOL.md §9) |
+| `Core/` (Rust) | ✅ | ✅ 37/37 unit, 22/22 integration (+1 `#[ignore]`d, passing against the Worker under `cf dev`) | QUIC + pairing + transfers + resume; internet path through Wooosh Rendezvous with in-house hole punching and a capped relay (PROTOCOL.md §9). iroh removed |
 | `Apple/` macOS | ✅ | ✅ transfers to iOS and to Android, both directions with the CLI | unsandboxed run only; internet transfer never run across networks |
 | `Apple/` iOS | ✅ | ✅ on device: transfers, Photos routing, camera QR scanning; launches clean in the iOS 26.5 Simulator and discovers a real peer | share extension with a real App Group unverified; internet transfer never run across networks |
 | `Android/` | ✅ | ✅ physical Pixel 7a: discovery, send and receive, pairing, revoke, KEY_CHANGED, QR scanning | internet transfer never run at all, on any network |
+| `Worker/` (Cloudflare) | ✅ (40 KiB gzipped) | ✅ 22/22 in the Workers runtime; end to end with the core under `cf dev` | Never deployed. Production secrets and `PLAY_CERT_SHA256` not set |
 | `Windows/` (WinUI 3) | ❌ never compiled | — | scaffold only, written on a Mac; needs a Windows machine |
 
 Build commands: `cargo test --release` (PATH needs `/opt/homebrew/opt/rustup/bin`), `xcodebuild -scheme Wooosh -destination 'platform=macOS'`, `JAVA_HOME=<Android Studio jbr> ./gradlew assembleDebug`. FFI artifacts rebuild via `Core/build-bindings.sh`.
@@ -59,9 +60,40 @@ Identity is unified: one Ed25519 keypair per install, held by the core, stored t
 
 ## What is left
 
+**Migration: iroh → Wooosh Rendezvous (2026-10-05)**
+
+Decisions: the project runs one server, the Worker; Windows and the CLI attest with a TPM 2.0 rather than a hardware ID string, which would be forgeable; relayed files are capped at 1 GiB; the Apple minimum is OS 27 so every Mac has App Attest; iOS and Android ship on their stores, desktop outside them.
+
+Done and verified locally:
+- **Worker** (`Worker/`): rooms, admission on the room socket, App Attest, Play Integrity, TPM credential activation, per-device and per-network quotas, relay forwarding, no storage and no logs. `npm test`: 22 tests in the Workers runtime. The TPM MakeCredential output matches an independent implementation (tpm2-pytss's algorithm on pyca/cryptography) byte for byte; App Attest is tested against a locally minted chain in Apple's format, not a real device's attestation.
+- **Core**: iroh is gone, outright rather than behind a feature flag. Internet sessions are plain quinn connections over a path-selecting socket (`rendezvous/pathsock.rs`); STUN, MAC'd candidate exchange and probes, relay batching, admission caching, and `wooosh-net:2` tickets that no longer carry IP addresses. Integration tests cover direct and relayed transfers, the 1 GiB cap, refused relaying for Unverified clients, and withdrawn or reused codes failing immediately. The `#[ignore]`d test passed against the real Worker under `cf dev`: 8 MiB hash-verified, direct and fully relayed.
+- **Shells**: Apple installs an App Attest attestor and Android a Play Integrity attestor; Settings shows Internet Connections with Wooosh, My Own, and Off (the old iroh setting migrates only "Off"); new errors have copy in all 14 locales. Builds: macOS, iOS device, iOS Simulator, Android debug.
+
+Not done:
+- **Deployment.** The Worker has never run on Cloudflare. Needs `SERVER_SECRET` and the Play Integrity service account uploaded as secrets (`cf deploy --secrets-file`), `PLAY_CERT_SHA256` from Play Console, then the production URL compiled into release cores with `WOOOSH_RENDEZVOUS_URL`. Until then a build has no default service and internet transfers report it.
+- **Store-side setup.** The App Attest entitlement (`production`) is now in both Apple entitlements files, so signed builds need the App Attest capability on the App ID. Android needs `wooosh.playCloudProjectNumber` in Gradle properties; without it Play Integrity stays off and the device is Unverified.
+- **Real networks.** Nothing has crossed a real NAT. The check that matters is still a phone on mobile data and a laptop on home broadband, now also through the relay.
+- **Real attestation.** No real App Attest object or Play Integrity verdict has been verified by the Worker. App Attest on a Developer ID Mac is unverified (phase 0 below).
+- **Windows and CLI attestation (TPM).** Worker side done; neither client side exists, so both are Unverified for now.
+- **NAT-PMP/PCP/UPnP mapped candidates.** Not implemented.
+- **Bluetooth discovery and pairing, and paired rendezvous.** Not started.
+- **Apple link flags.** `SystemConfiguration` and `Network` were added for iroh. The apps still build and link with them; whether they can now be removed is untested.
+
+Remaining phases:
+
+0. **Developer ID + App Attest spike.** In the developer portal, check whether a Developer ID provisioning profile for `com.tsubuzaki.Wooosh` can include App Attest; then confirm `DCAppAttestService.isSupported` is true and a `production` attestation verifies, in a notarized build on macOS 27. Repeat with `wooosh-cli` bundled at `Contents/MacOS/`. If the profile cannot carry it, Macs are Unverified (direct paths only) and the specs say so.
+1. **Deploy and run across real networks**, direct and relayed.
+2. **TPM attestors** for Windows (Platform Crypto Provider) and the CLI (`tss-esapi`, TBS).
+3. **Bluetooth LE** discovery and SAS pairing from Pair a Device, Apple and Android together.
+4. **Paired rendezvous** (Reach Over the Internet).
+
+Known gaps that are accepted, not bugs: a standalone macOS CLI cannot attest (PROTOCOL.md §9.2.1), so it uses direct paths only; the Android Play Integrity quota (10 000 calls/day by default) needs a raise request before it binds; hole punching will fail between some networks, and those users get the relay or a clear error.
+
+Distribution prerequisites not yet in place: notarization requires the hardened runtime, and the macOS targets currently build with `ENABLE_HARDENED_RUNTIME = NO`; a sideloaded MSIX must be signed with a certificate users' machines trust (a purchased code-signing certificate or Azure Trusted Signing), or it will not install.
+
 **The internet path is one-shot and never pairs (rewritten 2026-07-26)**
 
-Pairing is same-network only. An internet transfer needs a fresh code every time: the **sender** publishes it, the receiver redeems it, and it dies with the transfer. Nothing is written to either trust store, which the integration suite asserts directly. Because the path never pairs, `trusted` is false even for a legitimate transfer and cannot gate anything — the redeemed token does, at both the HELLO and OFFER checks. Normative rules in PROTOCOL.md §9.1.1 and §9.4.
+Pairing is same-network only. An internet transfer needs a fresh code every time: the **sender** publishes it, the receiver redeems it, and it dies with the transfer. Nothing is written to either trust store, which the integration suite asserts directly. Because the path never pairs, `trusted` is false even for a legitimate transfer and cannot gate anything — the redeemed token does, at both the HELLO and OFFER checks. Normative rules in PROTOCOL.md §9.1.1 and §9.4 as of `5daa4d9` (now §9.6 and §9.8).
 
 **Host-environment note**
 
@@ -78,7 +110,7 @@ iOS receives in the background through `BGContinuedProcessingTask` (iOS 26), whi
   - `BGContinuedProcessingTask` is **unsupported in the Simulator**, so submission, the system Live Activity, its Stop button, and expiry behaviour all need a real iPhone. Note the open Apple bug where these tasks pause on a genuinely locked device (FB19916760).
   - Arrival notifications on both platforms: permission prompt, posting, and tap-to-open (Quick Look, the Photos hand-off, `ACTION_VIEW` on a `MediaStore` URI, and the API 26-28 media-scan path, which no current test device runs).
 - **The internet path has never run between two real devices at all**, on any network. Core, FFI and both shells are wired end to end and the ticket flow is covered by six integration tests (five relay-free, one against n0's real relays), but every run has been two nodes on one Mac — which exercises the protocol, not NAT traversal, and did not catch bug 14. The Android shell fixes for bugs 15 and 16 have only ever been compiled. The real check is a phone on mobile data redeeming a code from a Mac on home broadband.
-- **The relayed-size cap has never fired in a real scenario.** On one machine a direct path always forms, so the uncapped path is well covered but the 100 MiB relayed cap (PROTOCOL.md §9.1.1) is not. Reproducing it needs two genuinely hostile NATs, or a build with hole punching disabled.
+- **The relayed-size cap has never fired in a real scenario.** On one machine a direct path always forms, so the uncapped path is well covered but the 100 MiB relayed cap (PROTOCOL.md §9.1.1 as of `5daa4d9`) is not. Reproducing it needs two genuinely hostile NATs, or a build with hole punching disabled.
 - **A self-hosted relay has not been run.** That a chosen relay is *advertised* in the ticket follows from the one line that publishes the endpoint's home relay, and validation plus the unreachable-relay failure are tested; that a real self-hosted relay carries an introduction end to end is not. It needs an actual `iroh-relay` deployment.
 - iOS share extension with a real App Group (needs signed builds).
 - Sandboxed macOS run end to end (ad-hoc re-signing invalidates the container ACL between rebuilds).

@@ -97,6 +97,8 @@ class RealCore(
                     keyStore,
                     listener,
                 )
+                // Without it the device is admitted as Unverified: direct paths only.
+                ffi.setAttestor(PlayIntegrityAttestor(appContext))
                 started = true
                 Log.i(
                     TAG,
@@ -272,12 +274,11 @@ class RealCore(
         }
     }
 
-    override suspend fun setRelayUrls(urls: List<String>?) = withContext(Dispatchers.IO) {
-        // Closing the bound iroh endpoint is a block_on shutdown; never the main thread.
+    override suspend fun setRendezvousUrl(url: String?) = withContext(Dispatchers.IO) {
         try {
-            ffi.setRelayUrls(urls)
+            ffi.setRendezvousUrl(url)
         } catch (e: Throwable) {
-            Log.w(TAG, "setRelayUrls($urls) failed", e)
+            Log.w(TAG, "setRendezvousUrl($url) failed", e)
             throw CoreException(userMessage(e), e)
         }
     }
@@ -298,7 +299,6 @@ class RealCore(
                     deviceId = it.deviceId,
                     publicKey = it.nodeId,
                     deviceName = it.deviceName,
-                    relay = it.relay,
                     expired = it.expired,
                 )
             }
@@ -307,7 +307,7 @@ class RealCore(
         scope.launch(Dispatchers.IO) {
             // Parsed only for the failure path.
             val info = parseTicket(ticket)
-            Log.i(TAG, "redeemTicket: parsed=${info != null} peer=${info?.deviceId} relay=${info?.relay}")
+            Log.i(TAG, "redeemTicket: parsed=${info != null} peer=${info?.deviceId}")
             val startedAt = SystemClock.elapsedRealtime()
             try {
                 val peerId = ffi.redeemTicket(ticket.trim())
@@ -616,6 +616,10 @@ class RealCore(
     /** The core's exception detail strings are untranslatable and log-shaped, never copy. */
     private fun messageRes(error: Throwable): Int = when (error) {
         is WoooshException.RelayFileTooLarge -> R.string.error_relay_file_too_large
+        is WoooshException.RelayUnavailable -> R.string.error_relay_unavailable
+        is WoooshException.RendezvousQuota -> R.string.error_internet_quota
+        is WoooshException.RendezvousUnavailable, is WoooshException.RendezvousRetry ->
+            R.string.error_internet_unavailable
         is WoooshException.PairingRequired -> R.string.error_pairing_required
         is WoooshException.VersionMismatch -> R.string.error_version_mismatch
         is WoooshException.KeyChanged -> R.string.error_key_changed

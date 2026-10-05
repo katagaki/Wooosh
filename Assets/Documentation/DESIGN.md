@@ -1,6 +1,6 @@
 # Wooosh — System Design
 
-AirDrop-style local file sharing for Android, iOS, macOS, and Windows. Minimal UI, native on every platform, end-to-end encrypted, no accounts, no servers to run.
+AirDrop-style file sharing for Android, iOS, macOS, and Windows. Minimal UI, native on every platform, end-to-end encrypted, no accounts. The only server is a stateless rendezvous Worker on Cloudflare that introduces devices across networks and stores nothing (§9).
 
 Companion document: [PROTOCOL.md](PROTOCOL.md) — wire protocol, discovery format, and the key-sharing/pairing cryptography.
 
@@ -9,7 +9,7 @@ Companion document: [PROTOCOL.md](PROTOCOL.md) — wire protocol, discovery form
 ## 1. Requirements
 
 ### Functional
-- Automatic discovery of nearby devices on the same LAN (AirDrop-like, zero configuration).
+- Automatic discovery of nearby devices on the same LAN (AirDrop-like, zero configuration), and of devices in Bluetooth range on any network (§9.6).
 - Send/receive any file type, 1 file or thousands, 500 kB or 4 GB+.
 - Secure pairing (key sharing) so transfers are end-to-end encrypted and devices are mutually authenticated; man-in-the-middle on open Wi-Fi must be detectable.
 - Received media is routed automatically:
@@ -19,7 +19,7 @@ Companion document: [PROTOCOL.md](PROTOCOL.md) — wire protocol, discovery form
 - Share extension on every platform (system share sheet / Share Target / ACTION_SEND).
 - Device list sorted by **discovery timestamp**, never reordered; devices that vanish from discovery are **grayed out in place**, not removed (prevents mis-taps from list shifting).
 - Screen stays awake during active transfers on mobile; long transfers must not lock the user out of their device.
-- Off-LAN sharing paths (different networks, mobile data) without a self-hosted middleman server (§9).
+- Off-LAN sharing (different networks, mobile data) peer to peer, introduced by a rendezvous service that never stores data and relays only as a capped fallback (§9).
 - App accent color follows the system accent where the OS supports it.
 
 ### Non-functional
@@ -31,7 +31,7 @@ Companion document: [PROTOCOL.md](PROTOCOL.md) — wire protocol, discovery form
 
 ### Constraints
 - Native UI per platform: Kotlin/Jetpack Compose (Android), SwiftUI (iOS + macOS), WinUI 3 (Windows).
-- No backend infrastructure operated by the project.
+- The only backend is Wooosh Rendezvous, a Cloudflare Worker on the free plan (§9.1). It stores nothing, admits only attested clients, and carries file data only on the capped relay fallback. Everything else stays peer to peer.
 
 ---
 
@@ -58,7 +58,7 @@ The protocol, cryptography, discovery, and transfer engine live in a single Rust
 │  └──────────┘ └──────────┘ └───────────┘ └───────────────┘  │
 │  (discovery + peer-list ordering live in the shells — below) │
 │        Transport: QUIC (quinn) · TLS 1.3 · BLAKE3           │
-│        Internet path: iroh (relay + hole punching)          │
+│   Internet path: rendezvous room + STUN + hole punching     │
 └──────────────────────────────────────────────────────────────┘
    Platform adapters (injected from the shell, per platform):
    secure key storage · file staging/routing · wake locks
@@ -71,7 +71,7 @@ The protocol, cryptography, discovery, and transfer engine live in a single Rust
 | Crypto correctness | One audited implementation | Four chances to get AEAD/nonce/pinning wrong |
 | Interop bugs | Impossible by construction | Cross-platform matrix testing forever |
 | QUIC availability | `quinn` everywhere | Uneven: no public QUIC API on iOS < 15 / Android; Windows MsQuic differs |
-| Internet P2P (iroh, §9) | Drops in directly (Rust) | Reimplement hole punching 4× — not realistic |
+| Internet P2P (§9) | STUN, punching and path selection written once | Reimplement hole punching 4× — not realistic |
 | Build complexity | Rust toolchain + FFI plumbing | Plain per-platform builds |
 | UI nativeness | Unaffected — UI is fully native | Same |
 
@@ -127,16 +127,22 @@ confirm_sas(peer_id, accepted: bool)
 send(peer_id, files: [StagedFile]) -> transfer_id
 respond_to_offer(transfer_id, accepted_file_ids: [FileId])
 cancel(transfer_id)
-connect_peer(addr, expected_pubkey?)     // shell resolved it via native mDNS; also the Tailscale / direct-IP path, §9
+connect_peer(addr, expected_pubkey?)     // shell resolved it via native mDNS; also the Tailscale / direct-IP path, §9.7
 listen_addr() -> String                  // bound "ip:port" for the shell to publish in its mDNS TXT record
 trusted_peers() -> [TrustedPeer]         // the pinned set, read from the trust store — the shell's trust list
 revoke_peer(pubkey) -> bool              // un-pin; next contact is untrusted again
 fingerprint_phrase_for(pubkey) -> String // 6-word verification phrase; shells never reimplement the wordlist
 device_id_for(pubkey) -> String          // rendered DeviceID == the peer_id used in events
-begin_internet_ticket() -> String         // sender publishes an iroh ticket, §9.1
+begin_internet_ticket() -> String         // sender publishes a rendezvous ticket, §9.1
 end_internet_ticket()                     // withdraw it immediately
 redeem_ticket(ticket: String) -> peer_id  // sender redeems, connects, then send(), §9.1
 parse_internet_ticket(ticket) -> TicketInfo // label the UI before redeeming
+set_rendezvous_url(url?)                  // null = default Worker, "" = off, §9.1
+set_attestor(attestor)                    // platform proof for admission, §9.2
+// Planned, not implemented:
+set_paired_rendezvous(pubkey, enabled)    // "Reach Over the Internet" per paired device, §9.1.1
+ble_info() -> bytes                       // INFO payload for the shell's GATT server, PROTOCOL.md §3.4
+connect_nearby(info: bytes, expected_pubkey?) -> peer_id // LAN race, else rendezvous room
 
 // Event stream (core → shell), the single source of UI truth
 PeerAppeared   { peer, discovered_at }   // core assigns the ordering timestamp
@@ -156,7 +162,7 @@ KeyChanged     { peer_id, expected_pubkey, presented_pubkey? }
 
 `FileReady` is the storage-routing hook: the core finishes verification in its private staging directory, then the **shell** moves the file to its platform-correct destination (§6) and reports back so staging can be cleaned.
 
-`PlatformAdapters` (implemented natively, passed in at `start`): `key_store` (get/put identity key), `keep_awake(bool)`, `staging_dir`, `notify(event)`.
+`PlatformAdapters` (implemented natively, passed in at `start`): `key_store` (get/put identity key), `keep_awake(bool)`, `staging_dir`, `notify(event)`. The `Attestor` (platform evidence for rendezvous admission over a server nonce, §9.2) is installed after `start` with `set_attestor`, so `start`'s signature did not change; without one the device is admitted as Unverified. `Config` gains `rendezvous_url` and `stun_server`, both optional.
 
 ### Peer identity crosses the FFI as a public key (normative)
 
@@ -176,8 +182,9 @@ Pinning itself is *not* delegated to the shell: passing `expected_pubkey = null`
 | `start` | the host `KeyStore` (invoked **synchronously, on the calling thread**), then binding the QUIC endpoint |
 | `pair_with_qr` | full QUIC handshake + PAIR_ACCEPT — worst case ≈10 s per address hint + 20 s reply timeout |
 | `connect_peer` | QUIC handshake + HELLO exchange — up to ≈10 s on an unreachable address |
-| `begin_internet_ticket` | binding the iroh endpoint on first use, then up to ~15 s discovering a home relay — also the first moment Wooosh contacts any relay |
-| `redeem_ticket` | binding the iroh endpoint, a ≈30 s hole-punch/dial budget, then the 20 s pairing-reply timeout |
+| `begin_internet_ticket` | joining the room and admission: a platform attestation call (network calls to Apple or Google) at most about once a day, a cached token otherwise. The first moment Wooosh contacts the rendezvous |
+| `redeem_ticket` | admission, waiting for the publisher (≤30 s), ≤2 s candidate gathering, the 5 s punch window, a ≤20 s QUIC handshake and the 20 s pairing-reply timeout |
+| `connect_nearby` | the LAN hint race (6 s), then the same as `redeem_ticket` without the token |
 | `send` / `resume_transfer` | the core runtime while the transfer is registered (streaming itself is asynchronous) |
 | `stop` | ≈2 s runtime shutdown, then joining the event thread |
 
@@ -192,11 +199,11 @@ Conversely, `CoreEventListener.on_event` is always delivered on the core's own e
 The core maintains the canonical list; shells render it verbatim.
 
 - **Ordering**: strictly by `discovered_at` of the *first* sighting in this app session. New devices append to the bottom. Order never changes afterward — no re-sorting on rename, RSSI, or re-announce.
-- **Staleness**: a peer missing from mDNS for > 10 s (2 missed announce intervals + grace) emits `PeerStale`. UI grays the row, disables hit-testing, keeps its position and height. `PeerReturned` restores it in place. Rows are only cleared when the app is relaunched or the user pulls-to-refresh explicitly.
-- **Row content**: device-type icon (phone/tablet/laptop/desktop), device name, state line (Ready · Paired ✓ · Away · Receiving…). A paired-checkmark, not a separate section — sections would move rows.
+- **Staleness**: a peer missing from both mDNS and BLE for > 10 s emits `PeerStale`. UI grays the row, disables hit-testing, keeps its position and height. `PeerReturned` restores it in place. Rows are only cleared when the app is relaunched or the user pulls-to-refresh explicitly.
+- **Row content**: device-type icon (phone/tablet/laptop/desktop), device name, state line (Ready · Paired ✓ · Away · Receiving…), plus the route when it is not the LAN: **Nearby** (Bluetooth, §9.6) or **Over the Internet** (§9.1). A paired-checkmark, not a separate section — sections would move rows. The route updates in the state line; it never moves the row.
 - **Tap** → file picker (or immediate send when launched from the share extension).
 - **Incoming offer** → modal sheet: sender name + verification state, file count/total size, thumbnail strip, Accept / Decline. Unpaired senders additionally show the fingerprint code with a "Pair & remember" option.
-- Empty state explains visibility mode and offers the QR pairing button.
+- Empty state explains visibility mode, says that nearby devices appear while Wooosh is open on both, and offers Pair a Device.
 
 Platform notes:
 - **Android**: Compose `LazyColumn`, `animateItem` disabled for reorder (there is none), Material 3 dynamic color.
@@ -283,72 +290,166 @@ All four funnel into the same core `send()` call; the share UI is a trimmed devi
 
 ---
 
-## 9. Off-LAN sharing (no self-hosted server)
+## 9. Off-LAN and nearby sharing
 
-Ranked; ship in this order. All of them reuse the exact same pairing trust model and transfer protocol — only the path packets take changes.
+> **Status:** §9.1, §9.1.2, §9.2 (iOS, macOS and Android), §9.3 and §9.5 are implemented and tested locally; nothing has run across real networks yet. §9.1.1 (paired rendezvous), §9.2 for Windows and the CLI (TPM), and §9.6 (Bluetooth) are not implemented. iroh, which this replaces, is described in this document as of commit `5daa4d9`. STATUS.md has the detail.
 
-### 9.1 Primary: iroh tickets (internet P2P, free public relays)
-[iroh](https://iroh.computer) is a Rust QUIC stack whose node identity *is* an Ed25519 key — the same shape as Wooosh's identity (PROTOCOL.md §2). It performs NAT hole punching with relay-assisted rendezvous, falling back to relaying E2E-encrypted traffic through n0's free public relay infrastructure when punching fails (symmetric NAT, CGNAT on mobile data). Nothing to deploy; traffic stays end-to-end encrypted so relays see only ciphertext.
+All of these reuse the exact same pairing trust model and transfer protocol. Only the path packets take changes.
 
-**The sender publishes the ticket; the receiver redeems it.** The sender has already chosen the files, so it is the side with something to publish, and the code it shows is the thing being offered. This does invert the LAN rule that the connector originates `OFFER`, but the engine carries either direction unchanged, so no mirror-image transfer path was needed. Ticket format and the full flow are normative in PROTOCOL.md §9.
+### 9.1 Primary: Wooosh Rendezvous (internet P2P through a Cloudflare Worker)
 
-UX: one entry point, **Other Device**, which opens a single screen with two segments — **Send** and **Receive**. Segmented picker on Apple, tabs on Android, a `SelectorBar` on Windows.
+Wooosh runs one piece of infrastructure: **Wooosh Rendezvous**, a Cloudflare Worker with one Durable Object per "room". It introduces two devices and then gets out of the way. Each device learns its public address from a STUN server, the two swap address candidates through the room, and both hole punch so that QUIC runs **directly** between them. Only when punching fails does the room forward traffic itself, and then only for files up to 1 GiB (§9.1.2). Wire format and every normative rule are in PROTOCOL.md §9.
 
-- **Send**: choose files, then Wooosh publishes a **ticket** (compact string, rendered as a QR and as copyable text: identity key + one-time token + relay hint + expiry) and waits. Redemption starts the transfer.
-- **Receive**: scan or paste the ticket the other device is showing. Redeeming it *is* the consent, so no second prompt follows; the incoming transfer appears in the device list like any other.
+Why a Worker and not iroh, which this replaces:
+
+| | Wooosh Rendezvous | iroh (previous) |
+|---|---|---|
+| Who runs the introducer | The project, on Cloudflare's free plan | n0's public relays, shared with every iroh app |
+| Abuse control | Device attestation before any room is joined (§9.2) | None available to Wooosh |
+| What a ticket discloses | Key, token, room id | Key, token, relay URL, **LAN and public IPs** |
+| Paired devices over the internet | Possible without a code (PROTOCOL.md §9.9) | Needed a fresh ticket every time |
+| NAT traversal code | Ours: STUN, candidate exchange, punching, path selection (`inet/` in the core) | iroh's, mature and multipath |
+| Binary size | Drops most of iroh's dependency tree (`portmapper` and `netwatch` remain, so Apple link flags must be re-checked) | Full iroh stack |
+
+The honest cost of the switch is the NAT traversal row: iroh's traversal is more mature than a first in-house implementation will be. The migration therefore keeps iroh behind a build flag until the new path has been measured across real networks (STATUS.md).
+
+**The Worker cannot do STUN.** Workers have no UDP. STUN comes from `stun.cloudflare.com:3478`, Cloudflare's free public STUN server, which sees only a binding request from an IP and port.
+
+**Cloudflare TURN is not used.** Outside Cloudflare's SFU product it costs $0.05/GB with no free allowance, and the room relay covers the capped fallback at no cost (§9.4).
+
+**The sender publishes the ticket; the receiver redeems it.** The sender has already chosen the files, so it is the side with something to publish, and the code it shows is the thing being offered. This does invert the LAN rule that the connector originates `OFFER`, but the engine carries either direction unchanged.
+
+UX: one entry point, **Other Device**, which opens a single screen with two segments, **Send** and **Receive**. Segmented picker on Apple, tabs on Android, a `SelectorBar` on Windows.
+
+- **Send**: choose files, then Wooosh publishes a **ticket** (rendered as a QR and as copyable text) and waits. Redemption starts the transfer.
+- **Receive**: scan or paste the ticket the other device is showing. Redeeming it *is* the consent, so no second prompt follows.
 
 The ticket travels over any channel the users already share (Messages, email, in person). Works across accounts, networks, and mobile data.
 
-Both halves live behind one entry point rather than behind a question asked first. An earlier build presented a Send / Receive dialog before opening either screen, which made the user commit to a direction while looking at nothing and turned a wrong guess into a full back-and-forth. Two segments show both directions at once and cost a tap to change. The entry point lives in the device list, not in Pair a Device, because "a device that is not on this network" is a destination, which is what a device row already is.
+Both halves live behind one entry point rather than behind a question asked first. An earlier build presented a Send / Receive dialog before opening either screen, which made the user commit to a direction while looking at nothing. Two segments show both directions at once and cost a tap to change. The entry point lives in the device list, not in Pair a Device, because "a device that is not on this network" is a destination, which is what a device row already is.
 
-On Apple and Android the entry point is a synthetic row in the device list, pinned **first**, never appended. Appended, every new discovery would push it down, which is precisely the moving-target mis-tap the list rules exist to prevent (§5). Pinned first it is a fixed target and the discovered rows keep their own order below it. It is hidden entirely when the internet path is off. Windows puts it in the command bar instead: its list is bound straight to the registry's append-only collection, and wrapping that collection to inject one non-device row is the sort of indirection the ordering rules exist to keep out.
+On Apple and Android the entry point is a synthetic row in the device list, pinned **first**, never appended. Appended, every new discovery would push it down, which is precisely the moving-target mis-tap the list rules exist to prevent (§5). It is hidden entirely when the internet path is off. Windows puts it in the command bar instead: its list is bound straight to the registry's append-only collection.
 
-**Pairing is same-network only.** The internet path never pairs (PROTOCOL.md §9.4): a QR is required for every internet transfer, the sender presents it, the recipient scans and downloads, and the code dies with the transfer. Nothing is written to the trust store.
+**Tickets never pair.** A redeemed ticket authorises one transfer and dies with it (PROTOCOL.md §9.8). Nothing is written to the trust store. Durable off-LAN reachability comes from pairing in person (QR, or Bluetooth §9.6) and then opting the device into paired rendezvous (§9.1.1).
 
-Three rules the shells follow here:
+Rules the shells follow here, unchanged from the iroh path:
 
-- **One scanner, both code types.** `wooosh-pair:` and `wooosh-net:` payloads look identical to a camera, so the Scan tab takes either and dispatches on the scheme. Asking the user to pre-classify a code somebody else generated is a question they cannot answer.
-- **Nothing is published until the user presses.** Getting a code is the only action in Wooosh that contacts a server of any kind, so the tab explains what will happen and waits. The ticket is invalidated when the user leaves the screen, not when it expires.
-- **Redeeming hands off to the transfer list.** Scanning *is* the receive flow: nothing is pinned, so there is no outcome to read and no second consent to give. The moment the connection lands the shell leaves the scanner — Apple dismisses the sheet, Android pops to the main screen — and the incoming transfer appears where every other transfer does. Leaving the user on a spent viewfinder while the files arrived somewhere they could not see read as a hang.
+- **One scanner, both code types.** `wooosh-pair:` and `wooosh-net:` payloads look identical to a camera, so the Scan tab takes either and dispatches on the scheme.
+- **Nothing is published until the user presses.** Getting a code contacts the rendezvous, so the tab explains what will happen and waits. The ticket is invalidated when the user leaves the screen, not when it expires.
+- **Redeeming hands off to the transfer list.** The moment the connection lands the shell leaves the scanner (Apple dismisses the sheet, Android pops to the main screen) and the incoming transfer appears where every other transfer does.
+- **The scanner stays armed across a failed code.** Expired, malformed, and unanswerable codes are the common case. The camera pauses only while a ceremony is in flight, and detection is acknowledged by the scanner itself, with a haptic and a visible state change.
 
-The scanner **stays armed across a failed code**. Expired, malformed, and unanswerable codes are the common case, and a scanner that reads exactly one payload per visit leaves a frozen preview behind after every one of them, which is indistinguishable from a crash. The camera pauses only while a ceremony is in flight and reads again the moment that ceremony's alert is dismissed. Detection is acknowledged by the scanner itself, with a haptic and a visible state change, rather than by whatever the payload turns out to trigger: parsing, dialling, and hole punching each take long enough that a viewfinder which merely stopped moving looked broken.
+A peer reached this way has no mDNS record behind it, so it enters the device list from `PeerConnected` alone, as a connection-only row (append-only like every other row, §5). Sending to such a row skips `connect_peer`.
 
-A peer reached this way has no mDNS record behind it, so it enters the device list from `PeerConnected` alone, as a connection-only row (append-only like every other row, DESIGN.md §5). Sending to such a row skips `connect_peer`: the connection is already up and is identified by DeviceID.
+**A ticket row is never shown as Paired, and it is spent when the transfer ends.** The row says **Ready · Over the Internet** and carries no checkmark, even when the peer is in the trust store from an earlier pairing: the single-use ticket admitted it, not the pin. Once that transfer settles, the row greys out in place, disabled. The shells hold the ticket origin on the row itself and clear it only when the peer connects again for real.
 
-**A ticket row is never shown as Paired, and it is spent when the transfer ends.** The row says **Ready · Over the Internet** and carries no checkmark, even when the peer *is* in the trust store from an earlier same-network pairing. The core will report that connection as `trusted` — the key was authenticated and it is a genuine pin match — but the pin admitted nothing here: the single-use ticket did, and it is the only thing `run_send` gates on. Badging the row Paired would claim the same standing as a device the user deliberately pinned and can send to at will, for a row that in fact authorises one transfer and then nothing. Once that transfer settles, succeeded or failed, a connection-only row greys out in place, disabled, like any peer that went away. The shells hold the ticket origin on the row itself and clear it only when the peer connects again for real — not on disconnect, since a greyed row that re-grew a checkmark the moment the session dropped would be the same wrong claim, just quieter.
+The rendezvous is contacted **lazily**: on the first ticket operation, a Bluetooth introduction that has no LAN route, or a paired room the user opted into. A user who only ever shares on a LAN never contacts it.
 
-Because the ticket carries the publisher's identity key out of band, the internet path inherits the QR ceremony's MITM resistance; SAS (PROTOCOL.md §4.3) is also available over iroh, deriving from the same TLS exporter, for anyone who wants to compare digits.
+**Errors the user can act on** are distinct, not one generic failure:
 
-The iroh endpoint is bound **lazily**, on the first ticket operation. A user who only ever shares on a LAN never contacts a relay.
+| Core error | Meaning | Copy direction |
+|---|---|---|
+| `RelayFileTooLarge` | No direct path; a file is over 1 GiB | The networks can't connect directly, so files over 1 GB can't be sent this way |
+| `RelayUnavailable` | No direct path, and this device is not verified for relaying (§9.2) | These networks can't connect directly |
+| `RendezvousQuota` | This device's daily allowance is used up | Try again tomorrow |
+| `RendezvousUnavailable` | The service is down or over Cloudflare's daily limit | Try again later |
 
-**A relay may carry files, but only small ones.** `run_send` waits up to 15 s for hole punching to produce a direct path. If one appears there is no limit. If none does, the connection is relayed and a per-file cap of **100 MiB** applies; an oversized file fails with `RelayFileTooLarge` before the OFFER is sent, so the receiver is never asked to accept a transfer that cannot run. The receiver enforces the same rule on arrival rather than trusting the sender to have done it.
-
-The reasoning is bandwidth, not secrecy: a relay cannot read anything, but it is somebody else's server. The cap is per file rather than per transfer, so it bounds what one stream costs rather than how the user happened to batch. Full rationale in PROTOCOL.md §9.1.1.
-
-**Relay selection** is `Config.relay_urls`, changeable at runtime via `set_relay_urls` and surfaced in Settings on both shells:
+**Rendezvous selection** is `Config.rendezvous_url`, changeable at runtime via `set_rendezvous_url`, surfaced in Settings on every shell as **Internet Connections**, with the choices Wooosh, My Own, and Off:
 
 | Value | Meaning |
 |---|---|
-| `null` | n0's free public relays (default). |
-| `[]` | No relay and no address lookup. Surfaced in both shells as **Off**: the UI additionally refuses to publish or redeem tickets, so the internet path is switched off rather than merely relay-free. The core value stays `[]` so that a code path which got past the UI still cannot reach a relay. |
-| a list | A chosen or self-hosted relay (`iroh-relay` is open source). |
+| `null` | The project's Worker (default). |
+| `""` | Off. The UI hides Other Device and paired rendezvous, and the core refuses every rendezvous operation, so a code path that got past the UI still cannot reach the service. |
+| a URL | A self-deployed copy of `Worker/`. Both devices must use the same one; a ticket does not carry the URL. |
 
-A device's tickets advertise **its own** home relay, so a self-hosted relay needs configuring on one device only: the redeemer reads the URL out of the ticket and uses it with no setting of their own. Since the publisher is the sender, the relay belongs to whoever sends. Changing the setting rebinds the iroh endpoint rather than restarting the core, and invalidates any outstanding ticket, which names a relay the device no longer uses.
+#### 9.1.1 Paired devices over the internet
 
-Relays on but none reachable is an error, not a silent fallback: publishing a ticket that quietly carries only local addresses would hand the user a code that looks fine and can only ever work on their own network.
+Each paired device has a per-device toggle, **Reach Over the Internet**, off by default. While Wooosh is in the foreground it holds one hibernated WebSocket per opted-in device, in a room derived from the two keys (PROTOCOL.md §9.9). If the other device is doing the same, they meet, and its row reads **Ready · Over the Internet** and accepts sends like any paired row, with no code. The toggle is per device and off by default because the rendezvous can see that the same pair met more than once in a UTC day.
 
-### 9.2 Power-user: Tailscale as the network
-If both users run Tailscale and share nodes across their tailnets (Tailscale's built-in cross-account node sharing invite — free tier), each device just has a stable WireGuard-encrypted IP. Wooosh needs almost nothing: listen on all interfaces (already true) and offer **Add device manually** (`add_manual_peer(host)`) accepting a Tailscale IP/MagicDNS name. mDNS doesn't cross tailnets, so discovery is manual, but pairing and transfer are unchanged — and Wooosh's E2E crypto still applies on top of WireGuard. Zero code beyond the manual-add field; document it as a recipe.
+Both devices must have Wooosh open. Reaching a closed app would mean push notifications, which means the Worker storing push tokens, and that breaks the storage rule (§9.5). Not planned.
 
-### 9.3 Zero-infrastructure fallback: wormhole-style codes
-Adopt the Magic Wormhole model: a short human-speakable code (`7-guitar-sunset`) performs a PAKE (SPAKE2) through the public wormhole mailbox/relay servers (free, community-run, tiny traffic). Good as a compatibility story (croc/wormhole users) but it overlaps iroh's job with a worse trust ceremony — hold unless users ask.
+#### 9.1.2 Relay fallback
 
-### 9.4 Same room, no network at all
-When there's no common LAN (field work, flights, no router):
-- **Apple ↔ Apple**: Multipeer Connectivity / AWDL — works with Wi-Fi/Bluetooth on, no network needed. Used as an alternate transport under the same protocol.
+`run_send` waits up to 15 s for a direct path. If one appears there is no limit. If none does, the session is relayed through the room and a **per-file cap of 1 GiB** applies, checked before the OFFER on both sides (PROTOCOL.md §9.6). Unverified clients are never relayed.
+
+Relaying is QUIC datagrams batched into WebSocket frames, forwarded by the Durable Object. It is slower than a direct path and is bounded by the shared daily quota, which is why the cap exists. The batching rule in PROTOCOL.md §9.6 is what makes a relayed gigabyte cost hundreds of quota units rather than tens of thousands.
+
+### 9.2 Device attestation, per platform
+
+Admission is abuse control for a shared free quota, not transfer security (PROTOCOL.md §9.2). The core owns the protocol; the platform evidence comes from the shell through a new `attestor` platform adapter, because App Attest and Play Integrity are platform APIs.
+
+| Platform | Mechanism | Tier | Shell work |
+|---|---|---|---|
+| iOS | App Attest (`DCAppAttestService`). Key generated once; attested once; assertions afterward | Verified app | `com.apple.developer.devicecheck.appattest-environment` entitlement (`production` in release). Key ID kept in the Keychain |
+| macOS | App Attest. The Mac gained it in macOS 27; before that `isSupported` was false on every Mac, which is why the minimum OS was raised to 27 | Verified app (pending the Developer ID check below), else Unverified | Same entitlement, set to `production` explicitly: a Developer ID build does not get production automatically the way an App Store build does |
+| Android | Play Integrity standard request | Verified app | Play Console link and a Cloud project, whose number goes in the Gradle property `wooosh.playCloudProjectNumber` (unset: Play Integrity off, Unverified). Google's default quota is 10 000 calls/day, shared between token preparation and server decode, so roughly 5 000 admissions/day; the 24 h admission token keeps that well above daily active internet users for a long time. Quota increases take about a week |
+| Windows | TPM 2.0 credential activation (EK certificate chain + `MakeCredential`/`ActivateCredential`) | Verified hardware | AK created through the Platform Crypto Provider; EK certificate read from the OS store (firmware TPMs fetch it from the vendor) |
+| `wooosh-cli` Linux / Windows | TPM 2.0, implemented in the core (`tss-esapi` on Linux, TBS on Windows) | Verified hardware | n/a |
+| `wooosh-cli` macOS | App Attest, only when run from inside the signed `Wooosh.app` bundle; unverified whether Apple allows it for a bundled helper (PROTOCOL.md §9.2.1). Otherwise Unverified | Verified app, else Unverified | Bundle the CLI as `Contents/MacOS/wooosh-cli` |
+
+**Distribution decides what is available.** iOS ships on the App Store and Android on Google Play, so App Attest and Play Integrity (which requires `PLAY_RECOGNIZED`, i.e. a Play-installed build) work as specified. The desktop apps ship **outside** their stores: macOS as a notarized Developer ID app, Windows as a sideloaded MSIX. TPM attestation does not care how Windows was installed. For the Mac, Apple documents App Attest only for TestFlight, App Store, and Enterprise distribution, and does not say whether a Developer ID provisioning profile can include the capability. That is the first spike of phase 1 (STATUS.md); if it cannot, Macs and the macOS CLI are Unverified.
+
+**No hardware ID strings.** SMBIOS UUIDs, `MachineGuid`, and MAC addresses were considered for Windows and the CLI and rejected: they are self-reported, so anyone can send any value, and they are stable tracking identifiers. A TPM proves the key is in real hardware; a string proves nothing. TPM attestation proves real hardware, not a genuine Wooosh binary, which is why Windows and the CLI sit in their own tier with the same quota.
+
+Windows PCs without a TPM 2.0 that exposes an EK certificate (some older or VM installs) fall to Unverified.
+
+### 9.3 Where the Worker lives
+
+`Worker/` at the repo root, TypeScript, configured in `cloudflare.config.ts` and run and deployed with the `cf` CLI (`cf dev`, `cf deploy`), never Wrangler directly. One Worker script and one Durable Object class (`Room`), which also runs admission, plus an in-memory `Quota` Durable Object per quota key. Secrets (`SERVER_SECRET`, which keys every token and quota key, and the Play Integrity service account) are Worker secrets, uploaded with `cf deploy --secrets-file` from a gitignored file and never in the repo; locally they come from `Worker/.dev.vars`, also gitignored. The Apple App Attestation root and the TPM manufacturer roots are bundled as generated constants (`Worker/scripts/update-roots.sh`).
+
+The core learns the production URL at build time from `WOOOSH_RENDEZVOUS_URL` (see `Core/build-bindings.sh`); a build without it reports that no service is configured until Settings names one.
+
+`cloudflare.config.ts` declares no KV, D1, or R2 bindings, `observability.enabled = false`, and `logpush = false`. `--mode dev` builds a second Worker carrying the debug-build allowlist; the production Worker has no bypass. The test suite derives its Miniflare setup from the same file, so the two cannot drift.
+
+### 9.4 Cost on the Cloudflare free plan
+
+Free-plan limits as of October 2026: Workers 100 000 requests/day at 10 ms CPU each; Durable Objects (SQLite-backed only, used here without writing to storage) 100 000 requests/day and 13 000 GB-s/day; incoming WebSocket messages billed at 20:1. **There is no overage on the free plan**: past a limit, requests fail until 00:00 UTC. The worst case is an outage on a busy day, never a bill.
+
+| Operation | Worker requests | Durable Object requests | Notes |
+|---|---|---|---|
+| Admission | 2 | 1 (quota) | Once per 24 h per device |
+| One ticket transfer, direct | 2 (WebSocket upgrades) | 2 + ~1 (≈10 messages ÷ 20) | Typical case |
+| One relayed GiB | 0 | ≈400–1 200 | Both directions, with PROTOCOL.md §9.6 batching. Without batching it would be tens of thousands |
+| Paired room held open | 1 per app launch per opted-in device | 1 | Hibernated, so no duration cost while waiting |
+
+Rough ceilings: around 30 000 direct transfers a day, or about 80–250 relayed GiB a day across all users, whichever runs out first. Durable Object duration is not the binding limit: a relayed GiB at ~20 MB/s keeps one object busy for ~55 s, about 7 GB-s. The admission step's CPU (one ECDSA or Ed25519 verification, or one RSA-OAEP and AES pass for TPM) fits inside 10 ms; App Attest first-time attestation, which verifies a certificate chain, is the heaviest call and must be measured.
+
+If usage outgrows this, Workers Paid ($5/month) raises every limit by orders of magnitude. Check current pricing at that point rather than trusting these figures.
+
+### 9.5 Privacy
+
+The rendezvous **stores nothing**: no Durable Object storage writes, no KV/D1/R2, no logs (PROTOCOL.md §9.1).
+
+What it necessarily **sees**, in memory, while a room is open: both clients' IP addresses and address candidates, the room id, message timing and sizes, and each client's admission tier. What it **never sees**: identity keys, ticket tokens, display names, file names, file contents. Relayed bytes are QUIC ciphertext.
+
+What is outside the project's control: Cloudflare's edge keeps standard request metadata (IP, time, URL path) under its own policy; Apple, Google, and TPM vendors learn that a device performed an attestation for Wooosh. Settings and the privacy policy say both plainly.
+
+Compared with the iroh path, tickets no longer carry IP addresses, and the introducer is no longer shared with every other iroh application.
+
+### 9.6 Nearby over Bluetooth
+
+BLE is how Wooosh finds a device in the same room, regardless of network, and how pairing gets easy. It is never a data transport (PROTOCOL.md §3.4).
+
+- **Discovery.** BLE sightings feed the same registry as mDNS: one row per device, first sighting from either source sets its place, stale only when **both** sources go quiet for 10 s. A device on another network but within Bluetooth range appears as **Ready · Nearby**.
+- **Sending to a nearby row** connects over the LAN if the devices turn out to share one, otherwise through a rendezvous room. That route is cheap (a handful of quota units) and still direct; it needs internet access on both devices.
+- **Pairing without a camera.** **Pair a Device** opens on a list of nearby unpaired devices from BLE and mDNS. Tapping one runs the existing SAS ceremony (PROTOCOL.md §4.3): both screens show the same six digits, and each user presses **Confirm** (a deliberate press, never a default action). QR is still offered below the list for devices that cannot use Bluetooth. This also gives SAS the UI entry point it never had.
+- **Visibility.** Under Paired only, a stranger in range sees nothing but an anonymous UUID; under Everyone, the device's name and type are readable over BLE, as they already are over mDNS. The visibility setting's description says so.
+- **Foreground only.** iOS hides background BLE advertisements from non-iOS scanners, so BLE runs while Wooosh is open. The empty state says Wooosh finds nearby devices while it is open on both.
+- **Permissions**, asked when Pair a Device or the device list first needs them, not at launch: iOS/macOS `NSBluetoothAlwaysUsageDescription` (plus the sandbox Bluetooth entitlement on macOS); Android `BLUETOOTH_SCAN` with `neverForLocation`, `BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT`; Windows the `bluetooth` capability.
+
+### 9.7 Power-user: Tailscale as the network
+If both users run Tailscale and share nodes across their tailnets (Tailscale's built-in cross-account node sharing invite, free tier), each device just has a stable WireGuard-encrypted IP. Wooosh needs almost nothing: listen on all interfaces (already true) and offer **Add device manually** (`add_manual_peer(host)`) accepting a Tailscale IP/MagicDNS name. mDNS doesn't cross tailnets, so discovery is manual, but pairing and transfer are unchanged, and Wooosh's E2E crypto still applies on top of WireGuard. Zero code beyond the manual-add field; document it as a recipe.
+
+### 9.8 Zero-infrastructure fallback: wormhole-style codes
+Adopt the Magic Wormhole model: a short human-speakable code (`7-guitar-sunset`) performs a PAKE (SPAKE2) through the public wormhole mailbox/relay servers. It overlaps the rendezvous's job with a worse trust ceremony. Hold unless users ask.
+
+### 9.9 Same room, no network at all
+Bluetooth (§9.6) finds and pairs devices with no shared network, but moving the files still needs a path:
+- **Apple ↔ Apple**: Multipeer Connectivity / AWDL, with Wi-Fi and Bluetooth on and no network needed. Used as an alternate transport under the same protocol.
+- **Wi-Fi Aware** (iOS 26 added it; Android has had it since 8, hardware permitting) could give a direct, fast iPhone ↔ Android link with no network at all. Not yet evaluated: it needs an entitlement on iOS and is device-dependent on Android. Spike before committing.
 - **Android/Windows ↔ anyone**: the sending device raises a **local-only hotspot** (Android `startLocalOnlyHotspot`, Windows Mobile Hotspot) and shows a QR encoding SSID + password + its listen address; iPhones join via the camera QR and land on a normal LAN transfer. Clunkier, but universal.
 
-**Not chosen**: WebRTC with copy-paste SDP signaling (truly serverless but fails on symmetric NAT without TURN and the UX is dreadful); Tailscale Funnel (exposes a public HTTPS endpoint — wrong privacy posture for this app); Bluetooth transfers (too slow for the 4 GB requirement).
+**Not chosen**: WebRTC (ICE would solve traversal, but it would replace QUIC and fork the transfer protocol per path); Cloudflare TURN ($0.05/GB with no free allowance, §9.1); Tailscale Funnel (exposes a public HTTPS endpoint, the wrong privacy posture); Bluetooth as a file transport (too slow for the 4 GB requirement; it is used for discovery and introduction only); hardware ID strings as attestation (§9.2).
 
 ---
 
@@ -361,7 +462,7 @@ When there's no common LAN (field work, flights, no router):
 - **The default is Paired only**, on every shell. The core deliberately has no default (`Config.visibility` is required), so each shell sets it. A fresh install on a shared network — an office, a dorm, a café — should not be reachable by strangers before the user has opted in, and the QR carve-out means the safe default still cannot block its own pairing flow. `wooosh-cli` keeps `--visibility everyone` as its default because it is a test harness driven by an explicit flag, not a shipped product surface.
 - Discovery broadcasts contain only: display name, device type, protocol version, port, and a *rotating* discovery ID — the long-term identity key is never broadcast, so passive listeners can't track a device across networks by key.
 - Files never touch their final destination until hash-verified; staging is app-private.
-- No accounts, no cloud, no telemetry.
+- No accounts, no telemetry. The one server, Wooosh Rendezvous, stores nothing and never sees keys, tokens, names, or file contents (§9.5).
 
 ---
 
@@ -371,10 +472,13 @@ When there's no common LAN (field work, flights, no router):
 - **Chaos suite**: simulated packet loss/latency (`netem`), mid-transfer Wi-Fi drop, app kill + resume, clock skew, disk-full on receiver, 10k × 100 kB and 1 × 8 GB fixtures.
 - **Fuzzing**: CBOR control-message parser and manifest parser fuzzed (cargo-fuzz) — these are the attack surface reachable pre-consent.
 - **Benchmarks**: throughput regression gates on loopback + reference Wi-Fi hardware.
+- **Rendezvous**: the Worker has its own suite inside the Workers runtime (`npm test` in `Worker/`): attestation verifiers (including a byte-for-byte TPM MakeCredential check against an independent implementation), and rooms over real WebSockets. The core's integration suite runs against an in-process mock of the room protocol, and an `#[ignore]`d test runs two cores against the real Worker under `cf dev`, direct and forced-relay. NAT traversal is tested with Linux network namespaces behind endpoint-independent and endpoint-dependent NATs, so both the punched and the relayed path run in CI. Neither replaces the one test that matters: a phone on mobile data and a laptop on home broadband.
 
 ## 12. What to revisit as it grows
 - Flow-control window sizes and stream-pool size per platform (measure, don't guess).
 - iOS background story if Apple ever grants a proper background-transfer entitlement, or once `BGContinuedProcessingTask` can tell a user Stop apart from a system expiry.
 - Directory/folder transfers with structure preservation (manifest already carries `relPath` — UI work only).
 - Trusted-device sync across a user's own devices (currently pair each pair of devices; could gossip trust between already-paired devices).
+- Wi-Fi Aware as a no-network transport between iPhone and Android (§9.9).
+- Workers Paid if the free plan's daily limits start failing real users (§9.4).
 - Protocol versioning is in place from day one (`v` in discovery TXT + HELLO); v2 candidates: compression negotiation for compressible types, delta transfer for re-sends.

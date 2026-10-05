@@ -251,6 +251,41 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureStr
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD0
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD0
+typedef void (*UniffiCallbackInterfaceAttestorMethod0)(uint64_t, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD1
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD1
+typedef void (*UniffiCallbackInterfaceAttestorMethod1)(uint64_t, RustBuffer, int8_t, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD2
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD2
+typedef void (*UniffiCallbackInterfaceAttestorMethod2)(uint64_t, RustBuffer, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD3
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD3
+typedef void (*UniffiCallbackInterfaceAttestorMethod3)(uint64_t, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD4
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ATTESTOR_METHOD4
+typedef void (*UniffiCallbackInterfaceAttestorMethod4)(uint64_t, RustBuffer, RustBuffer, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
 #ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_CORE_EVENT_LISTENER_METHOD0
 #define UNIFFI_FFIDEF_CALLBACK_INTERFACE_CORE_EVENT_LISTENER_METHOD0
 typedef void (*UniffiCallbackInterfaceCoreEventListenerMethod0)(uint64_t, RustBuffer, void* _Nonnull, 
@@ -272,6 +307,18 @@ typedef void (*UniffiCallbackInterfaceKeyStoreMethod1)(uint64_t, RustBuffer, voi
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_ATTESTOR
+#define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_ATTESTOR
+typedef struct UniffiVTableCallbackInterfaceAttestor {
+    UniffiCallbackInterfaceAttestorMethod0 _Nonnull kind;
+    UniffiCallbackInterfaceAttestorMethod1 _Nonnull appAttest;
+    UniffiCallbackInterfaceAttestorMethod2 _Nonnull playIntegrity;
+    UniffiCallbackInterfaceAttestorMethod3 _Nonnull tpmEvidence;
+    UniffiCallbackInterfaceAttestorMethod4 _Nonnull tpmActivate;
+    UniffiCallbackInterfaceFree _Nonnull uniffiFree;
+} UniffiVTableCallbackInterfaceAttestor;
+
+#endif
 #ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_CORE_EVENT_LISTENER
 #define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_CORE_EVENT_LISTENER
 typedef struct UniffiVTableCallbackInterfaceCoreEventListener {
@@ -288,6 +335,46 @@ typedef struct UniffiVTableCallbackInterfaceKeyStore {
     UniffiCallbackInterfaceFree _Nonnull uniffiFree;
 } UniffiVTableCallbackInterfaceKeyStore;
 
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_CLONE_ATTESTOR
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_CLONE_ATTESTOR
+void*_Nonnull uniffi_wooosh_core_fn_clone_attestor(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FREE_ATTESTOR
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_FREE_ATTESTOR
+void uniffi_wooosh_core_fn_free_attestor(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_INIT_CALLBACK_VTABLE_ATTESTOR
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_INIT_CALLBACK_VTABLE_ATTESTOR
+void uniffi_wooosh_core_fn_init_callback_vtable_attestor(const UniffiVTableCallbackInterfaceAttestor* _Nonnull vtable
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_KIND
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_KIND
+RustBuffer uniffi_wooosh_core_fn_method_attestor_kind(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_APP_ATTEST
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_APP_ATTEST
+RustBuffer uniffi_wooosh_core_fn_method_attestor_app_attest(void*_Nonnull ptr, RustBuffer client_data_hash, int8_t attest, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_PLAY_INTEGRITY
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_PLAY_INTEGRITY
+RustBuffer uniffi_wooosh_core_fn_method_attestor_play_integrity(void*_Nonnull ptr, RustBuffer request_hash, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_TPM_EVIDENCE
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_TPM_EVIDENCE
+RustBuffer uniffi_wooosh_core_fn_method_attestor_tpm_evidence(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_TPM_ACTIVATE
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_ATTESTOR_TPM_ACTIVATE
+RustBuffer uniffi_wooosh_core_fn_method_attestor_tpm_activate(void*_Nonnull ptr, RustBuffer credential_blob, RustBuffer encrypted_secret, RustCallStatus *_Nonnull out_status
+);
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_CLONE_COREEVENTLISTENER
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_CLONE_COREEVENTLISTENER
@@ -450,9 +537,14 @@ int8_t uniffi_wooosh_core_fn_method_woooshcore_revoke_peer(void*_Nonnull ptr, Ru
 RustBuffer uniffi_wooosh_core_fn_method_woooshcore_send(void*_Nonnull ptr, RustBuffer peer_id, RustBuffer files, RustCallStatus *_Nonnull out_status
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RELAY_URLS
-#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RELAY_URLS
-void uniffi_wooosh_core_fn_method_woooshcore_set_relay_urls(void*_Nonnull ptr, RustBuffer urls, RustCallStatus *_Nonnull out_status
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_ATTESTOR
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_ATTESTOR
+void uniffi_wooosh_core_fn_method_woooshcore_set_attestor(void*_Nonnull ptr, void*_Nonnull attestor, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RENDEZVOUS_URL
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_RENDEZVOUS_URL
+void uniffi_wooosh_core_fn_method_woooshcore_set_rendezvous_url(void*_Nonnull ptr, RustBuffer url, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_FN_METHOD_WOOOSHCORE_SET_VISIBILITY
@@ -811,6 +903,36 @@ uint16_t uniffi_wooosh_core_checksum_func_relay_max_file_bytes(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_KIND
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_KIND
+uint16_t uniffi_wooosh_core_checksum_method_attestor_kind(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_APP_ATTEST
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_APP_ATTEST
+uint16_t uniffi_wooosh_core_checksum_method_attestor_app_attest(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_PLAY_INTEGRITY
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_PLAY_INTEGRITY
+uint16_t uniffi_wooosh_core_checksum_method_attestor_play_integrity(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_TPM_EVIDENCE
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_TPM_EVIDENCE
+uint16_t uniffi_wooosh_core_checksum_method_attestor_tpm_evidence(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_TPM_ACTIVATE
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_ATTESTOR_TPM_ACTIVATE
+uint16_t uniffi_wooosh_core_checksum_method_attestor_tpm_activate(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_COREEVENTLISTENER_ON_EVENT
 #define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_COREEVENTLISTENER_ON_EVENT
 uint16_t uniffi_wooosh_core_checksum_method_coreeventlistener_on_event(void
@@ -931,9 +1053,15 @@ uint16_t uniffi_wooosh_core_checksum_method_woooshcore_send(void
     
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RELAY_URLS
-#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RELAY_URLS
-uint16_t uniffi_wooosh_core_checksum_method_woooshcore_set_relay_urls(void
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_ATTESTOR
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_ATTESTOR
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_set_attestor(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RENDEZVOUS_URL
+#define UNIFFI_FFIDEF_UNIFFI_WOOOSH_CORE_CHECKSUM_METHOD_WOOOSHCORE_SET_RENDEZVOUS_URL
+uint16_t uniffi_wooosh_core_checksum_method_woooshcore_set_rendezvous_url(void
     
 );
 #endif

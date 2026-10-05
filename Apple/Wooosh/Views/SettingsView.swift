@@ -60,7 +60,7 @@ struct SettingsView: View {
             } footer: {
                 Text(L.t("settings_pairing_footer"))
             }
-            relaySection
+            internetSection
             pairedDevicesSection
             Section {
                 LabeledContent(L.t("settings_device_id")) {
@@ -98,41 +98,41 @@ struct SettingsView: View {
         }
     }
 
-    /// Relay selection for the internet path (DESIGN.md §9.1), including switching it off.
+    /// Rendezvous selection for the internet path (DESIGN.md §9.1), including switching it off.
     @ViewBuilder
-    private var relaySection: some View {
+    private var internetSection: some View {
         @Bindable var model = model
         Section {
-            Picker(L.t("settings_section_relay"), selection: $model.relayPreference.mode) {
-                ForEach(RelayMode.allCases) { mode in
+            Picker(L.t("settings_section_internet"), selection: $model.internetPreference.mode) {
+                ForEach(InternetMode.allCases) { mode in
                     Text(mode.label).tag(mode)
                 }
             }
-            if model.relayPreference.mode == .custom {
-                TextField(L.t("settings_relay_url"), text: $model.relayPreference.customURL)
+            if model.internetPreference.mode == .custom {
+                TextField(L.t("settings_internet_server_url"), text: $model.internetPreference.customURL)
                     .autocorrectionDisabled()
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
                     #endif
             }
-            if let error = model.relayError {
+            if let error = model.internetError {
                 Text(error)
                     .font(.callout)
                     .foregroundStyle(.red)
             }
         } header: {
-            Text(L.t("settings_section_relay"))
+            Text(L.t("settings_section_internet"))
         } footer: {
-            Text(relayFooter)
+            Text(internetFooter)
         }
     }
 
-    private var relayFooter: String {
-        switch model.relayPreference.mode {
-        case .publicRelays: L.t("settings_relay_public_footer")
-        case .custom: L.t("settings_relay_custom_footer")
-        case .off: L.t("settings_relay_off_footer")
+    private var internetFooter: String {
+        switch model.internetPreference.mode {
+        case .wooosh: L.t("settings_internet_wooosh_footer")
+        case .custom: L.t("settings_internet_custom_footer")
+        case .off: L.t("settings_internet_off_footer")
         }
     }
 

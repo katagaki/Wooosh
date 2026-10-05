@@ -713,8 +713,8 @@
     <value>正在准备代码，需要几秒钟。</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>获取代码时会连接公共中继，让两台设备找到彼此。只要存在直连路径，文件仍会在两台设备之间直接传输。</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>获取代码时会联系 Wooosh 服务器，让两台设备找到彼此。服务器不会保留任何记录，只要存在直接路径，文件就会在设备之间直接传输。</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

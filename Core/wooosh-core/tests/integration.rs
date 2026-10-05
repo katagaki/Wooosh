@@ -1,9 +1,13 @@
-//! Everything runs on 127.0.0.1 with no relay, so the suite is hermetic apart
-//! from the one `#[ignore]`d public-relay test.
+//! Everything runs on this machine, against an in-process mock rendezvous for
+//! the internet path, so the suite is hermetic apart from the `#[ignore]`d
+//! test against a real Worker.
+
+#[path = "support/mock_rendezvous.rs"]
+mod mock_rendezvous;
 
 use rand::{RngCore, SeedableRng};
 use std::path::{Path, PathBuf};
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, OnceLock};
 use std::time::{Duration, Instant};
 use wooosh_core::control::Msg;
 use wooosh_core::{
@@ -32,9 +36,16 @@ impl Node {
         Node::start_with(base, name, vis, "127.0.0.1:0", None)
     }
 
-    /// No relay and no address lookup, so the iroh flow stays on loopback.
+    /// Internet path through the mock rendezvous, STUN off: host and loopback
+    /// candidates only, so everything stays on this machine.
     fn start_offline_internet(base: &Path, name: &str, vis: Visibility) -> Node {
-        Node::start_with(base, name, vis, "127.0.0.1:0", Some(Vec::new()))
+        Node::start_with(base, name, vis, "127.0.0.1:0", Some(mock().url.clone()))
+    }
+
+    /// As above, against a rendezvous that refuses to relay Unverified clients,
+    /// as production does.
+    fn start_strict_internet(base: &Path, name: &str, vis: Visibility) -> Node {
+        Node::start_with(base, name, vis, "127.0.0.1:0", Some(strict_mock().url.clone()))
     }
 
     /// Lets a second identity take over the exact `ip:port` a paired peer held.
@@ -47,7 +58,7 @@ impl Node {
         name: &str,
         vis: Visibility,
         listen: &str,
-        relay_urls: Option<Vec<String>>,
+        rendezvous_url: Option<String>,
     ) -> Node {
         let dir = base.join(name);
         std::fs::create_dir_all(&dir).unwrap();
@@ -59,7 +70,8 @@ impl Node {
             staging_dir: dir.join("staging").to_string_lossy().to_string(),
             trust_store_path: dir.join("trust.json").to_string_lossy().to_string(),
             listen_addr: Some(listen.to_string()),
-            relay_urls,
+            rendezvous_url,
+            stun_server: Some(String::new()),
         };
         // Re-binding a just-released port races the OS reclaiming the socket.
         let deadline = Instant::now() + Duration::from_secs(5);
@@ -90,6 +102,16 @@ impl Node {
     fn drain(&self) {
         while self.rx.try_recv().is_ok() {}
     }
+}
+
+fn mock() -> &'static mock_rendezvous::MockRendezvous {
+    static M: OnceLock<mock_rendezvous::MockRendezvous> = OnceLock::new();
+    M.get_or_init(|| mock_rendezvous::MockRendezvous::start(true))
+}
+
+fn strict_mock() -> &'static mock_rendezvous::MockRendezvous {
+    static M: OnceLock<mock_rendezvous::MockRendezvous> = OnceLock::new();
+    M.get_or_init(|| mock_rendezvous::MockRendezvous::start(false))
 }
 
 impl Drop for Node {
@@ -757,7 +779,8 @@ fn key_changed_on_pin_mismatch() {
 }
 
 /// PROTOCOL.md §9, redeemer-sends direction; the shells ship the opposite one,
-/// covered below. Relays off, so the ticket's direct candidates are the only way in.
+/// covered below. Both sessions are on this machine, so punching finds a
+/// direct path through a host or loopback candidate.
 #[test]
 fn internet_ticket_transfer_end_to_end() {
     let tmp = tempfile::tempdir().unwrap();
@@ -765,7 +788,7 @@ fn internet_ticket_transfer_end_to_end() {
     let s = Node::start_offline_internet(tmp.path(), "net-sender", Visibility::Everyone);
 
     let ticket = r.core.begin_internet_ticket().unwrap();
-    assert!(ticket.starts_with("wooosh-net:1?nid="), "got {ticket}");
+    assert!(ticket.starts_with("wooosh-net:2?nid="), "got {ticket}");
 
     let info = wooosh_core::parse_internet_ticket(ticket.clone()).unwrap();
     assert_eq!(info.device_name.as_deref(), Some("net-receiver"));
@@ -785,7 +808,7 @@ fn internet_ticket_transfer_end_to_end() {
         fingerprint_phrase_for(r.core.public_key().unwrap()).unwrap()
     );
 
-    // Redeeming authorises one session and pairs nothing (PROTOCOL.md §9.4).
+    // Redeeming authorises one session and pairs nothing (PROTOCOL.md §9.8).
     let redeemer = wait_for(&s.rx, Duration::from_secs(20), "sender TicketRedeemed", |e| match e {
         CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
         _ => None,
@@ -885,8 +908,8 @@ fn internet_ticket_transfer_works_under_paired_only() {
     assert!(r.core.trusted_peers().unwrap().is_empty());
 }
 
-/// PROTOCOL.md §9.2 makes the publisher the receiver, but the shells ship the
-/// reverse, so the engine must permit either direction.
+/// The shells publish from the sender (PROTOCOL.md §9.3); the engine must
+/// permit either direction.
 #[test]
 fn internet_publisher_can_send_to_the_redeemer_under_paired_only() {
     let tmp = tempfile::tempdir().unwrap();
@@ -943,6 +966,7 @@ fn internet_ticket_is_single_use_and_revocable() {
     let ticket = r.core.begin_internet_ticket().unwrap();
     assert_eq!(s1.core.redeem_ticket(ticket.clone()).unwrap(), r.core.device_id().unwrap());
 
+    // The room already holds two; the rendezvous turns the third away (§9.4).
     let err = s2.core.redeem_ticket(ticket).unwrap_err();
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
     expect_pairing_failure(&s2, "reused ticket");
@@ -953,87 +977,112 @@ fn internet_ticket_is_single_use_and_revocable() {
         .iter()
         .any(|p| p.pubkey == s2.core.public_key().unwrap()));
 
+    // Withdrawn: the publisher left its room, so the redeemer is told at once.
     let ticket2 = r.core.begin_internet_ticket().unwrap();
     r.core.end_internet_ticket().unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    let started = Instant::now();
     let err = s2.core.redeem_ticket(ticket2).unwrap_err();
+    assert!(started.elapsed() < Duration::from_secs(5), "withdrawn ticket took {:?}", started.elapsed());
     assert!(matches!(err, WoooshError::Pairing(_)), "got {err:?}");
     expect_pairing_failure(&s2, "withdrawn ticket");
 }
 
-/// A ticket advertises whatever relay is configured at runtime (DESIGN.md §9.1),
-/// which is how a redeemer ends up on the publisher's relay.
+/// DESIGN.md §9.1: the rendezvous is configurable, can be switched off, and a
+/// bad setting fails loudly at publish time rather than producing a dead code.
 #[test]
-fn relay_urls_are_settable_and_validated() {
+fn rendezvous_url_is_settable_validated_and_switchable_off() {
     let tmp = tempfile::tempdir().unwrap();
-    let r = Node::start_offline_internet(tmp.path(), "relay-cfg", Visibility::Everyone);
-
-    let ticket = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
-    assert!(ticket.relay.is_none(), "relay-free node advertised {:?}", ticket.relay);
-    assert!(!ticket.addrs.is_empty(), "relay-free node advertised no address to dial");
+    let r = Node::start_offline_internet(tmp.path(), "rv-cfg", Visibility::Everyone);
+    assert!(r.core.begin_internet_ticket().is_ok());
 
     // A typo in Settings must not take the internet path down.
-    let err = r
-        .core
-        .set_relay_urls(Some(vec!["not a url".into()]))
-        .unwrap_err();
+    let err = r.core.set_rendezvous_url(Some("not a url".into())).unwrap_err();
     assert!(matches!(err, WoooshError::InvalidArgument(_)), "got {err:?}");
-    let after = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
-    assert!(after.relay.is_none(), "rejected URL still changed the relay");
+    assert!(r.core.begin_internet_ticket().is_ok(), "rejected URL still changed the setting");
 
-    // Failing at publish time is the point: a ticket that silently fell back to
-    // local addresses would only work on the publisher's own network.
-    r.core
-        .set_relay_urls(Some(vec!["https://relay.invalid./".into()]))
-        .unwrap();
+    r.core.set_rendezvous_url(Some(String::new())).unwrap();
     let err = r.core.begin_internet_ticket().unwrap_err();
-    assert!(matches!(err, WoooshError::Connect(_)), "got {err:?}");
+    assert!(matches!(err, WoooshError::RendezvousUnavailable(_)), "got {err:?}");
 
-    r.core.set_relay_urls(Some(Vec::new())).unwrap();
-    let recovered = NetTicketFields::of(&r.core.begin_internet_ticket().unwrap());
-    assert!(!recovered.addrs.is_empty(), "node did not recover after a bad relay setting");
+    r.core.set_rendezvous_url(Some("http://127.0.0.1:9".into())).unwrap();
+    let err = r.core.begin_internet_ticket().unwrap_err();
+    assert!(matches!(err, WoooshError::RendezvousUnavailable(_)), "got {err:?}");
 
-    // Tickets minted before a relay change are dead by construction (the change
-    // tears the endpoint down). Not asserted: dialling one costs 30 s.
+    r.core.set_rendezvous_url(Some(mock().url.clone())).unwrap();
+    let t = wooosh_core::parse_internet_ticket(r.core.begin_internet_ticket().unwrap()).unwrap();
+    assert!(!t.expired);
 }
 
-/// The shells' parse helper deliberately does not expose `addrs`.
-struct NetTicketFields {
-    relay: Option<String>,
-    addrs: Vec<String>,
-}
+/// The relay carries a whole transfer when no direct path forms (§9.6), and the
+/// per-file cap is checked on metadata before the OFFER.
+#[test]
+fn relayed_transfer_completes_and_enforces_the_size_cap() {
+    let tmp = tempfile::tempdir().unwrap();
+    let s = Node::start_offline_internet(tmp.path(), "relay-sender", Visibility::Everyone);
+    let r = Node::start_offline_internet(tmp.path(), "relay-receiver", Visibility::Everyone);
+    s.core.debug_force_relay(true).unwrap();
+    r.core.debug_force_relay(true).unwrap();
 
-impl NetTicketFields {
-    fn of(ticket: &str) -> Self {
-        let params = ticket.split_once('?').expect("ticket has params").1;
-        let mut relay = None;
-        let mut addrs = Vec::new();
-        for kv in params.split('&') {
-            match kv.split_once('=') {
-                Some(("relay", v)) => relay = Some(percent_decode(v)),
-                Some(("addrs", v)) => {
-                    addrs = v.split(',').filter(|a| !a.is_empty()).map(String::from).collect()
-                }
-                _ => {}
-            }
+    let ticket = s.core.begin_internet_ticket().unwrap();
+    s.drain();
+    r.core.redeem_ticket(ticket).unwrap();
+    let receiver_id = wait_for(&s.rx, Duration::from_secs(20), "TicketRedeemed", |e| match e {
+        CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
+        _ => None,
+    });
+
+    let src = tmp.path().join("relayed.bin");
+    write_random_file(&src, 4 * MIB, 0xACE);
+    let want = b3_of(&src);
+    s.core.send(receiver_id.clone(), vec![src.to_string_lossy().to_string()]).unwrap();
+    let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(30), "IncomingOffer", |e| match e {
+        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
         }
-        Self { relay, addrs }
-    }
+        _ => None,
+    });
+    r.core.respond_to_offer(rtid, fids).unwrap();
+    let staged = wait_for(&r.rx, Duration::from_secs(60), "relayed FileReady", |e| match e {
+        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+        _ => None,
+    });
+    assert_eq!(b3_of(Path::new(&staged)), want);
+
+    // Sparse: the cap is decided on metadata, so no gigabyte is ever written.
+    let big = tmp.path().join("too-big.bin");
+    std::fs::File::create(&big).unwrap().set_len(wooosh_core::relay_max_file_bytes() + 1).unwrap();
+    let tid = s.core.send(receiver_id, vec![big.to_string_lossy().to_string()]).unwrap();
+    let err = wait_for(&s.rx, Duration::from_secs(30), "relay cap TransferError", |e| match e {
+        CoreEvent::TransferError { transfer_id, error, .. } if *transfer_id == tid => Some(error.clone()),
+        _ => None,
+    });
+    assert!(err.contains("RELAY_FILE_TOO_LARGE"), "got {err}");
 }
 
-fn percent_decode(s: &str) -> String {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            out.push(u8::from_str_radix(&s[i + 1..i + 3], 16).unwrap());
-            i += 3;
-        } else {
-            out.push(b[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).unwrap()
+/// Production never relays Unverified clients (§9.2); with no direct path the
+/// session fails with an error the shells can name, not a generic timeout.
+#[test]
+fn unverified_clients_are_not_relayed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let s = Node::start_strict_internet(tmp.path(), "anon-sender", Visibility::Everyone);
+    let r = Node::start_strict_internet(tmp.path(), "anon-receiver", Visibility::Everyone);
+    s.core.debug_force_relay(true).unwrap();
+    r.core.debug_force_relay(true).unwrap();
+
+    let ticket = s.core.begin_internet_ticket().unwrap();
+    let err = r.core.redeem_ticket(ticket).unwrap_err();
+    assert!(matches!(err, WoooshError::RelayUnavailable), "got {err:?}");
+}
+
+/// The same two devices, strict rendezvous, but a direct path: no relay needed.
+#[test]
+fn unverified_clients_still_connect_directly() {
+    let tmp = tempfile::tempdir().unwrap();
+    let s = Node::start_strict_internet(tmp.path(), "anon-direct-sender", Visibility::Everyone);
+    let r = Node::start_strict_internet(tmp.path(), "anon-direct-receiver", Visibility::Everyone);
+    let ticket = s.core.begin_internet_ticket().unwrap();
+    assert_eq!(r.core.redeem_ticket(ticket).unwrap(), s.core.device_id().unwrap());
 }
 
 /// Every outcome still reaches the host as a `PairingResult` (DESIGN.md §4).
@@ -1054,12 +1103,11 @@ fn internet_ticket_rejects_bad_payloads() {
     expect_pairing_failure(&s, "QR payload as ticket");
 
     let expired = wooosh_core::inet::NetTicket {
-        version: 1,
+        version: wooosh_core::inet::TICKET_VERSION,
         node_id: [7u8; 32],
         token: [8u8; 32],
+        room: [9u8; 16],
         dn: None,
-        relay: None,
-        direct: vec![],
         expires_unix: 1,
     };
     let err = s.core.redeem_ticket(expired.encode()).unwrap_err();
@@ -1089,7 +1137,8 @@ fn internet_paired_only_honours_a_live_ticket_and_rejects_without_one() {
     );
 }
 
-/// PROTOCOL.md §4.3 + §9.5: iroh is TLS 1.3 too, so SAS works unchanged off-LAN.
+/// PROTOCOL.md §4.3 + §9.8: an internet session is the same QUIC/TLS 1.3, so
+/// SAS works unchanged off-LAN.
 #[test]
 fn internet_sas_codes_agree() {
     let tmp = tempfile::tempdir().unwrap();
@@ -1109,44 +1158,47 @@ fn internet_sas_codes_agree() {
         CoreEvent::PairingSas { peer_id, code } if *peer_id == s_id => Some(code.clone()),
         _ => None,
     });
-    assert_eq!(a, b, "SAS must agree across an iroh session");
+    assert_eq!(a, b, "SAS must agree across an internet session");
     assert_eq!(a.len(), 6);
 }
 
-/// Needs real network access, so it is not part of CI. Run explicitly with:
-///   cargo test --release --test integration -- --ignored --test-threads=1 internet_ticket_via_public_relays
+/// The real Worker, end to end. Start it with `npm run dev` (`cf dev --mode dev`) in `Worker/`, then:
+///   WOOOSH_TEST_RENDEZVOUS=http://127.0.0.1:8787 cargo test --release --test integration \
+///     -- --ignored --test-threads=1 internet_ticket_via_local_worker
 #[test]
-#[ignore = "requires internet access and n0's public relay infrastructure"]
-fn internet_ticket_via_public_relays() {
+#[ignore = "needs a running Worker (cf dev)"]
+fn internet_ticket_via_local_worker() {
+    let url = std::env::var("WOOOSH_TEST_RENDEZVOUS").expect("set WOOOSH_TEST_RENDEZVOUS");
     let tmp = tempfile::tempdir().unwrap();
-    let r = Node::start(tmp.path(), "relay-receiver", Visibility::Everyone);
-    let s = Node::start(tmp.path(), "relay-sender", Visibility::Everyone);
+    for force_relay in [false, true] {
+        let s = Node::start_with(tmp.path(), &format!("wd-sender-{force_relay}"), Visibility::PairedOnly, "127.0.0.1:0", Some(url.clone()));
+        let r = Node::start_with(tmp.path(), &format!("wd-receiver-{force_relay}"), Visibility::PairedOnly, "127.0.0.1:0", Some(url.clone()));
+        s.core.debug_force_relay(force_relay).unwrap();
+        r.core.debug_force_relay(force_relay).unwrap();
 
-    let ticket = r.core.begin_internet_ticket().unwrap();
-    let info = wooosh_core::parse_internet_ticket(ticket.clone()).unwrap();
-    assert!(info.relay.is_some(), "a default-configured ticket must carry a home relay");
+        let ticket = s.core.begin_internet_ticket().unwrap();
+        s.drain();
+        assert_eq!(r.core.redeem_ticket(ticket).unwrap(), s.core.device_id().unwrap());
+        let receiver_id = wait_for(&s.rx, Duration::from_secs(20), "TicketRedeemed", |e| match e {
+            CoreEvent::TicketRedeemed { peer_id, .. } => Some(peer_id.clone()),
+            _ => None,
+        });
 
-    let peer_id = s.core.redeem_ticket(ticket).unwrap();
-    assert_eq!(peer_id, r.core.device_id().unwrap());
-
-    let src = tmp.path().join("relay-payload.bin");
-    write_random_file(&src, MIB, 0xF00D);
-    let want = b3_of(&src);
-    let tid = s
-        .core
-        .send(peer_id, vec![src.to_string_lossy().to_string()])
-        .unwrap();
-    let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(60), "IncomingOffer", |e| match e {
-        CoreEvent::IncomingOffer { transfer_id, files, .. } => {
-            Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
-        }
-        _ => None,
-    });
-    assert_eq!(rtid, tid);
-    r.core.respond_to_offer(rtid, fids).unwrap();
-    let staged = wait_for(&r.rx, Duration::from_secs(120), "FileReady", |e| match e {
-        CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
-        _ => None,
-    });
-    assert_eq!(b3_of(Path::new(&staged)), want);
+        let src = tmp.path().join(format!("wd-{force_relay}.bin"));
+        write_random_file(&src, 8 * MIB, 0xF00D);
+        let want = b3_of(&src);
+        s.core.send(receiver_id, vec![src.to_string_lossy().to_string()]).unwrap();
+        let (rtid, fids) = wait_for(&r.rx, Duration::from_secs(60), "IncomingOffer", |e| match e {
+            CoreEvent::IncomingOffer { transfer_id, files, .. } => {
+                Some((transfer_id.clone(), files.iter().map(|f| f.fid).collect::<Vec<_>>()))
+            }
+            _ => None,
+        });
+        r.core.respond_to_offer(rtid, fids).unwrap();
+        let staged = wait_for(&r.rx, Duration::from_secs(120), "FileReady", |e| match e {
+            CoreEvent::FileReady { staged_path, .. } => Some(staged_path.clone()),
+            _ => None,
+        });
+        assert_eq!(b3_of(Path::new(&staged)), want, "force_relay={force_relay}");
+    }
 }

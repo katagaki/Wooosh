@@ -153,7 +153,7 @@ struct DeviceListView: View {
         // on the collection, so no row can slide out from under a finger (DESIGN.md §5).
         List {
             // Pinned first, never appended: at the end every new discovery would push it down.
-            if model.relayPreference.internetEnabled {
+            if model.internetPreference.internetEnabled {
                 // Its own section: it is not a discovered device.
                 Section {
                     OtherDeviceRow { showingOtherDevice = true }
@@ -252,7 +252,7 @@ struct DeviceListView: View {
             .buttonStyle(.glassProminent)
             .controlSize(.extraLarge)
             // No devices nearby is exactly when someone reaches for the internet path.
-            if model.relayPreference.internetEnabled {
+            if model.internetPreference.internetEnabled {
                 Button(L.t("other_device_title"), systemImage: "globe") {
                     showingOtherDevice = true
                 }

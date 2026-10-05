@@ -117,8 +117,6 @@ data class TicketInfo(
     val deviceId: String,
     val publicKey: ByteArray,
     val deviceName: String?,
-    /** Home relay carried by the ticket; null when it has direct addresses only. */
-    val relay: String?,
     val expired: Boolean,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -126,7 +124,6 @@ data class TicketInfo(
         if (other !is TicketInfo) return false
         return deviceId == other.deviceId &&
             deviceName == other.deviceName &&
-            relay == other.relay &&
             expired == other.expired &&
             publicKey.contentEquals(other.publicKey)
     }
@@ -134,7 +131,6 @@ data class TicketInfo(
     override fun hashCode(): Int {
         var result = deviceId.hashCode()
         result = 31 * result + (deviceName?.hashCode() ?: 0)
-        result = 31 * result + (relay?.hashCode() ?: 0)
         result = 31 * result + expired.hashCode()
         result = 31 * result + publicKey.contentHashCode()
         return result
@@ -257,20 +253,20 @@ interface WoooshCore {
 
     fun confirmSas(peerId: String, accepted: Boolean)
 
-    /** First call binds the iroh endpoint and waits up to ~15 s for a home relay. */
+    /** Joins a rendezvous room, attesting first if no admission is cached (PROTOCOL.md §9.2). */
     suspend fun beginInternetTicket(): String
 
     /** A ticket is a capability, so it is invalidated on leaving, not at the 120 s expiry. */
     fun endInternetTicket()
 
-    /** Budget a minute: hole punching runs before the wait for PAIR_ACCEPT starts. */
+    /** Budget a minute: admission and hole punching run before the wait for PAIR_ACCEPT starts. */
     fun redeemTicket(ticket: String)
 
     /** Local parse, no network. */
     fun parseTicket(ticket: String): TicketInfo?
 
-    /** `null` = n0's public relays, `emptyList()` = no relay or address lookup at all. */
-    suspend fun setRelayUrls(urls: List<String>?)
+    /** `null` = this build's service, `""` = internet transfers off, else a self-deployed Worker. */
+    suspend fun setRendezvousUrl(url: String?)
 
     /** Null [expectedPublicKey] leaves the first reconnect to a new address unpinned. */
     suspend fun connectPeer(addr: String, expectedPublicKey: ByteArray? = null): String

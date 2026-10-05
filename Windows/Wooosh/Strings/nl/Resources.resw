@@ -733,8 +733,8 @@
     <value>Een code wordt klaargemaakt. Dit duurt een paar seconden.</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>Voor een code wordt een openbare relay benaderd zodat beide apparaten elkaar kunnen vinden. Bestanden gaan nog steeds rechtstreeks tussen de apparaten zodra er een directe route is.</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>Een code ophalen maakt contact met de server van Wooosh, zodat de twee apparaten elkaar vinden. Die bewaart niets over ze, en bestanden gaan rechtstreeks tussen de apparaten zodra er een directe route is.</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

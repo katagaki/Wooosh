@@ -1,15 +1,8 @@
-//! Internet path: iroh endpoint + tickets (PROTOCOL.md §9, DESIGN.md §9.1).
-//!
-//! The iroh node secret key **is** the Wooosh identity key (PROTOCOL.md §2),
-//! so an `EndpointId` is byte-for-byte the key already in the trust store and
-//! a LAN pairing authenticates over the internet with no extra ceremony.
-//!
-//! The endpoint is bound **lazily**, on the first ticket operation: binding at
-//! `start` would have every install contact n0's relays on launch.
+//! Internet tickets (PROTOCOL.md §9.3). A ticket names a rendezvous room and
+//! carries the publisher's key and a single-use token out of band. The token
+//! never reaches the rendezvous: only the room ID does.
 
 use crate::error::WoooshError;
-use crate::identity::Identity;
-use crate::transport::ALPN;
 use base64::Engine as _;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use subtle::ConstantTimeEq;
@@ -26,26 +19,29 @@ fn now_unix() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-/// A redeemable internet ticket (PROTOCOL.md §9.2). Wire form, one line, QR-
-/// and chat-safe:
-/// `wooosh-net:1?nid=<b64 32B>&tok=<b64 32B>&dn=<name>&relay=<url>&addrs=<ip:port,…>&exp=<unix>`
-///
-/// `nid` is delivered **out of band** like `pk` in a pairing QR, which is what
-/// makes the internet path MITM-proof without extra ceremony.
+/// Wire form, one line, QR- and chat-safe:
+/// `wooosh-net:2?nid=<b64 32B>&tok=<b64 32B>&room=<b64 16B>&dn=<name>&exp=<unix>`
 #[derive(Debug, Clone, PartialEq)]
 pub struct NetTicket {
     pub version: u64,
-    /// Ed25519 identity key == iroh EndpointId.
+    /// Publisher's Ed25519 identity key, pinned in the TLS handshake.
     pub node_id: [u8; 32],
     /// Single-use, same rules as the QR token (§4.2 step 3).
     pub token: [u8; 32],
+    /// Rendezvous room; the only part of the ticket the Worker learns.
+    pub room: [u8; 16],
     /// Unauthenticated, UI label only.
     pub dn: Option<String>,
-    /// Reaches the publisher before any hole punch succeeds.
-    pub relay: Option<String>,
-    /// Best-effort `ip:port` candidates.
-    pub direct: Vec<String>,
     pub expires_unix: u64,
+}
+
+/// v1 tickets went through iroh; the two paths do not interoperate.
+pub const TICKET_VERSION: u64 = 2;
+
+/// Key for candidate and probe MACs (§9.5): derived from the token, so the
+/// rendezvous, which never sees the token, cannot forge either.
+pub fn room_key(token: &[u8; 32]) -> [u8; 32] {
+    blake3::derive_key("wooosh room v2", token)
 }
 
 fn pct_encode(s: &str) -> String {
@@ -79,19 +75,14 @@ fn pct_decode(s: &str) -> Option<String> {
 impl NetTicket {
     pub fn encode(&self) -> String {
         let mut s = format!(
-            "wooosh-net:{}?nid={}&tok={}",
+            "wooosh-net:{}?nid={}&tok={}&room={}",
             self.version,
             b64().encode(self.node_id),
-            b64().encode(self.token)
+            b64().encode(self.token),
+            b64().encode(self.room)
         );
         if let Some(dn) = &self.dn {
             s.push_str(&format!("&dn={}", pct_encode(dn)));
-        }
-        if let Some(r) = &self.relay {
-            s.push_str(&format!("&relay={}", pct_encode(r)));
-        }
-        if !self.direct.is_empty() {
-            s.push_str(&format!("&addrs={}", self.direct.join(",")));
         }
         s.push_str(&format!("&exp={}", self.expires_unix));
         s
@@ -105,11 +96,13 @@ impl NetTicket {
             .ok_or_else(|| bad("missing scheme"))?;
         let (ver_str, params) = rest.split_once('?').ok_or_else(|| bad("missing params"))?;
         let version: u64 = ver_str.parse().map_err(|_| bad("bad version"))?;
-        if version != 1 {
+        if version == 1 {
+            return Err(bad("this code is from an older version of Wooosh"));
+        }
+        if version != TICKET_VERSION {
             return Err(bad("unsupported version"));
         }
-        let (mut nid, mut tok, mut dn, mut relay, mut exp) = (None, None, None, None, None);
-        let mut direct = Vec::new();
+        let (mut nid, mut tok, mut room, mut dn, mut exp) = (None, None, None, None, None);
         for kv in params.split(['&', '?']) {
             let Some((k, v)) = kv.split_once('=') else { continue };
             match k {
@@ -121,11 +114,11 @@ impl NetTicket {
                     let b = b64().decode(v).map_err(|_| bad("tok not base64"))?;
                     tok = Some(<[u8; 32]>::try_from(b.as_slice()).map_err(|_| bad("tok length"))?);
                 }
-                "dn" => dn = pct_decode(v),
-                "relay" => relay = pct_decode(v).filter(|r| !r.is_empty()),
-                "addrs" => {
-                    direct = v.split(',').filter(|a| !a.is_empty()).map(String::from).collect()
+                "room" => {
+                    let b = b64().decode(v).map_err(|_| bad("room not base64"))?;
+                    room = Some(<[u8; 16]>::try_from(b.as_slice()).map_err(|_| bad("room length"))?);
                 }
+                "dn" => dn = pct_decode(v),
                 "exp" => exp = Some(v.parse::<u64>().map_err(|_| bad("bad exp"))?),
                 _ => {} // forward compat (PROTOCOL.md §8)
             }
@@ -134,33 +127,14 @@ impl NetTicket {
             version,
             node_id: nid.ok_or_else(|| bad("missing nid"))?,
             token: tok.ok_or_else(|| bad("missing tok"))?,
+            room: room.ok_or_else(|| bad("missing room"))?,
             dn,
-            relay,
-            direct,
             expires_unix: exp.ok_or_else(|| bad("missing exp"))?,
         })
     }
 
     pub fn is_expired(&self) -> bool {
         now_unix() > self.expires_unix
-    }
-
-    pub fn endpoint_addr(&self) -> Result<iroh::EndpointAddr, WoooshError> {
-        let id = iroh::PublicKey::from_bytes(&self.node_id)
-            .map_err(|e| WoooshError::InvalidQrPayload(format!("ticket: bad node id: {e}")))?;
-        let mut addr = iroh::EndpointAddr::new(id);
-        if let Some(r) = &self.relay {
-            let url: iroh::RelayUrl = r
-                .parse()
-                .map_err(|e| WoooshError::InvalidQrPayload(format!("ticket: bad relay url: {e}")))?;
-            addr = addr.with_relay_url(url);
-        }
-        for a in &self.direct {
-            if let Ok(sa) = a.parse::<std::net::SocketAddr>() {
-                addr = addr.with_ip_addr(sa);
-            }
-        }
-        Ok(addr)
     }
 }
 
@@ -200,90 +174,58 @@ pub fn new_expiry_unix() -> u64 {
     now_unix() + TICKET_TTL.as_secs()
 }
 
-/// Our Ed25519 secret becomes the node secret, so `endpoint.id()` equals
-/// `identity.public_key_bytes()` and every existing pin keeps working
-/// (DESIGN.md §9.1).
-///
-/// `relays` mirrors `Config.relay_urls`: `None` = n0's public relays,
-/// `Some(&[])` = no relays and no address lookup (only ticket addresses),
-/// `Some(urls)` = a chosen set.
-pub async fn bind_endpoint(
-    identity: &Identity,
-    relays: Option<&[String]>,
-) -> Result<iroh::Endpoint, WoooshError> {
-    let secret = iroh::SecretKey::from_bytes(&identity.secret_bytes());
-    let mut builder = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
-        .secret_key(secret)
-        .alpns(vec![ALPN.to_vec()]);
-    match relays {
-        None => {}
-        Some([]) => {
-            builder = builder
-                .relay_mode(iroh::RelayMode::Disabled)
-                .clear_address_lookup();
-        }
-        Some(urls) => {
-            let parsed = urls
-                .iter()
-                .map(|u| {
-                    u.parse::<iroh::RelayUrl>()
-                        .map_err(|e| WoooshError::InvalidArgument(format!("relay url {u}: {e}")))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            builder = builder.relay_mode(iroh::RelayMode::custom(parsed));
-        }
-    }
-    let ep = builder
-        .bind()
-        .await
-        .map_err(|e| WoooshError::Io(format!("iroh bind: {e}")))?;
-    debug_assert_eq!(ep.id().as_bytes(), &identity.public_key_bytes());
-    Ok(ep)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn ticket_roundtrip() {
-        let t = NetTicket {
-            version: 1,
+    fn sample() -> NetTicket {
+        NetTicket {
+            version: TICKET_VERSION,
             node_id: [9; 32],
             token: [4; 32],
+            room: [7; 16],
             dn: Some("Kata's iPhone & Co".into()),
-            relay: Some("https://euw1-1.relay.iroh.network./".into()),
-            direct: vec!["192.168.1.5:41234".into(), "[fd00::1]:41234".into()],
             expires_unix: new_expiry_unix(),
-        };
+        }
+    }
+
+    #[test]
+    fn ticket_roundtrip() {
+        let t = sample();
         let s = t.encode();
-        assert!(s.starts_with("wooosh-net:1?nid="));
+        assert!(s.starts_with("wooosh-net:2?nid="));
         assert!(!s.contains(' '));
         assert_eq!(NetTicket::parse(&s).unwrap(), t);
         assert!(!t.is_expired());
     }
 
     #[test]
+    fn ticket_carries_no_addresses() {
+        // v1 disclosed LAN and public IPs to anyone the code was forwarded to (§9.3).
+        let s = sample().encode();
+        assert!(!s.contains("addrs=") && !s.contains("relay="));
+    }
+
+    #[test]
     fn ticket_expiry_is_enforced_by_parsing_callers() {
-        let t = NetTicket {
-            version: 1,
-            node_id: [1; 32],
-            token: [2; 32],
-            dn: None,
-            relay: None,
-            direct: vec![],
-            expires_unix: 1,
-        };
+        let t = NetTicket { expires_unix: 1, ..sample() };
         assert!(NetTicket::parse(&t.encode()).unwrap().is_expired());
     }
 
     #[test]
-    fn ticket_rejects_foreign_and_malformed_payloads() {
+    fn ticket_rejects_foreign_old_and_malformed_payloads() {
         assert!(NetTicket::parse("wooosh-pair:1?pk=AAAA&tok=BBBB&exp=1").is_err());
-        assert!(NetTicket::parse("wooosh-net:2?nid=AAAA&tok=BBBB&exp=1").is_err());
-        assert!(NetTicket::parse("wooosh-net:1?tok=BBBB&exp=1").is_err());
-        // nid must be exactly 32 bytes.
-        let short = format!("wooosh-net:1?nid={}&tok={}&exp=1", b64().encode([0u8; 8]), b64().encode([0u8; 32]));
+        let v1 = NetTicket::parse("wooosh-net:1?nid=AAAA&tok=BBBB&exp=1").unwrap_err();
+        assert!(v1.to_string().contains("older version"));
+        assert!(NetTicket::parse("wooosh-net:3?nid=AAAA&tok=BBBB&exp=1").is_err());
+        let no_room = format!("wooosh-net:2?nid={}&tok={}&exp=1", b64().encode([0u8; 32]), b64().encode([0u8; 32]));
+        assert!(NetTicket::parse(&no_room).is_err());
+        let short = format!(
+            "wooosh-net:2?nid={}&tok={}&room={}&exp=1",
+            b64().encode([0u8; 8]),
+            b64().encode([0u8; 32]),
+            b64().encode([0u8; 16])
+        );
         assert!(NetTicket::parse(&short).is_err());
     }
 
@@ -296,24 +238,8 @@ mod tests {
     }
 
     #[test]
-    fn ticket_node_id_is_the_identity_key() {
-        // The ticket carries the same 32 bytes the trust store pins.
-        let id = Identity::generate();
-        let sk = iroh::SecretKey::from_bytes(&id.secret_bytes());
-        assert_eq!(sk.public().as_bytes(), &id.public_key_bytes());
-        let t = NetTicket {
-            version: 1,
-            node_id: id.public_key_bytes(),
-            token: [0; 32],
-            dn: None,
-            relay: None,
-            direct: vec![],
-            expires_unix: new_expiry_unix(),
-        };
-        assert_eq!(t.endpoint_addr().unwrap().id.as_bytes(), &id.public_key_bytes());
-        assert_eq!(
-            crate::identity::device_id_string_for(&t.node_id),
-            id.device_id_string()
-        );
+    fn room_key_depends_on_the_token_only() {
+        assert_eq!(room_key(&[1; 32]), room_key(&[1; 32]));
+        assert_ne!(room_key(&[1; 32]), room_key(&[2; 32]));
     }
 }

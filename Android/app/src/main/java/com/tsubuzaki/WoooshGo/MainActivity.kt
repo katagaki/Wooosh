@@ -71,7 +71,7 @@ private fun AppRoot(viewModel: MainViewModel) {
     val pairedDevices by viewModel.pairedDevices.collectAsStateWithLifecycle()
     val pairedDeviceIds by viewModel.pairedDeviceIds.collectAsStateWithLifecycle()
     val stagedShare by viewModel.stagedShare.collectAsStateWithLifecycle()
-    val relayError by viewModel.relayError.collectAsStateWithLifecycle()
+    val internetError by viewModel.internetError.collectAsStateWithLifecycle()
     val ticketRedeemedPeerId by viewModel.ticketRedeemedPeerId.collectAsStateWithLifecycle()
 
     var screen by rememberSaveable { mutableStateOf(Screen.MAIN) }
@@ -148,9 +148,9 @@ private fun AppRoot(viewModel: MainViewModel) {
                 onRevokeDevice = viewModel::revokeDevice,
                 onDisplayNameChange = viewModel::setDisplayName,
                 onVisibilityChange = viewModel::setVisibility,
-                onRelayModeChange = viewModel::setRelayMode,
-                onRelayUrlChange = viewModel::setRelayUrl,
-                relayError = relayError,
+                onInternetModeChange = viewModel::setInternetMode,
+                onInternetServerUrlChange = viewModel::setInternetServerUrl,
+                internetError = internetError,
                 onBack = { screen = Screen.MAIN },
             )
         }

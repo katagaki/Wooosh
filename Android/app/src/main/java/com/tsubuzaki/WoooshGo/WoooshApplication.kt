@@ -52,7 +52,7 @@ class WoooshApplication : Application() {
         PairingManager(this, appScope, core, trustStore) { internetEnabled }
     }
 
-    /** Mirrors the stored relay setting so the pairing manager can read it synchronously. */
+    /** Mirrors the stored internet setting so the pairing manager can read it synchronously. */
     @Volatile
     private var internetEnabled: Boolean = true
 
@@ -60,9 +60,9 @@ class WoooshApplication : Application() {
     var coreStartError: String? = null
         private set
 
-    /** Set when the core refused the relay address; it keeps its last working config. */
-    private val _relayError = MutableStateFlow<String?>(null)
-    val relayError: StateFlow<String?> = _relayError.asStateFlow()
+    /** Set when the core refused the server address; it keeps its last working config. */
+    private val _internetError = MutableStateFlow<String?>(null)
+    val internetError: StateFlow<String?> = _internetError.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
@@ -101,29 +101,29 @@ class WoooshApplication : Application() {
             discovery.start()
 
             internetEnabled = settings.internetEnabled
-            var appliedRelays: List<String>? = settings.relayUrls
+            var appliedUrl: String? = settings.rendezvousUrl
             // The core boots on its own default, so push the stored preference before
-            // anything can mint a ticket.
-            runCatching { core.setRelayUrls(appliedRelays) }
+            // anything can mint a code.
+            runCatching { core.setRendezvousUrl(appliedUrl) }
                 .onFailure {
-                    _relayError.value = getString(R.string.error_relay_url_invalid)
-                    Log.w(TAG, "initial setRelayUrls failed", it)
+                    _internetError.value = getString(R.string.error_internet_server_invalid)
+                    Log.w(TAG, "initial setRendezvousUrl failed", it)
                 }
 
             settingsRepository.settings.collect { current ->
                 core.setVisibility(current.visibility.toCore())
                 internetEnabled = current.internetEnabled
-                // Only on a real change: applying this tears the iroh endpoint down.
-                if (current.relayUrls != appliedRelays) {
-                    val wanted = current.relayUrls
-                    runCatching { core.setRelayUrls(wanted) }
+                // Only on a real change: applying this withdraws any outstanding code.
+                if (current.rendezvousUrl != appliedUrl) {
+                    val wanted = current.rendezvousUrl
+                    runCatching { core.setRendezvousUrl(wanted) }
                         .onSuccess {
-                            appliedRelays = wanted
-                            _relayError.value = null
+                            appliedUrl = wanted
+                            _internetError.value = null
                         }
                         .onFailure {
-                            _relayError.value = getString(R.string.error_relay_url_invalid)
-                            Log.w(TAG, "setRelayUrls($wanted) rejected", it)
+                            _internetError.value = getString(R.string.error_internet_server_invalid)
+                            Log.w(TAG, "setRendezvousUrl($wanted) rejected", it)
                         }
                 }
             }

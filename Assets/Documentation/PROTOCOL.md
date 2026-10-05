@@ -3,7 +3,7 @@
 Wire-level companion to [DESIGN.md](DESIGN.md). Normative for `wooosh-core`.
 
 - Transport: QUIC (RFC 9000) + TLS 1.3, single UDP socket.
-- Serialization: CBOR (RFC 8949) for all control messages, length-prefixed (`u32` BE) on streams.
+- Serialization: CBOR (RFC 8949) for all control messages between devices, length-prefixed (`u32` BE) on streams. The rendezvous room (§9.4) uses JSON.
 - Hash: BLAKE3 (256-bit). Signatures: Ed25519. KEX: via TLS 1.3 (X25519).
 - All multi-byte integers in framing are big-endian; sizes are `u64`.
 
@@ -21,7 +21,7 @@ Wire-level companion to [DESIGN.md](DESIGN.md). Normative for `wooosh-core`.
 
 - Each install generates one **Ed25519 identity keypair** on first launch. Private key is stored via the platform adapter: Keychain (iOS/macOS, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), Android Keystore-wrapped (key material encrypted at rest by a Keystore AES key), DPAPI (Windows).
 - **DeviceID** = `BLAKE3(pubkey)[0..16]`, rendered to users as 4 groups of base32 (`Q7KM-3PXA-...`) and as a 6-word fingerprint phrase for verification screens.
-- The identity key signs the TLS certificate (below) and doubles as the iroh node key for the internet path (DESIGN.md §9.1), so a peer paired locally is automatically authenticated over the internet path too.
+- The identity key signs the TLS certificate (below) on every path, LAN or internet (§9), so a peer paired locally is automatically authenticated over the internet path too. It is never sent to the rendezvous service.
 
 ## 3. Discovery
 
@@ -61,6 +61,35 @@ Every **2 s** while the app is frontmost (30 s otherwise), and immediately on jo
 - First sighting of a `rid` → `PeerAppeared` with `discovered_at = now` (monotonic clock). Ordering key forever (per session).
 - Announce/scan expected every ≤ **2 s** foreground; peer marked stale after **10 s** silence → `PeerStale`. Any announce → `PeerReturned`. The stale threshold stays at 10 s deliberately: it is now ~5 missed announces rather than 2, so a single dropped multicast packet cannot grey out a device that is still present. Faster scanning is for finding devices sooner, not for dropping them sooner.
 - A re-appearing peer with a *new* `rid` but that completes a handshake with a *known pinned key* is merged onto the existing row (paired devices keep their slot across `rid` rotation).
+
+### 3.4 Bluetooth LE (nearby, any network or none)
+
+> **Status: specified, not implemented.**
+
+BLE finds devices that are physically close whether or not they share a network, and introduces them. **It never carries file data**: BLE throughput is orders of magnitude below the 4 GB requirement. After an introduction the devices connect over the LAN (§4.1) or a rendezvous room (§9.4), and everything from TLS onward is unchanged.
+
+**Advertisement.** Service UUID `WOOOSH_BLE_SERVICE` (128-bit, fixed per protocol version) and nothing else. iOS cannot put service data or a custom payload in an advertisement, and a local name would broadcast the device name to everyone in radio range, so neither is used. Advertising runs while Wooosh is in the foreground with visibility not `Off`. iOS moves background advertisements into an overflow area that only iOS scanners filtering for the UUID can see, so background BLE discovery is not relied on anywhere.
+
+**GATT.** One service, one read-only characteristic `INFO`, CBOR:
+
+```
+INFO { v: 1, rid: bytes8, vis: "e"|"p",
+       dn?: tstr, dt?: tstr,                 // omitted when vis = "p"
+       lan?: ["ip:port", ...],               // the §3.1 listener, routable addresses only
+       room: bytes16, rk: bytes32 }          // a fresh `peer` room (§9.4) and its candidate-MAC key
+```
+
+`room` and `rk` are regenerated with `rid` and whenever an introduction completes. Reading `INFO` requires a BLE connection, so a scanner reads it once per `rid` and caches it.
+
+**Introduction.** Tapping a BLE-discovered row:
+
+1. If any `lan` hint is reachable, dial the hints concurrently as in §4.2 (race, not queue). This is the fast path when both devices are on one network but mDNS is blocked.
+2. Otherwise, both sides join `room` as `peer` and hole punch (§9.5) with `k_room = rk`. The advertiser joins when its INFO is read and leaves after 120 s if nobody arrives.
+3. TLS and HELLO as §4.1. A pinned key is trusted as usual. An unknown key is `untrusted`, and **pairing is the §4.3 SAS comparison**, which both screens display. No BLE-specific pairing ceremony exists, and BLE link-layer pairing (Just Works or passkey) is not used: neither binds to the Wooosh identity keys.
+
+**Privacy.** Under `PairedOnly`, `INFO` omits `dn` and `dt`, and the scanner shows no row until a handshake proves a pinned key. A stranger in range learns only that a Wooosh device is nearby and its current `rid`, which rotates. Under `Everyone`, `INFO` discloses the name and type to anyone in radio range, the same disclosure mDNS makes to anyone on the LAN, and the visibility setting says so.
+
+**Registry.** A BLE sighting feeds the same registry as mDNS (§3.3): rows keyed by `rid`, ordered by first sighting from either source, stale after 10 s without a sighting from **either** source. A device seen by both is one row.
 
 ## 4. Connection & the key-sharing (pairing) protocol
 
@@ -169,7 +198,9 @@ One **unidirectional QUIC stream** per file *slot*, pool of ≤ 4 slots. Stream 
 | Malicious sender: disk-fill / zip-bomb-alike | Consent sheet shows total size before any bytes; preallocation fails fast; per-transfer staging quota = min(free space − 1 GiB, offered total) |
 | Offer spam (party mode abuse) | Rate limit unpaired OFFERs per rid+source (3/min), auto-mute option; PairedOnly mode rejects at handshake |
 | Pairing token brute force | 32-byte token, single use, 120 s TTL, constant-time compare, connection closed on first failure |
-| Malicious relay (internet path, iroh) | Relays forward opaque QUIC ciphertext; peer auth is the same Ed25519 pinning + SAS — a relay can drop traffic but not read or impersonate |
+| Malicious or compromised rendezvous (§9) | It never sees identity keys or ticket tokens, candidates are MAC'd with a key it lacks, and relayed bytes are QUIC ciphertext; it can drop traffic but not read, inject, redeem, or impersonate (§9.10) |
+| Rendezvous quota abuse | Admission by device attestation with per-device daily quotas; unverified clients are rate-limited per network and never relayed (§9.2) |
+| Strangers in Bluetooth range | BLE advertises only a service UUID; INFO omits name and type under PairedOnly; a BLE introduction is followed by a normal TLS handshake and, to pair, the §4.3 comparison (§3.4) |
 | Compromised staging tampering | Hash is verified over the final staged bytes immediately before routing |
 
 Out of scope v1: metadata privacy against the local network operator (they can see *that* two devices transfer and rough volume), post-compromise security of a stolen unlocked device, and malware scanning of received files (surfaced to the user as platform conventions: quarantine attribute on macOS `com.apple.quarantine`, MotW `Zone.Identifier` ADS on Windows — both **are** applied by the shells).
@@ -179,103 +210,206 @@ Out of scope v1: metadata privacy against the local network operator (they can s
 - Unknown CBOR map keys MUST be ignored (forward compat); unknown `t` on the control stream → `ERR_UNSUPPORTED {t}` response, connection stays up.
 - `caps` in HELLO gates optional features (e.g. future `zstd` compression, `dir` structured folders) — both sides must advertise a capability to use it.
 
-## 9. Internet path (off-LAN, iroh)
+## 9. Internet path (off-LAN, Wooosh Rendezvous)
 
-Everything above describes packets on a LAN. §9 defines the second path they can take: an [iroh](https://iroh.computer) QUIC session that hole-punches between networks, using a relay to introduce the two devices (DESIGN.md §9.1). **Only the path changes.** HELLO, OFFER/DECISION, the file streams, the resume ledger, the close codes and the trust model are the ones defined in §4–§6, byte for byte, and implementations MUST NOT fork them per transport.
+> **Status: implemented in the core, the Worker and both shells; not yet run across real networks** (STATUS.md). §9.9 (paired rendezvous) and NAT-PMP/PCP mapped candidates are not implemented. iroh, which this replaces, is specified in this document as of commit `5daa4d9`.
 
-### 9.1 Identity is the same key
+Everything above describes packets on a LAN. §9 defines the second path they can take: a direct QUIC session between two networks, hole punched with the help of **Wooosh Rendezvous**, a Cloudflare Worker operated by the project (DESIGN.md §9.1). **Only the path changes.** HELLO, OFFER/DECISION, the file streams, the resume ledger, the close codes and the trust model are the ones defined in §4–§6, byte for byte, and implementations MUST NOT fork them per transport.
 
-An iroh endpoint's identity is an Ed25519 keypair. Implementations MUST bind the iroh endpoint with the **existing Wooosh identity secret** (§2). Consequences, all normative:
+### 9.1 Roles
 
-- The iroh `EndpointId` (historically `NodeId`) **is** the peer's Wooosh public key, so it indexes the trust store directly.
-- `DeviceID = BLAKE3(pubkey)[0..16]` and the 6-word fingerprint phrase are identical whichever path a peer arrived over. A device MUST NOT present as two identities depending on the path.
-- A peer paired on the LAN is already pinned over the internet, and vice versa. No second pairing ceremony exists.
+| Party | Does | Never does |
+|---|---|---|
+| **Rendezvous** (Worker + one Durable Object per room) | Admits attested clients (§9.2); joins two clients in a room; forwards their address candidates; forwards relayed datagrams when no direct path forms (§9.6) | Terminate TLS, see keys or tokens, persist anything, log payloads |
+| **STUN** (`stun.cloudflare.com:3478`, UDP) | Tells a client its public `ip:port` as seen from outside its NAT | Anything else. Workers cannot open UDP sockets, so the rendezvous cannot do this itself |
+| **Clients** | Gather candidates, punch, run the §4–§6 protocol end to end | Trust the rendezvous with anything that grants access to files |
 
-The endpoint SHOULD be bound lazily, on the first ticket operation. Binding it at startup makes every install contact a relay on launch, which contradicts the "no servers" posture for users who only ever share on a LAN.
+The rendezvous is a matchmaker. It is never a party to the Wooosh handshake, so a compromised or hostile rendezvous can deny service but cannot read, forge, or redirect a session to anyone other than the pinned key (§9.10).
 
-Relay selection is configuration, not protocol: the default is n0's public relays; an empty relay set means direct/hole-punched connections only, which the reference shells present as switching the internet path off entirely; an explicit set may point anywhere, including a self-hosted relay. It is changeable at runtime; doing so rebinds the endpoint and MUST invalidate any outstanding ticket, which advertises a relay the device no longer uses.
+**Storage rule (normative).** The rendezvous MUST NOT write to Durable Object storage, KV, D1, R2, or any log sink. All state (rooms, quota counters) lives in Durable Object memory and dies with the object. Workers Logs and Logpush are disabled. Cloudflare's own edge request metadata is outside the project's control and is disclosed as such in DESIGN.md §9.5.
 
-### 9.1.1 Relayed transfers are size-capped
+### 9.2 Admission (device attestation)
 
-iroh offers a relayed path as the fallback when hole punching fails. Wooosh uses it, but bounded: **on a relayed connection no single file may exceed `RELAY_MAX_FILE_BYTES` (100 MiB).** A direct path — every LAN transfer, and every internet transfer that hole punched — has no limit at all.
+The rendezvous runs on a free plan with a hard daily quota (DESIGN.md §9.4). Admission exists to stop that quota being spent by anything other than real Wooosh installs. **It is abuse control, not a security boundary.** Session security rests entirely on the §2 identity keys, and nothing in this section may be relied on for it.
 
-- An implementation MUST wait for a direct path before applying the cap. Reference implementation: 15 s from the send request, because punching normally completes within a couple of seconds and a short budget would cap a connection that was about to be direct.
-- The sender MUST check **before the OFFER** (§5), on file metadata only, so an oversized file fails without a wasted hash pass and the receiver is never asked to accept a transfer that cannot run.
-- The receiver MUST enforce it too, declining the whole offer, rather than take a well-behaved sender on trust. Declining is all-or-nothing so the outcome does not depend on which files happened to be small.
-- Failure is reported as `RELAY_FILE_TOO_LARGE`, distinct from a generic transfer error: the same files would send fine on a direct connection, so it is the route that failed.
-- Control traffic — HELLO, pairing, OFFER/DECISION — is always relayable. It is small, and relaying it is what lets two devices meet at all.
+Admission runs **on the room's own WebSocket** (§9.4), before the client may do anything else there. There are no separate HTTP endpoints: one connection per session costs one request, and verification runs under the Durable Object's CPU limit (30 s per message) rather than the free plan's 10 ms Worker limit.
 
-The cap exists because a relay is somebody else's bandwidth: n0's public relays are free, rate-limited and shared with every other iroh application, and a self-hosted relay is still a server someone pays for. 100 MiB keeps the everyday case working from anywhere while keeping a multi-gigabyte archive on the direct path it should have been on.
+1. On connect the room sends `{ t: "challenge", nonce }`: 32 random bytes, held in the socket's attachment for this connection only.
+2. The client answers `{ t: "admit", … }` with exactly one of: a cached `token`; `apple` evidence; `android` evidence; `tpm` evidence (which adds a second round, below); or `anon: true`. Evidence is bound to `nonce` per platform (table below).
+3. On success → `{ t: "admitted", tier, token?, key_credential? }`. `token` is an HMAC-SHA256-sealed JSON blob `{ tier, qk, day, exp }`, valid **24 h**, that the client caches and presents instead of evidence on later joins. Only this Worker ever verifies it, so a MAC suffices. Unverified admissions receive no token.
 
-**The cap is per file, not per transfer.** A hundred 99 MiB files is a permitted relayed transfer. Bounding the total was considered and not done: it would make a transfer's admissibility depend on how the user happened to batch it, and the per-file rule is what users can predict.
+A refused admission answers `{ t: "error", code }` and closes. `bad_token` and `attestation_failed` make the client clear its cached token and key credential and retry once; if a fresh proof was refused, the retry is anonymous rather than a repeat of the same proof.
 
-If a relay set is configured but no relay can be reached, publishing a ticket MUST fail rather than emit one carrying only local addresses: such a ticket looks valid and can only ever work on the publisher's own network.
+`qk` is the **quota key**: `HMAC(daily_secret, hardware_identity)` where `hardware_identity` is whatever stable handle the evidence proved: the App Attest key ID; for Android, a random per-install ID that the client binds into the Play Integrity `requestHash = hex(SHA-256(nonce ‖ install_id))` (Play Integrity deliberately exposes no device identifier); or the TPM EK public key. `daily_secret` rotates at 00:00 UTC and is never stored, so `qk` cannot be linked across days, and the hardware identity itself is never kept. The token carries **no Wooosh identity key**: the rendezvous must not learn who is talking to whom.
 
-### 9.2 Ticket format
+| Platform | Evidence | Tier |
+|---|---|---|
+| iOS / iPadOS | App Attest over `clientDataHash = SHA-256(nonce)`. First run: attestation object (verify the chain to the Apple App Attestation root, the nonce extension, the key ID, the App ID, counter 0, `aaguid` = `appattest`). The Worker returns a **key credential**, an HMAC-sealed `{ kid, pub, appId, exp }` blob the client keeps, so the Worker stays stateless. Later admissions: key credential + assertion over `nonce`. Assertion counters are not checked: the Worker keeps no per-key state, and the single-use nonce already makes each assertion fresh | **Verified app** |
+| macOS (Developer ID, outside the Mac App Store) | App Attest, as iOS, with the entitlement set to `production` (outside TestFlight, the App Store, and Enterprise, the entitlement chooses the environment). Requires macOS 27, the Wooosh minimum. **Unverified** whether a Developer ID provisioning profile can carry the App Attest capability; until confirmed, Macs fall to Unverified | **Verified app** |
+| Android | Play Integrity standard request, `requestHash = SHA-256(nonce)`. The Worker decodes via Google's server API and requires `PLAY_RECOGNIZED`, the release signing-cert digest, and `MEETS_DEVICE_INTEGRITY` | **Verified app** |
+| Windows | TPM 2.0 credential activation (below) | **Verified hardware** |
+| `wooosh-cli` on Linux / Windows | TPM 2.0 credential activation, where a TPM is present | **Verified hardware** |
+| `wooosh-cli` on macOS | App Attest, **only** when the binary runs from inside the signed `Wooosh.app` bundle (§9.2.1) | **Verified app** |
+| Any client whose attestation is unavailable or fails `isSupported` | None | **Unverified** |
 
-A **ticket** is the out-of-band capability that starts an internet transfer. One line, chat- and QR-safe:
+**TPM 2.0 credential activation** (Windows and the CLI). RSA endorsement keys only, which is what Windows provisions by default; an ECC-only TPM falls to Unverified. Proves "this attestation key (AK) lives in the same genuine TPM as this endorsement key (EK)". It does *not* prove the binary is Wooosh; there is no Windows equivalent of App Attest, hence the separate tier.
+
+1. Client creates (once, then reuses) a restricted signing AK under the EK and sends `tpm: { ek_cert, ek_chain, ak_public }`. `ek_chain` carries the intermediates, which the client fetches from the certificate's AIA URL if the OS does not have them; the Worker bundles roots only. On firmware TPMs the EK certificate itself is fetched by the OS from the vendor, not read from NV.
+2. Worker verifies `ek_cert` chains to a bundled TPM manufacturer root (the RootCA set of Microsoft's published `TrustedTpm.cab`, regenerated by `Worker/scripts/update-roots.sh`), checks the AK attributes (`fixedTPM`, `fixedParent`, `sensitiveDataOrigin`, `restricted`, `sign`, not `decrypt`, name algorithm SHA-256), then runs `TPM2_MakeCredential` in software against the EK with a random secret `s`, and answers `{ t: "tpm-challenge", credential_blob, encrypted_secret }`. `SHA-256(s)` stays in the socket's attachment.
+3. Client runs `TPM2_ActivateCredential` and answers `{ t: "tpm-activate", secret }`. A match admits the client. `hardware_identity = SHA-256(EK SubjectPublicKeyInfo)`.
+
+#### 9.2.1 The CLI on macOS
+
+A Mac has no TPM, and Secure Enclave keys carry no attestation a third party can verify, so App Attest is the only hardware-backed option. App Attest binds a key to a **Team ID + bundle ID** and needs the `appattest-environment` entitlement, which is restricted and therefore needs a provisioning profile. A loose command-line binary has neither. The CLI can attest only when it is shipped inside `Wooosh.app` (`Contents/MacOS/wooosh-cli`), signed with the app's identity and profile, and calls `DCAppAttestService` through Objective-C bindings. Apple says App Attest "may not be available for use through all app types", so whether a bundled helper launched from Terminal qualifies is **unverified**. Until a spike shows `isSupported` returning true there, the macOS CLI is Unverified. Development uses the `dev` Worker allowlist either way.
+
+A **hardware ID string** (SMBIOS UUID, `MachineGuid`, MAC address) MUST NOT be used as evidence. It is self-reported and therefore forgeable by anyone who reads this document, and it is a stable cross-app tracking identifier. The TPM EK is just as stable, which is why it is folded into the daily-rotating `qk` and never retained.
+
+**Tiers and quotas** (initial values, tune from the dashboard):
+
+| Tier | Rooms per `qk` per day | Relay (§9.6) | Notes |
+|---|---|---|---|
+| Verified app | 50 | allowed | |
+| Verified hardware | 50 | allowed | |
+| Unverified | 5 per source `/24` (IPv4) or `/56` (IPv6) | **not allowed** | Direct paths only. Exists so a device whose attestation is unavailable (no TPM, `isSupported` false, a standalone macOS CLI) is not locked out of the internet path entirely |
+
+Quota counters are in-memory and best effort: an evicted Durable Object forgets them, which costs at most one extra day's allowance. Exceeding a quota is `RENDEZVOUS_QUOTA` to the client, distinct from a network failure. When Cloudflare's own daily limit is exhausted the Worker returns errors until 00:00 UTC; clients surface that as `RENDEZVOUS_UNAVAILABLE`.
+
+The Worker accepts only production App Attest keys (`aaguid` = `appattest`), so a Developer ID build left on the default development entitlement is refused rather than quietly admitted.
+
+Simulators, emulators, debug builds, and sideloaded APKs cannot pass Verified-app checks and fall to Unverified. Development uses a separate Worker environment with a debug allowlist, never a bypass in the production Worker.
+
+### 9.3 Ticket format
+
+A **ticket** is the out-of-band capability that starts an internet transfer with a device that is not paired. One line, chat- and QR-safe:
 
 ```
-wooosh-net:1?nid=<pubkey b64url>&tok=<32B token b64url>&dn=<display name>&relay=<url>&addrs=<ip:port,…>&exp=<unix>
+wooosh-net:2?nid=<pubkey b64url>&tok=<32B token b64url>&room=<16B room id b64url>&dn=<display name>&exp=<unix>
 ```
 
 | Field | Meaning |
 |---|---|
-| `nid` | publisher's Ed25519 identity key = iroh EndpointId (**required**) |
+| `nid` | publisher's Ed25519 identity key (**required**) |
 | `tok` | 32-byte single-use pairing token, same rules as the QR token (§4.2 step 3) (**required**) |
+| `room` | 16 random bytes naming the rendezvous room (**required**) |
 | `dn` | display-name hint, unauthenticated, UI label only |
-| `relay` | publisher's home relay URL, so the redeemer can reach it before any hole punch |
-| `addrs` | directly reachable `ip:port` candidates, best-effort |
 | `exp` | expiry, unix seconds (**required**) |
 
-Values are base64url (no padding) or percent-encoded; unknown keys MUST be ignored (§8). Rules:
+v1 tickets (iroh) are rejected with a message asking the other device to update; the two paths do not interoperate.
 
-- The publisher is the **sender**; the redeemer is the **receiver**. The sender has already chosen the files, so it is the side with something to publish. This inverts the LAN rule that the connector originates `OFFER`: here the connector redeems and the *acceptor* offers. The engine allows either direction — both are tested — but the shells ship this one.
-- A ticket is a capability. TTL is **120 s** (same as a QR token), redemption is **single-use**, and the token is compared in constant time. Publishers MUST be able to withdraw an outstanding ticket immediately.
-- A token issued for one transport MUST NOT be redeemable on the other. A QR is shown in the room; a ticket travels through a chat app, and letting them substitute would widen the capability beyond what the user authorized.
-- `nid` carries the publisher's key **out of band**, exactly as `pk` does in a pairing QR (§4.2). That is what makes the internet path MITM-proof: there is no first-contact window in which an attacker can substitute a key.
+Rules carried over from v1, unchanged:
 
-### 9.3 Connection establishment and trust
+- The publisher is the **sender**; the redeemer is the **receiver**. The connector redeems and the *acceptor* offers.
+- TTL **120 s**, redemption **single-use**, token compared in constant time, publisher can withdraw immediately.
+- A token issued for one transport MUST NOT be redeemable on the other.
+- `nid` carries the publisher's key **out of band**, which is what makes the path MITM-proof.
 
-1. Sender publishes a ticket (§9.2) and starts accepting on its iroh endpoint. Visibility applies unchanged — `Off` refuses, `Everyone` accepts — except that a pending ticket is an invitation `PairedOnly` MUST honour, at HELLO *and* at OFFER (§9.4).
-2. Receiver parses the ticket, rejects it if expired, and dials `nid` over iroh using ALPN `wooosh/1`.
-3. iroh's TLS handshake authenticates the remote to exactly the dialled `EndpointId`. The implementation MUST additionally assert that the authenticated key equals `nid` and hard-fail `KEY_CHANGED` otherwise — pinning is never delegated to a dependency's internals (§4.5).
-4. HELLO runs exactly as in §4.1, client-first, including the §4.1.1 identity-binding check (`device_id == BLAKE3(authenticated key)[0..16]`, where the authenticated key is the `EndpointId`). A peer claiming a pinned DeviceID with a different key closes `KEY_CHANGED`.
-5. The redeeming receiver presents `PAIR_REQUEST { token }`; the publishing sender redeems it single-use. Both mark the connection `ticket_authorized` and emit `TicketRedeemed`. **Neither side pins**: unlike §4.2 step 4, this path writes nothing to the trust store (§9.4).
-6. Transfers proceed under §5 and §6 with no changes, the publisher originating the `OFFER`.
+New in v2:
 
-Two deliberate differences from the LAN path:
+- **`tok` MUST NOT be sent to the rendezvous**, in any form. Only `room` is. If the token reached the Worker, the Worker (or anyone who compromised it) could join as the redeemer and be handed the files: `nid` stops it impersonating the sender, but nothing would stop it posing as the receiver. Keeping `tok` end to end confines the rendezvous to denial of service.
+- **A ticket no longer carries addresses.** v1 put the publisher's LAN and public IPs in the ticket, disclosing them to anyone the ticket was forwarded to. v2 exchanges candidates only inside the room, after both sides are admitted, and only with the one other occupant.
+- The rendezvous URL is not in the ticket. Both sides use their configured rendezvous (`Config.rendezvous_url`); two devices configured for different rendezvous services cannot meet, which is reported as a timeout naming the setting.
 
-- **No `last_addr`.** An iroh session may be relayed and may migrate paths, so there is no stable `ip:port` to record as the §4.5 address pin. Implementations MUST NOT write one; a relayed address stored there would mis-resolve a later LAN dial. The `nid`-in-ticket and HELLO identity binding cover the same ground.
-- **Rejections still travel as close codes** (§4.1.2). Nothing about relaying changes that.
+### 9.4 Rooms
 
-### 9.4 The internet path never pairs
+`GET /v1/room/<room id>?role=<pub|redeem|peer|pair>` upgrades to a WebSocket; the room id is 16 bytes, base64url. Admission (§9.2) runs first. Control messages are JSON text frames, `t` = type:
 
-A redeemed ticket authorises **exactly one transfer session on one connection**. Implementations MUST NOT write the trust store on this path, in either direction.
+```
+peer   {}                                              // rendezvous → both, once both are admitted
+cand   { c: [{ kind: "host"|"srflx"|"mapped", a: "ip:port" }], ufrag, mac }  // forwarded untouched
+go     {}                                              // rendezvous → both, once both sent cand: start punching
+path   { direct: true }                                // client → rendezvous, informational
+bye    {}                                              // either side: close the room
+error  { code, detail? }                               // rendezvous → client
+```
 
-- The publisher marks the connection `ticket_authorized` and emits `TicketRedeemed`, never `PairingResult`. The redeemer does the same on `PAIR_ACCEPT`.
-- The authorisation dies with the connection. It is never persisted, and a later connection from the same key is a stranger again.
-- **A device MUST NOT send file data to an unpinned internet peer that has not redeemed a ticket.** Because this path never pairs, `trusted` is false for a legitimate transfer and cannot be the gate; the redeemed token is. Without this check, anyone who learned the endpoint id could dial in and be handed the staged files.
-- `PairedOnly` MUST honour a pending ticket: a live ticket is an explicit invitation, and rejecting the caller before it can present its token would block the transfer the user just set up. With no ticket pending, `PairedOnly` rejects as usual.
-- The code is single-use and dies with the transfer it was minted for.
+Relay frames (§9.6) are **binary** frames, `0x05` followed by `[u16 len][datagram]` repeated. The rendezvous forwards them without parsing.
 
-Consequence for the UI: every internet transfer is an accept-once from an unpinned device. There is no prior relationship to check a fingerprint against, so implementations SHOULD NOT display one here — it would ask the user to verify something they cannot.
+`role`: `pub` and `redeem` for tickets, `peer` for Bluetooth introductions (§3.4), `pair` for paired rendezvous (§9.9).
 
-### 9.5 SAS over the internet path
+- A room holds **at most two** clients of compatible roles. A third connection, or an incompatible role, is refused with HTTP **409**.
+- The publisher joins before its code is shown, so a `redeem` arriving at a room with no `pub` holds a withdrawn or expired code: it is refused at once with HTTP **410** rather than left waiting.
+- A ticket or BLE room with one occupant expires after 120 s; a paired room (§9.9) stays open as long as its occupant stays connected, which costs nothing while hibernated.
+- Clients keep the socket open for the life of the session, since either side may still need the relay. When either side sends `bye` or disconnects, the rendezvous closes the other with reason `peer_left`.
+- Rooms use the Durable Object **WebSocket Hibernation API**, so a room waiting for its second occupant costs no duration.
+- `role` lets the Worker refuse two publishers in one room. It is not trusted for anything else.
+- The room id is a capability only in the weak sense that it locates a room. Guessing one (2¹²⁸) is infeasible; a client that does land in a room still fails the TLS pin (§9.7) or the token check.
 
-Redeeming a ticket never pairs (§9.4), but a user who *wants* a durable pairing off-LAN can still run the §4.3 ceremony over iroh. That is a separate, explicitly-requested act — `request_sas_pairing` — and it does pin, exactly as on the LAN. Nothing about §9.4 is weakened: the ticket path still writes nothing.
+### 9.5 Candidates and hole punching
 
-An iroh connection is TLS 1.3, and exposes the same RFC 8446 §7.5 exporter. The §4.3 derivation is therefore used **verbatim**:
+Each client runs **one UDP socket** for the session. QUIC, STUN, and punch probes share it, demultiplexed by first byte (RFC 9443: `0x00–0x03` STUN, `0x40–0x7F`/`0xC0–0xFF` QUIC; probes use STUN Binding with a Wooosh attribute).
 
-`SAS = BE_u32(export_keying_material("EXPORTER-wooosh-sas", "", 32)[0..4]) mod 1_000_000`
+1. **Gather.** `host`: every interface address, with link-local omitted and loopback last (it is how two sessions on one machine meet; a peer elsewhere can never validate it). `srflx`: STUN Binding to the STUN server (`stun.cloudflare.com:3478` by default) from the session socket, over each address family it resolves to. `mapped`: a UPnP-IGD / NAT-PMP / PCP mapping where the router allows one; specified but **not implemented** (n0's standalone `portmapper` crate is the candidate). Gathering is capped at 2 s.
+2. **Exchange.** `cand` to the room, with `ufrag` 8 random bytes (hex) and `mac = BLAKE3-keyed(k_room, "wooosh cand\0" ‖ ufrag ‖ ("\n" ‖ kind ‖ "|" ‖ addr)*)[0..16]`, hex. `k_room = BLAKE3-derive-key("wooosh room v2", tok)` for tickets, `rk` from BLE INFO for `peer` rooms. The rendezvous cannot compute `k_room`, so it cannot inject candidates the other client will accept. A bad `mac` is dropped.
+3. **Punch.** On `go`, both sides send probes to every candidate of the other, every 100 ms, for the 5 s punch window and then the 15 s upgrade window, and answer probes they receive. A probe is a STUN Binding request whose `0xC057` attribute is `BLAKE3-keyed(k_room, "wooosh probe req" ‖ txid)[0..16]`; the answer is a Binding success carrying `XOR-MAPPED-ADDRESS` and `BLAKE3-keyed(k_room, "wooosh probe resp" ‖ txid)[0..16]`. The first candidate whose probe is answered correctly is the **direct path**.
+4. **Connect.** After the punch window the redeemer (for `peer` and `pair` rooms, the side with the lower `ufrag`) dials QUIC over the **path-selecting socket** (below), relayed if no direct path was found.
 
-Both ends of one iroh session derive the same six digits, and a relay — which forwards opaque QUIC ciphertext and terminates nothing — cannot make two sessions agree. The MITM property of §4.3 is unchanged, and the camera-less pairing ceremony works off-LAN.
+**Path-selecting socket (normative shape).** quinn is given a custom `AsyncUdpSocket` that presents a single synthetic peer address and routes each datagram over the best live path: direct if one is validated, otherwise relay (§9.6). quinn therefore sees one stable peer for the life of the connection, and a session that starts relayed moves onto a direct path the moment punching succeeds, with no QUIC migration involved. Probing continues for 15 s after connect whenever the current path is relay.
 
-### 9.6 Threat notes specific to the relay
+Hole punching does not always succeed. Endpoint-dependent mapping on both sides (common with mobile carrier-grade NAT) defeats it. That is the case §9.6 exists for, and it is an expected outcome to report plainly, not a bug.
 
-- Relays forward encrypted QUIC payloads. They see traffic volume and timing between two endpoint ids; they cannot read file data, impersonate a peer, or forge a pairing.
-- A hostile or unavailable relay can **drop** traffic. That is a denial of service, surfaced as a connect failure, never a downgrade.
-- A relay sees traffic volume and timing for whatever it carries, which the §9.1.1 cap bounds to small files; anything larger only ever crosses a direct path, so a relay cannot observe it at all.
-- A ticket names the relay its **publisher** chose, and redeeming one therefore contacts a server the ticket's author selected. The relay learns the redeemer's IP. It learns nothing else: the identity key in the ticket pins the handshake regardless of the path taken.
-- Publishing a ticket reveals the publisher's public key to whoever receives the ticket. That is intended: it is the same disclosure a pairing QR makes, and it is what authenticates the session.
-- `addrs` also discloses the publisher's LAN and externally-mapped IP addresses to whoever holds the ticket. That is what makes a direct connection possible, and it is why a ticket is short-lived and single-use rather than a durable address book entry. Users who do not want to disclose addresses can run with an empty relay set only on networks where that is acceptable, or accept the relayed path.
+### 9.6 Relayed transfers are size-capped
+
+When no direct path forms, datagrams travel inside `RELAY` frames over the room's WebSocket. The Durable Object forwards each frame to the other occupant and does nothing else with it.
+
+**On a relayed connection no single file may exceed `RELAY_MAX_FILE_BYTES` (1 GiB).** A direct path has no limit.
+
+- An implementation MUST wait for a direct path before applying the cap: **15 s** from the send request.
+- The sender MUST check **before the OFFER** (§5), on metadata only, so an oversized file fails without a wasted hash pass.
+- The receiver MUST enforce it too, declining the whole offer.
+- Failure is reported as `RELAY_FILE_TOO_LARGE`, distinct from a generic transfer error.
+- The cap is per file, not per transfer.
+- Control traffic (HELLO, pairing, OFFER/DECISION) is always relayable.
+- Clients admitted at the **Unverified** tier MUST NOT be relayed. The Worker refuses `RELAY` frames from their room, and the client reports `RELAY_UNAVAILABLE` rather than a generic failure.
+
+**Batching (normative).** Every incoming WebSocket message is a billable Durable Object request (at the 20:1 WebSocket rate). One QUIC datagram per frame would cost roughly 45 000 requests per GiB and exhaust the free daily quota in about two transfers. A client MUST therefore coalesce outgoing datagrams into one `RELAY` frame, flushing at **256 KiB or 5 ms**, whichever comes first. A relayed GiB then costs roughly 200–600 billable requests in each direction, depending on throughput (DESIGN.md §9.4).
+
+**No second reliability layer.** The relay is a datagram forwarder from QUIC's point of view, even though WebSocket runs over TCP. QUIC's own congestion control bounds what is in flight, so the Durable Object's queue toward the slower side stays at roughly one congestion window. Clients MUST NOT add acknowledgements or retransmission on top.
+
+The cap exists for three reasons: the daily request quota is shared by every user, a single Durable Object's throughput is far below a direct path, and Cloudflare's terms are written for web traffic, not bulk file hosting. 1 GiB keeps the everyday case working from anywhere while keeping the 4 GB case on the direct path it should have been on.
+
+Both sides always accept relayed datagrams, even after finding a direct path: punching can succeed in one direction only, and the other side may still be relaying.
+
+### 9.7 Connection establishment and trust
+
+1. Sender publishes a ticket (§9.3), is admitted (§9.2), and joins the room as `pub`. Visibility applies unchanged, except that a pending ticket is an invitation `PairedOnly` MUST honour, at HELLO *and* at OFFER (§9.8).
+2. Receiver parses the ticket, rejects it if expired, is admitted, and joins as `redeem`.
+3. Candidates are exchanged and punched (§9.5), then the receiver dials QUIC with ALPN `wooosh/1`.
+4. TLS runs exactly as §4.1: mutual certificates over the identity keys. The receiver MUST assert the authenticated server key equals `nid` and hard-fail `KEY_CHANGED` otherwise.
+5. HELLO runs exactly as in §4.1, client-first, including §4.1.1 identity binding.
+6. The receiver presents `PAIR_REQUEST { token }`; the sender redeems it single-use. Both mark the connection `ticket_authorized` and emit `TicketRedeemed`. **Neither side pins** (§9.8).
+7. Transfers proceed under §5 and §6, the publisher originating the `OFFER`.
+
+Deliberate differences from the LAN path:
+
+- **No `last_addr`.** A rendezvous session may be relayed or NAT-mapped, so there is no stable `ip:port` to record as the §4.5 address pin.
+- **Rejections still travel as close codes** (§4.1.2).
+
+### 9.8 The internet path never pairs
+
+Unchanged from v1. A redeemed ticket authorises **exactly one transfer session on one connection**. Implementations MUST NOT write the trust store on this path, in either direction.
+
+- The publisher emits `TicketRedeemed`, never `PairingResult`. The redeemer does the same on `PAIR_ACCEPT`.
+- The authorisation dies with the connection and is never persisted.
+- **A device MUST NOT send file data to an unpinned internet peer that has not redeemed a ticket.**
+- `PairedOnly` MUST honour a pending ticket. With no ticket pending, `PairedOnly` rejects as usual.
+- Implementations SHOULD NOT display a fingerprint for a ticket peer: there is nothing to compare it against.
+
+A user who wants a durable pairing off-LAN can run the §4.3 SAS ceremony over a rendezvous session. That is explicitly requested (`request_sas_pairing`) and pins exactly as on the LAN. The derivation is used verbatim: both ends of one QUIC session derive the same digits, and a relay, which forwards opaque ciphertext and terminates nothing, cannot make two sessions agree.
+
+### 9.9 Paired rendezvous
+
+> **Status: not implemented.** Specified here so §9.4's `pair` role is defined; the Worker already accepts it.
+
+Two devices that are already paired can meet over the internet without a ticket, provided both have Wooosh open. Each derives the same room id from the pair alone:
+
+`room = BLAKE3-keyed(key = BLAKE3("wooosh pair room v2" ‖ min(pkA,pkB) ‖ max(pkA,pkB)), "YYYY-MM-DD" UTC)[0..16]`
+
+The room is opaque to the rendezvous, which cannot recover either key from it. It does rotate only daily, so within one UTC day the rendezvous can tell that the same pair met more than once. That linkability is the price of not needing a ticket, and is why this path is opt-in per paired device (DESIGN.md §9.1). A client joins the room of every opted-in paired device while Wooosh is in the foreground, and leaves when it is backgrounded; when the other device joins too, the two are introduced as in §9.5. `k_room` for candidate MACs is derived the same way with a different label. Trust is the pin: no token is involved, and an unpinned key closes `KEY_CHANGED` as on the LAN.
+
+### 9.10 Threat notes specific to the rendezvous
+
+- The rendezvous sees: client IP addresses, room ids, message timing and sizes, admission tier, and (in the room) the address candidates of both clients. It does not see identity keys, tokens, display names, file names, or file data.
+- A hostile rendezvous can **drop** or **delay**. It cannot inject candidates (MAC'd with a key it lacks), redeem a ticket (it never sees `tok`), or impersonate a peer (TLS pins `nid`). The worst case is denial of service, never a downgrade.
+- Relayed bytes are QUIC ciphertext. The §9.6 cap bounds what a relay ever carries; anything larger only crosses a direct path.
+- Attestation is not anonymity-neutral: App Attest, Play Integrity, and TPM evidence identify a device to Apple, Google, or a TPM vendor's certificate chain respectively during admission. The Worker reduces that to a daily-rotating quota key and keeps nothing.
+- Publishing a ticket reveals the publisher's public key to whoever receives the ticket, as a pairing QR does. It no longer reveals the publisher's IP addresses (§9.3).

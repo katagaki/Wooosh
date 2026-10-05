@@ -14,6 +14,7 @@ fun transferErrorMessage(context: Context, raw: String?): String {
             android.text.format.Formatter.formatShortFileSize(context, relayMaxFileBytes().toLong()),
         )
     }
+    internetErrorRes(text)?.let { return context.getString(it) }
     return context.getString(
         when {
 
@@ -33,8 +34,17 @@ fun transferErrorMessage(context: Context, raw: String?): String {
     )
 }
 
+/** Rendezvous outcomes reach the shell as core error text on both events and failures. */
+private fun internetErrorRes(text: String): Int? = when {
+    text.contains("relay_unavailable") -> R.string.error_relay_unavailable
+    text.contains("rendezvous_quota") -> R.string.error_internet_quota
+    text.contains("rendezvous_unavailable") -> R.string.error_internet_unavailable
+    else -> null
+}
+
 fun pairingErrorMessage(context: Context, raw: String?): String {
     val text = raw?.lowercase().orEmpty()
+    internetErrorRes(text)?.let { return context.getString(it) }
     return context.getString(
         when {
             text.contains("expired") -> R.string.error_pairing_expired

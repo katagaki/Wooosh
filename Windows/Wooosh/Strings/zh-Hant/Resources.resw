@@ -713,8 +713,8 @@
     <value>正在準備代碼，需要幾秒鐘。</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>取得代碼時會連線公共中繼，讓兩台裝置找到彼此。只要有直連路徑，檔案仍會在兩台裝置之間直接傳輸。</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>取得代碼時會聯絡 Wooosh 伺服器，讓兩台裝置找到彼此。伺服器不會保留任何紀錄，只要有直接路徑，檔案就會在裝置之間直接傳輸。</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

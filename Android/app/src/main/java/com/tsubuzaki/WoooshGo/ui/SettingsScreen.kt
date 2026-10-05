@@ -40,7 +40,7 @@ import com.tsubuzaki.WoooshGo.R
 import com.tsubuzaki.WoooshGo.settings.Settings
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import com.tsubuzaki.WoooshGo.settings.RelayMode
+import com.tsubuzaki.WoooshGo.settings.InternetMode
 import com.tsubuzaki.WoooshGo.settings.Visibility
 import com.tsubuzaki.WoooshGo.core.TrustedPeerInfo
 import java.text.DateFormat
@@ -56,14 +56,14 @@ fun SettingsScreen(
     onRevokeDevice: (String) -> Unit,
     onDisplayNameChange: (String) -> Unit,
     onVisibilityChange: (Visibility) -> Unit,
-    onRelayModeChange: (RelayMode) -> Unit,
-    onRelayUrlChange: (String) -> Unit,
-    relayError: String?,
+    onInternetModeChange: (InternetMode) -> Unit,
+    onInternetServerUrlChange: (String) -> Unit,
+    internetError: String?,
     onBack: () -> Unit,
 ) {
     // Local edit buffer so persistence does not fight the text field cursor.
     var displayName by rememberSaveable { mutableStateOf(settings.displayName) }
-    var relayUrl by rememberSaveable { mutableStateOf(settings.relayUrl) }
+    var serverUrl by rememberSaveable { mutableStateOf(settings.internetServerUrl) }
 
     Scaffold(
         topBar = {
@@ -132,42 +132,42 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = stringResource(R.string.settings_section_relay),
+                text = stringResource(R.string.settings_section_internet),
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(8.dp))
             Column(Modifier.selectableGroup()) {
                 VisibilityOption(
-                    label = stringResource(R.string.settings_relay_public),
-                    description = stringResource(R.string.settings_relay_public_footer),
-                    selected = settings.relayMode == RelayMode.PUBLIC,
-                    onClick = { onRelayModeChange(RelayMode.PUBLIC) },
+                    label = stringResource(R.string.settings_internet_wooosh),
+                    description = stringResource(R.string.settings_internet_wooosh_footer),
+                    selected = settings.internetMode == InternetMode.WOOOSH,
+                    onClick = { onInternetModeChange(InternetMode.WOOOSH) },
                 )
                 VisibilityOption(
-                    label = stringResource(R.string.settings_relay_custom),
-                    description = stringResource(R.string.settings_relay_custom_footer),
-                    selected = settings.relayMode == RelayMode.CUSTOM,
-                    onClick = { onRelayModeChange(RelayMode.CUSTOM) },
+                    label = stringResource(R.string.settings_internet_custom),
+                    description = stringResource(R.string.settings_internet_custom_footer),
+                    selected = settings.internetMode == InternetMode.CUSTOM,
+                    onClick = { onInternetModeChange(InternetMode.CUSTOM) },
                 )
                 VisibilityOption(
-                    label = stringResource(R.string.settings_relay_off),
-                    description = stringResource(R.string.settings_relay_off_footer),
-                    selected = settings.relayMode == RelayMode.OFF,
-                    onClick = { onRelayModeChange(RelayMode.OFF) },
+                    label = stringResource(R.string.settings_internet_off),
+                    description = stringResource(R.string.settings_internet_off_footer),
+                    selected = settings.internetMode == InternetMode.OFF,
+                    onClick = { onInternetModeChange(InternetMode.OFF) },
                 )
             }
-            if (settings.relayMode == RelayMode.CUSTOM) {
+            if (settings.internetMode == InternetMode.CUSTOM) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = relayUrl,
+                    value = serverUrl,
                     onValueChange = {
-                        relayUrl = it
-                        onRelayUrlChange(it)
+                        serverUrl = it
+                        onInternetServerUrlChange(it)
                     },
-                    label = { Text(stringResource(R.string.settings_relay_url)) },
+                    label = { Text(stringResource(R.string.settings_internet_server_url)) },
                     singleLine = true,
-                    isError = relayError != null,
-                    supportingText = relayError?.let { { Text(it) } },
+                    isError = internetError != null,
+                    supportingText = internetError?.let { { Text(it) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
                 )

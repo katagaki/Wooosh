@@ -10,6 +10,7 @@ pub mod identity;
 pub mod inet;
 pub mod ledger;
 pub mod pairing;
+pub mod rendezvous;
 pub mod sanitize;
 pub mod transport;
 pub mod trust;

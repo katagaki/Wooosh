@@ -14,6 +14,13 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+        // Play Console → App integrity → Google Cloud project. 0 leaves Play
+        // Integrity off, so the device is admitted as Unverified (PROTOCOL.md §9.2).
+        buildConfigField(
+            "long",
+            "PLAY_CLOUD_PROJECT_NUMBER",
+            (project.findProperty("wooosh.playCloudProjectNumber") ?: "0").toString() + "L",
+        )
     }
 
     buildTypes {
@@ -30,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     lint {
         // Keep the intentionally uppercase package/applicationId out of lint noise.
@@ -55,6 +63,8 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
 
     implementation(libs.datastore.preferences)
+
+    implementation(libs.play.integrity)
 
     // UniFFI bindings for wooosh-core (generated Kotlin in src/main/java/uniffi/,
     // libwooosh_core.so in src/main/jniLibs/) call the library through JNA.

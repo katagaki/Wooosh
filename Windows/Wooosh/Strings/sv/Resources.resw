@@ -733,8 +733,8 @@
     <value>Förbereder en kod. Det tar några sekunder.</value>
     <comment>Status while the code is being minted.</comment>
   </data>
-  <data name="InternetRelayNote" xml:space="preserve">
-    <value>Att hämta en kod kontaktar ett publikt relä så att enheterna kan hitta varandra. Filer går fortfarande direkt mellan dem så snart det finns en direkt väg.</value>
+  <data name="InternetServiceNote" xml:space="preserve">
+    <value>När du hämtar en kod kontaktar Wooosh sin server så att enheterna hittar varandra. Den sparar inget om dem, och filer skickas direkt mellan enheterna när det finns en direkt väg.</value>
     <comment>Explains what getting an internet code contacts.</comment>
   </data>
   <data name="ErrorTicketFailed" xml:space="preserve">

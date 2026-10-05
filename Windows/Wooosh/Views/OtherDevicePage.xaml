@@ -45,7 +45,7 @@
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{ThemeResource CaptionTextBlockStyle}"
-                        Text="{loc:Localize Key=InternetRelayNote}"
+                        Text="{loc:Localize Key=InternetServiceNote}"
                         TextWrapping="Wrap" />
                     <Button
                         x:Name="ChooseFilesButton"

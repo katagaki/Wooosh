@@ -175,7 +175,7 @@ fun SendOverInternetTab(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = stringResource(R.string.internet_relay_note),
+                    text = stringResource(R.string.internet_service_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
